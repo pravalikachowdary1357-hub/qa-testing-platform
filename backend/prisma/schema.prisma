@@ -1,0 +1,326 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProductStatus {
+  ACTIVE
+  ON_HOLD
+  DEPRECATED
+}
+
+enum ReleaseReadiness {
+  READY
+  CONDITIONAL
+  NOT_READY
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum RequirementType {
+  FUNCTIONAL
+  NON_FUNCTIONAL
+  BUSINESS
+  TECHNICAL
+}
+
+enum RequirementPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum RequirementStatus {
+  DRAFT
+  APPROVED
+  IMPLEMENTED
+  VERIFIED
+  REJECTED
+}
+
+enum TestPlanStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum TestPlanPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum TestScenarioType {
+  FUNCTIONAL
+  REGRESSION
+  INTEGRATION
+  SMOKE
+  EDGE_CASE
+}
+
+enum TestScenarioPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum TestScenarioStatus {
+  DRAFT
+  READY
+  IN_PROGRESS
+  COMPLETED
+  BLOCKED
+}
+
+enum TestCasePriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum TestCaseStatus {
+  DRAFT
+  READY
+  APPROVED
+  DEPRECATED
+}
+
+enum TestDataType {
+  INPUT
+  EXPECTED_OUTPUT
+  CREDENTIALS
+  CONFIGURATION
+  REFERENCE
+}
+
+enum EnvironmentType {
+  DEVELOPMENT
+  QA
+  STAGING
+  UAT
+  PRODUCTION
+}
+
+enum EnvironmentStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+enum TestExecutionStatus {
+  PENDING
+  PASS
+  FAIL
+  BLOCKED
+}
+
+model Organization {
+  id          String             @id @default(uuid())
+  name        String             @unique
+  description String?
+  status      OrganizationStatus @default(ACTIVE)
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  products Product[]
+
+  @@map("organizations")
+}
+
+model Product {
+  id               String           @id @default(uuid())
+  organizationId   String           @map("organization_id")
+  name             String
+  description      String
+  status           ProductStatus    @default(ACTIVE)
+  environment      String
+  release          String
+  testCoverage     Int              @map("test_coverage")
+  passRate         Int              @map("pass_rate")
+  openDefects      Int              @default(0) @map("open_defects")
+  releaseReadiness ReleaseReadiness @default(NOT_READY) @map("release_readiness")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  requirements  Requirement[]
+  testPlans     TestPlan[]
+  testScenarios TestScenario[]
+  environments  Environment[]
+
+  @@index([organizationId])
+  @@map("products")
+}
+
+model Requirement {
+  id          String              @id @default(uuid())
+  productId   String              @map("product_id")
+  title       String
+  description String
+  type        RequirementType     @default(FUNCTIONAL)
+  priority    RequirementPriority @default(MEDIUM)
+  status      RequirementStatus   @default(DRAFT)
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  product       Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  testPlans     TestPlan[]     @relation("TestPlanRequirements")
+  testScenarios TestScenario[]
+
+  @@index([productId])
+  @@map("requirements")
+}
+
+model TestPlan {
+  id          String           @id @default(uuid())
+  productId   String           @map("product_id")
+  name        String
+  description String
+  status      TestPlanStatus   @default(DRAFT)
+  priority    TestPlanPriority @default(MEDIUM)
+  owner       String
+  startDate   DateTime?        @map("start_date")
+  endDate     DateTime?        @map("end_date")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  product      Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  requirements Requirement[] @relation("TestPlanRequirements")
+
+  @@index([productId])
+  @@map("test_plans")
+}
+
+model TestScenario {
+  id            String               @id @default(uuid())
+  productId     String               @map("product_id")
+  requirementId String?              @map("requirement_id")
+  title         String
+  description   String
+  type          TestScenarioType     @default(FUNCTIONAL)
+  priority      TestScenarioPriority @default(MEDIUM)
+  status        TestScenarioStatus   @default(DRAFT)
+  createdAt     DateTime             @default(now()) @map("created_at")
+  updatedAt     DateTime             @updatedAt @map("updated_at")
+
+  product     Product      @relation(fields: [productId], references: [id], onDelete: Restrict)
+  requirement Requirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  testCases   TestCase[]
+
+  @@index([productId])
+  @@index([requirementId])
+  @@map("test_scenarios")
+}
+
+model TestCase {
+  id             String           @id @default(uuid())
+  testScenarioId String           @map("test_scenario_id")
+  title          String
+  description    String
+  preconditions  String?
+  expectedResult String           @map("expected_result")
+  priority       TestCasePriority @default(MEDIUM)
+  status         TestCaseStatus   @default(DRAFT)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  testScenario   TestScenario    @relation(fields: [testScenarioId], references: [id], onDelete: Restrict)
+  steps          TestCaseStep[]
+  testData       TestData[]
+  testExecutions TestExecution[]
+
+  @@index([testScenarioId])
+  @@map("test_cases")
+}
+
+model TestCaseStep {
+  id             String @id @default(uuid())
+  testCaseId     String @map("test_case_id")
+  stepNumber     Int    @map("step_number")
+  action         String
+  expectedResult String @map("expected_result")
+
+  testCase TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+
+  @@index([testCaseId])
+  @@map("test_case_steps")
+}
+
+model TestData {
+  id          String       @id @default(uuid())
+  testCaseId  String?      @map("test_case_id")
+  name        String
+  description String?
+  type        TestDataType @default(INPUT)
+  value       String
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  testCase       TestCase?       @relation(fields: [testCaseId], references: [id], onDelete: SetNull)
+  testExecutions TestExecution[]
+
+  @@index([testCaseId])
+  @@map("test_data")
+}
+
+model Environment {
+  id          String            @id @default(uuid())
+  productId   String            @map("product_id")
+  name        String
+  type        EnvironmentType   @default(DEVELOPMENT)
+  status      EnvironmentStatus @default(ACTIVE)
+  baseUrl     String?           @map("base_url")
+  description String?
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  testExecutions TestExecution[]
+
+  @@unique([productId, name])
+  @@index([productId])
+  @@map("environments")
+}
+
+model TestExecution {
+  id            String              @id @default(uuid())
+  testCaseId    String              @map("test_case_id")
+  environmentId String              @map("environment_id")
+  testDataId    String?             @map("test_data_id")
+  status        TestExecutionStatus @default(PENDING)
+  actualResult  String?             @map("actual_result")
+  notes         String?
+  executedBy    String              @map("executed_by")
+  executedAt    DateTime            @default(now()) @map("executed_at")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  testCase    TestCase     @relation(fields: [testCaseId], references: [id], onDelete: Restrict)
+  environment Environment  @relation(fields: [environmentId], references: [id], onDelete: Restrict)
+  testData    TestData?    @relation(fields: [testDataId], references: [id], onDelete: SetNull)
+
+  @@index([testCaseId])
+  @@index([environmentId])
+  @@index([testDataId])
+  @@map("test_executions")
+}

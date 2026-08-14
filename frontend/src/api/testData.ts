@@ -1,0 +1,33 @@
+import { apiFetch } from './client';
+import type {
+  ApiTestData,
+  ApiTestDataListItem,
+  CreateTestDataPayload,
+  UpdateTestDataPayload,
+} from '../types/testData';
+
+export function fetchTestDataList(): Promise<ApiTestDataListItem[]> {
+  return apiFetch<ApiTestDataListItem[]>('/test-data');
+}
+
+export function fetchTestDataById(id: string): Promise<ApiTestData> {
+  return apiFetch<ApiTestData>(`/test-data/${id}`);
+}
+
+export function createTestData(data: CreateTestDataPayload): Promise<ApiTestData> {
+  return apiFetch<ApiTestData>('/test-data', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateTestData(id: string, data: UpdateTestDataPayload): Promise<ApiTestData> {
+  return apiFetch<ApiTestData>(`/test-data/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteTestData(id: string): Promise<void> {
+  return apiFetch<void>(`/test-data/${id}`, { method: 'DELETE' });
+}
