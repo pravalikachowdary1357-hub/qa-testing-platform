@@ -41,6 +41,7 @@ import { fetchTestScenarios } from '../api/testScenarios';
 import { fetchEnvironments } from '../api/environments';
 import { fetchTestDataList } from '../api/testData';
 import { ApiError } from '../api/client';
+import { useProductContext } from '../context/ProductContext';
 import type {
   ApiTestExecution,
   ApiTestExecutionStatus,
@@ -70,6 +71,7 @@ const STATUS_RANK: Record<ApiTestExecutionStatus, number> = {
 const ALL = 'ALL' as const;
 
 export function TestExecutionsPage() {
+  const { currentProduct } = useProductContext();
   const [executions, setExecutions] = useState<ApiTestExecution[] | null>(null);
   const [testCases, setTestCases] = useState<ApiTestCase[]>([]);
   const [testScenarios, setTestScenarios] = useState<ApiTestScenario[]>([]);
@@ -94,7 +96,7 @@ export function TestExecutionsPage() {
 
   const loadExecutions = () => {
     setError(null);
-    return fetchTestExecutions()
+    return fetchTestExecutions(currentProduct?.id)
       .then((data) => setExecutions(data))
       .catch((err: unknown) => {
         setError(
@@ -107,8 +109,9 @@ export function TestExecutionsPage() {
 
   useEffect(() => {
     let cancelled = false;
+    setExecutions(null);
 
-    fetchTestExecutions()
+    fetchTestExecutions(currentProduct?.id)
       .then((data) => {
         if (!cancelled) setExecutions(data);
       })
@@ -121,25 +124,25 @@ export function TestExecutionsPage() {
         );
       });
 
-    fetchTestCases()
+    fetchTestCases(currentProduct?.id)
       .then((data) => {
         if (!cancelled) setTestCases(data);
       })
       .catch(() => {});
 
-    fetchTestScenarios()
+    fetchTestScenarios(currentProduct?.id)
       .then((data) => {
         if (!cancelled) setTestScenarios(data);
       })
       .catch(() => {});
 
-    fetchEnvironments()
+    fetchEnvironments(currentProduct?.id)
       .then((data) => {
         if (!cancelled) setEnvironments(data);
       })
       .catch(() => {});
 
-    fetchTestDataList()
+    fetchTestDataList(currentProduct?.id)
       .then((data) => {
         if (!cancelled) setTestDataList(data);
       })
@@ -148,7 +151,7 @@ export function TestExecutionsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentProduct?.id]);
 
   const visibleExecutions = useMemo(() => {
     if (!executions) return [];

@@ -38,6 +38,7 @@ import {
 } from '../api/requirements';
 import { fetchProducts } from '../api/products';
 import { ApiError } from '../api/client';
+import { useProductContext } from '../context/ProductContext';
 import type {
   ApiRequirement,
   ApiRequirementPriority,
@@ -84,6 +85,7 @@ type SortOption = 'newest' | 'oldest' | 'priority' | 'title';
 const ALL = 'ALL' as const;
 
 export function RequirementsPage() {
+  const { currentProduct } = useProductContext();
   const [requirements, setRequirements] = useState<ApiRequirement[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +107,7 @@ export function RequirementsPage() {
 
   const loadRequirements = () => {
     setError(null);
-    return fetchRequirements()
+    return fetchRequirements(currentProduct?.id)
       .then((data) => setRequirements(data))
       .catch((err: unknown) => {
         setError(
@@ -118,8 +120,9 @@ export function RequirementsPage() {
 
   useEffect(() => {
     let cancelled = false;
+    setRequirements(null);
 
-    fetchRequirements()
+    fetchRequirements(currentProduct?.id)
       .then((data) => {
         if (!cancelled) setRequirements(data);
       })
@@ -145,7 +148,7 @@ export function RequirementsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentProduct?.id]);
 
   const visibleRequirements = useMemo(() => {
     if (!requirements) return [];

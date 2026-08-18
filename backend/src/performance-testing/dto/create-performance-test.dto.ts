@@ -1,0 +1,82 @@
+import {
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsNumber,
+  IsObject,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  Min,
+} from 'class-validator';
+import { HttpMethod } from '../../../generated/prisma/enums.js';
+
+export class CreatePerformanceTestDto {
+  @IsUUID()
+  productId: string;
+
+  @IsOptional()
+  @IsUUID()
+  environmentId?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  targetUrl: string;
+
+  @IsOptional()
+  @IsEnum(HttpMethod)
+  method?: HttpMethod;
+
+  @IsOptional()
+  @IsObject()
+  headers?: Record<string, string>;
+
+  @IsOptional()
+  @IsString()
+  body?: string;
+
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  virtualUsers: number;
+
+  @IsInt()
+  @Min(0)
+  @Max(300)
+  rampUpSeconds: number;
+
+  @IsInt()
+  @Min(1)
+  @Max(60)
+  durationSeconds: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  iterations?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  thresholdResponseTimeMs?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  thresholdErrorRatePercent?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  thresholdThroughputRps?: number;
+}

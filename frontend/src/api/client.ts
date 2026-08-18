@@ -10,13 +10,36 @@ export class ApiError extends Error {
   }
 }
 
+let authToken: string | null = null;
+let onUnauthorized: (() => void) | null = null;
+
+export function setAuthToken(token: string | null): void {
+  authToken = token;
+}
+
+// Lets AuthContext react to a session that's expired or been revoked
+// server-side (any 401 from any endpoint), without every API module having
+// to know about auth.
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  onUnauthorized = handler;
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    ...(init?.headers as Record<string, string> | undefined),
+  };
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...init,
+    headers,
   });
 
   if (!response.ok) {
+    if (response.status === 401 && path !== '/auth/login') {
+      onUnauthorized?.();
+    }
     throw new ApiError(await extractErrorMessage(response, path), response.status);
   }
 

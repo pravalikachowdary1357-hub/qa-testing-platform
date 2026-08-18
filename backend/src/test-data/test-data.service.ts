@@ -24,8 +24,9 @@ const LIST_SELECT = {
 export class TestDataService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
+  findAll(productId?: string) {
     return this.prisma.testData.findMany({
+      where: productId ? { testCase: { testScenario: { productId } } } : {},
       select: LIST_SELECT,
       orderBy: { createdAt: 'desc' },
     });

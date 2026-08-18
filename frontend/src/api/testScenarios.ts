@@ -5,8 +5,9 @@ import type {
   UpdateTestScenarioPayload,
 } from '../types/testScenario';
 
-export function fetchTestScenarios(): Promise<ApiTestScenario[]> {
-  return apiFetch<ApiTestScenario[]>('/test-scenarios');
+export function fetchTestScenarios(productId?: string): Promise<ApiTestScenario[]> {
+  const qs = productId ? `?productId=${productId}` : '';
+  return apiFetch<ApiTestScenario[]>(`/test-scenarios${qs}`);
 }
 
 export function fetchTestScenario(id: string): Promise<ApiTestScenario> {

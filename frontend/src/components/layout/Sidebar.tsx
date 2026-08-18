@@ -1,6 +1,7 @@
 import { Box, Drawer, List, Toolbar } from '@mui/material';
 import { NavItem } from './NavItem';
 import { navItems } from '../../routes/routeConfig';
+import { useAuth } from '../../context/AuthContext';
 import testSphereLogo from '../../assets/testsphere-logo.png';
 
 export const DRAWER_WIDTH = 260;
@@ -11,6 +12,9 @@ interface SidebarProps {
 }
 
 export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
+  const { hasPermission } = useAuth();
+  const visibleNavItems = navItems.filter((item) => !item.permission || hasPermission(item.permission));
+
   const drawerContent = (
     <Box sx={{ overflowY: 'auto', height: '100%' }}>
       <Toolbar>
@@ -22,7 +26,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         />
       </Toolbar>
       <List sx={{ px: 1 }}>
-        {navItems.map((item) => (
+        {visibleNavItems.map((item) => (
           <NavItem key={item.path} item={item} onNavigate={onClose} />
         ))}
       </List>

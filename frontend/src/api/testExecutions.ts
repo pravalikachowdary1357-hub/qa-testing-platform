@@ -5,8 +5,9 @@ import type {
   UpdateTestExecutionPayload,
 } from '../types/testExecution';
 
-export function fetchTestExecutions(): Promise<ApiTestExecution[]> {
-  return apiFetch<ApiTestExecution[]>('/test-executions');
+export function fetchTestExecutions(productId?: string): Promise<ApiTestExecution[]> {
+  const qs = productId ? `?productId=${productId}` : '';
+  return apiFetch<ApiTestExecution[]>(`/test-executions${qs}`);
 }
 
 export function fetchTestExecution(id: string): Promise<ApiTestExecution> {

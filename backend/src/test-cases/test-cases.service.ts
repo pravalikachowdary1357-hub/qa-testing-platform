@@ -18,8 +18,9 @@ const TEST_CASE_INCLUDE = {
 export class TestCasesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
+  findAll(productId?: string) {
     return this.prisma.testCase.findMany({
+      where: productId ? { testScenario: { productId } } : {},
       include: TEST_CASE_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
@@ -122,16 +123,28 @@ export class TestCasesService {
   async remove(id: string) {
     const testCase = await this.prisma.testCase.findUnique({
       where: { id },
-      include: { _count: { select: { testExecutions: true } } },
+      include: {
+        _count: { select: { testExecutions: true, automations: true, securityTests: true } },
+      },
     });
 
     if (!testCase) {
       throw new NotFoundException(`Test case ${id} not found`);
     }
 
+    const blockers: string[] = [];
     if (testCase._count.testExecutions > 0) {
+      blockers.push(`${testCase._count.testExecutions} test execution(s)`);
+    }
+    if (testCase._count.automations > 0) {
+      blockers.push(`${testCase._count.automations} automation(s)`);
+    }
+    if (testCase._count.securityTests > 0) {
+      blockers.push(`${testCase._count.securityTests} security test(s)`);
+    }
+    if (blockers.length > 0) {
       throw new ConflictException(
-        `This test case cannot be deleted because it has ${testCase._count.testExecutions} test execution(s).`,
+        `This test case cannot be deleted because it has ${blockers.join(' and ')}.`,
       );
     }
 

@@ -30,7 +30,17 @@ import { TestCasesPage } from '../pages/TestCasesPage';
 import { TestDataPage } from '../pages/TestDataPage';
 import { EnvironmentsPage } from '../pages/EnvironmentsPage';
 import { TestExecutionsPage } from '../pages/TestExecutionsPage';
-import { PlaceholderPage } from '../components/common/PlaceholderPage';
+import { DefectsPage } from '../pages/DefectsPage';
+import { AutomationPage } from '../pages/AutomationPage';
+import { ApiTestingPage } from '../pages/ApiTestingPage';
+import { PerformanceTestingPage } from '../pages/PerformanceTestingPage';
+import { SecurityTestingPage } from '../pages/SecurityTestingPage';
+import { UatPage } from '../pages/UatPage';
+import { TraceabilityPage } from '../pages/TraceabilityPage';
+import { ReleaseQualityPage } from '../pages/ReleaseQualityPage';
+import { ReportsPage } from '../pages/ReportsPage';
+import { AiPage } from '../pages/AiPage';
+import { SettingsPage } from '../pages/SettingsPage';
 import type { NavItemConfig } from '../types/navigation';
 
 // Single source of truth for navigation: the Sidebar renders this list,
@@ -43,104 +53,138 @@ export const navItems: NavItemConfig[] = [
     label: 'Organization',
     icon: BusinessIcon,
     element: <OrganizationsPage />,
+    permission: 'organizations:read',
   },
-  { path: '/products', label: 'Products', icon: Inventory2Icon, element: <ProductsPage /> },
+  {
+    path: '/products',
+    label: 'Products',
+    icon: Inventory2Icon,
+    element: <ProductsPage />,
+    permission: 'products:read',
+  },
   {
     path: '/requirements',
     label: 'Requirements',
     icon: AssignmentIcon,
     element: <RequirementsPage />,
+    permission: 'requirements:read',
   },
   {
     path: '/test-planning',
     label: 'Test Planning',
     icon: EventNoteIcon,
     element: <TestPlansPage />,
+    permission: 'test_plans:read',
   },
   {
     path: '/test-scenarios',
     label: 'Test Scenarios',
     icon: AccountTreeIcon,
     element: <TestScenariosPage />,
+    permission: 'test_scenarios:read',
   },
   {
     path: '/test-cases',
     label: 'Test Cases',
     icon: FactCheckIcon,
     element: <TestCasesPage />,
+    permission: 'test_cases:read',
   },
   {
     path: '/test-data',
     label: 'Test Data',
     icon: StorageIcon,
     element: <TestDataPage />,
+    permission: 'test_data:read',
   },
   {
     path: '/environments',
     label: 'Environments',
     icon: DnsIcon,
     element: <EnvironmentsPage />,
+    permission: 'environments:read',
   },
   {
     path: '/test-execution',
     label: 'Test Execution',
     icon: PlayCircleIcon,
     element: <TestExecutionsPage />,
+    permission: 'test_executions:read',
   },
   {
     path: '/defects',
     label: 'Defects',
     icon: BugReportIcon,
-    element: <PlaceholderPage title="Defects" />,
+    element: <DefectsPage />,
+    permission: 'defects:read',
   },
   {
     path: '/automation',
     label: 'Automation',
     icon: SmartToyIcon,
-    element: <PlaceholderPage title="Automation" />,
+    element: <AutomationPage />,
+    permission: 'automation:read',
   },
   {
     path: '/api-testing',
     label: 'API Testing',
     icon: ApiIcon,
-    element: <PlaceholderPage title="API Testing" />,
+    element: <ApiTestingPage />,
+    permission: 'api_testing:read',
   },
   {
     path: '/performance-testing',
     label: 'Performance Testing',
     icon: SpeedIcon,
-    element: <PlaceholderPage title="Performance Testing" />,
+    element: <PerformanceTestingPage />,
+    permission: 'performance_testing:read',
   },
   {
     path: '/security-testing',
     label: 'Security Testing',
     icon: SecurityIcon,
-    element: <PlaceholderPage title="Security Testing" />,
+    element: <SecurityTestingPage />,
+    permission: 'security_testing:read',
   },
-  { path: '/uat', label: 'UAT', icon: HowToRegIcon, element: <PlaceholderPage title="UAT" /> },
+  {
+    path: '/uat',
+    label: 'UAT',
+    icon: HowToRegIcon,
+    element: <UatPage />,
+    permission: 'uat:read',
+  },
   {
     path: '/traceability',
     label: 'Traceability',
     icon: TimelineIcon,
-    element: <PlaceholderPage title="Traceability" />,
+    element: <TraceabilityPage />,
+    permission: 'traceability:read',
   },
   {
     path: '/release-quality',
     label: 'Release Quality',
     icon: VerifiedIcon,
-    element: <PlaceholderPage title="Release Quality" />,
+    element: <ReleaseQualityPage />,
+    permission: 'release_quality:read',
   },
   {
     path: '/reports',
     label: 'Reports',
     icon: AssessmentIcon,
-    element: <PlaceholderPage title="Reports" />,
+    element: <ReportsPage />,
+    permission: 'reports:read',
   },
-  { path: '/ai', label: 'AI', icon: AutoAwesomeIcon, element: <PlaceholderPage title="AI" /> },
+  {
+    path: '/ai',
+    label: 'AI',
+    icon: AutoAwesomeIcon,
+    element: <AiPage />,
+    permission: 'ai:read',
+  },
   {
     path: '/settings',
     label: 'Settings',
     icon: SettingsIcon,
-    element: <PlaceholderPage title="Settings" />,
+    element: <SettingsPage />,
   },
 ];

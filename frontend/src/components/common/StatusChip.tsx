@@ -1,7 +1,7 @@
 import { Chip } from '@mui/material';
 import type { ChipProps } from '@mui/material';
 
-type StatusTone = 'success' | 'warning' | 'error' | 'default';
+export type StatusTone = 'success' | 'warning' | 'error' | 'default';
 
 // Maps known status/readiness labels (ProductStatus, ReleaseReadiness, ...)
 // to a chip color so every page renders them consistently.
@@ -27,10 +27,43 @@ const STATUS_TONE_MAP: Record<string, StatusTone> = {
   Critical: 'error',
   Blocked: 'error',
   Fail: 'error',
+  Failed: 'error',
   Draft: 'default',
   Medium: 'default',
   Archived: 'default',
+  Open: 'error',
+  Resolved: 'success',
+  Reopened: 'error',
+  Closed: 'default',
+  Major: 'warning',
+  Minor: 'default',
+  Trivial: 'success',
+  Enabled: 'success',
+  Disabled: 'default',
+  'Not Run': 'default',
+  'No Assertion': 'default',
+  Queued: 'default',
+  Running: 'warning',
+  Passed: 'success',
+  Stopped: 'default',
+  Info: 'default',
+  Accepted: 'warning',
+  'Not Started': 'default',
+  Planned: 'default',
+  'Not Applicable': 'default',
+  'Not Covered': 'error',
+  'Not Executed': 'warning',
+  Executed: 'success',
+  'In Testing': 'warning',
+  'Conditionally Ready': 'warning',
 };
+
+// Exported so other components (e.g. report charts) can color non-chip
+// elements -- a bar segment, a legend dot -- with the exact same status
+// semantics as this chip, instead of maintaining a second mapping.
+export function getStatusTone(status: string): StatusTone {
+  return STATUS_TONE_MAP[status] ?? 'default';
+}
 
 interface StatusChipProps {
   status: string;

@@ -27,8 +27,9 @@ const TEST_EXECUTION_INCLUDE = {
 export class TestExecutionsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
+  findAll(productId?: string) {
     return this.prisma.testExecution.findMany({
+      where: productId ? { testCase: { testScenario: { productId } } } : {},
       include: TEST_EXECUTION_INCLUDE,
       orderBy: { executedAt: 'desc' },
     });

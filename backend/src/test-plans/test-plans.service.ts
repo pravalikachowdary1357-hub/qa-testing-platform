@@ -19,8 +19,9 @@ function toDate(value?: string): Date | undefined {
 export class TestPlansService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
+  findAll(productId?: string) {
     return this.prisma.testPlan.findMany({
+      where: productId ? { productId } : {},
       include: TEST_PLAN_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });

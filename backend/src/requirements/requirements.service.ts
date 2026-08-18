@@ -14,8 +14,9 @@ const PRODUCT_REF_SELECT = { select: { id: true, name: true } };
 export class RequirementsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
+  findAll(productId?: string) {
     return this.prisma.requirement.findMany({
+      where: productId ? { productId } : {},
       include: { product: PRODUCT_REF_SELECT },
       orderBy: { createdAt: 'desc' },
     });

@@ -1,8 +1,9 @@
 import { apiFetch } from './client';
 import type { ApiTestCase, CreateTestCasePayload, UpdateTestCasePayload } from '../types/testCase';
 
-export function fetchTestCases(): Promise<ApiTestCase[]> {
-  return apiFetch<ApiTestCase[]>('/test-cases');
+export function fetchTestCases(productId?: string): Promise<ApiTestCase[]> {
+  const qs = productId ? `?productId=${productId}` : '';
+  return apiFetch<ApiTestCase[]>(`/test-cases${qs}`);
 }
 
 export function fetchTestCase(id: string): Promise<ApiTestCase> {

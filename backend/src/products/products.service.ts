@@ -80,7 +80,19 @@ export class ProductsService {
     const product = await this.prisma.product.findUnique({
       where: { id },
       include: {
-        _count: { select: { requirements: true, testPlans: true, testScenarios: true } },
+        _count: {
+          select: {
+            requirements: true,
+            testPlans: true,
+            testScenarios: true,
+            defects: true,
+            apiTestRequests: true,
+            performanceTests: true,
+            securityTests: true,
+            uatCycles: true,
+            releases: true,
+          },
+        },
       },
     });
 
@@ -97,6 +109,24 @@ export class ProductsService {
     }
     if (product._count.testScenarios > 0) {
       blockers.push(`${product._count.testScenarios} test scenario(s)`);
+    }
+    if (product._count.defects > 0) {
+      blockers.push(`${product._count.defects} defect(s)`);
+    }
+    if (product._count.apiTestRequests > 0) {
+      blockers.push(`${product._count.apiTestRequests} API test request(s)`);
+    }
+    if (product._count.performanceTests > 0) {
+      blockers.push(`${product._count.performanceTests} performance test(s)`);
+    }
+    if (product._count.securityTests > 0) {
+      blockers.push(`${product._count.securityTests} security test(s)`);
+    }
+    if (product._count.uatCycles > 0) {
+      blockers.push(`${product._count.uatCycles} UAT cycle(s)`);
+    }
+    if (product._count.releases > 0) {
+      blockers.push(`${product._count.releases} release(s)`);
     }
     if (blockers.length > 0) {
       throw new ConflictException(

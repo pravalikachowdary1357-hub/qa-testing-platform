@@ -1,4 +1,7 @@
 import {
+  Alert,
+  Box,
+  CircularProgress,
   Grid,
   Paper,
   Table,
@@ -25,7 +28,25 @@ import { PageHeader } from '../components/common/PageHeader';
 import { SummaryCard } from '../components/common/SummaryCard';
 import { StatusChip } from '../components/common/StatusChip';
 import { mockDashboardSummary } from '../data/mockDashboard';
-import { mockProducts } from '../data/mockProducts';
+import { useProductContext } from '../context/ProductContext';
+import type {
+  ApiProductStatus,
+  ApiReleaseReadiness,
+  ProductStatus,
+  ReleaseReadiness,
+} from '../types/product';
+
+const STATUS_LABELS: Record<ApiProductStatus, ProductStatus> = {
+  ACTIVE: 'Active',
+  ON_HOLD: 'On Hold',
+  DEPRECATED: 'Deprecated',
+};
+
+const READINESS_LABELS: Record<ApiReleaseReadiness, ReleaseReadiness> = {
+  READY: 'Ready',
+  CONDITIONAL: 'Conditional',
+  NOT_READY: 'Not Ready',
+};
 
 const kpis = [
   { title: 'Products', value: mockDashboardSummary.totalProducts, icon: Inventory2Icon },
@@ -59,6 +80,8 @@ const kpis = [
 ];
 
 export function DashboardPage() {
+  const { products, loading, error } = useProductContext();
+
   return (
     <>
       <PageHeader
@@ -77,36 +100,49 @@ export function DashboardPage() {
       <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
         Product Overview
       </Typography>
-      <TableContainer component={Paper} variant="outlined">
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Product</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="right">Test Coverage</TableCell>
-              <TableCell align="right">Pass Rate</TableCell>
-              <TableCell align="right">Open Defects</TableCell>
-              <TableCell>Release Readiness</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {mockProducts.map((product) => (
-              <TableRow key={product.id} hover>
-                <TableCell>{product.name}</TableCell>
-                <TableCell>
-                  <StatusChip status={product.status} />
-                </TableCell>
-                <TableCell align="right">{product.testCoverage}%</TableCell>
-                <TableCell align="right">{product.passRate}%</TableCell>
-                <TableCell align="right">{product.openDefects}</TableCell>
-                <TableCell>
-                  <StatusChip status={product.releaseReadiness} />
-                </TableCell>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {loading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+          <CircularProgress />
+        </Box>
+      )}
+      {!loading && products.length === 0 && !error && (
+        <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
+          <Typography color="text.secondary">No products found.</Typography>
+        </Paper>
+      )}
+      {!loading && products.length > 0 && (
+        <TableContainer component={Paper} variant="outlined">
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Product</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell align="right">Test Coverage</TableCell>
+                <TableCell align="right">Pass Rate</TableCell>
+                <TableCell align="right">Open Defects</TableCell>
+                <TableCell>Release Readiness</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {products.map((product) => (
+                <TableRow key={product.id} hover>
+                  <TableCell>{product.name}</TableCell>
+                  <TableCell>
+                    <StatusChip status={STATUS_LABELS[product.status]} />
+                  </TableCell>
+                  <TableCell align="right">{product.testCoverage}%</TableCell>
+                  <TableCell align="right">{product.passRate}%</TableCell>
+                  <TableCell align="right">{product.openDefects}</TableCell>
+                  <TableCell>
+                    <StatusChip status={READINESS_LABELS[product.releaseReadiness]} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
     </>
   );
 }

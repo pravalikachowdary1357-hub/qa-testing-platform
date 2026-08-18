@@ -17,8 +17,9 @@ const ENVIRONMENT_INCLUDE = {
 export class EnvironmentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
+  findAll(productId?: string) {
     return this.prisma.environment.findMany({
+      where: productId ? { productId } : {},
       include: ENVIRONMENT_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
@@ -86,16 +87,23 @@ export class EnvironmentsService {
   async remove(id: string) {
     const environment = await this.prisma.environment.findUnique({
       where: { id },
-      include: { _count: { select: { testExecutions: true } } },
+      include: { _count: { select: { testExecutions: true, uatExecutions: true } } },
     });
 
     if (!environment) {
       throw new NotFoundException(`Environment ${id} not found`);
     }
 
+    const blockers: string[] = [];
     if (environment._count.testExecutions > 0) {
+      blockers.push(`${environment._count.testExecutions} test execution(s)`);
+    }
+    if (environment._count.uatExecutions > 0) {
+      blockers.push(`${environment._count.uatExecutions} UAT execution(s)`);
+    }
+    if (blockers.length > 0) {
       throw new ConflictException(
-        `This environment cannot be deleted because it has ${environment._count.testExecutions} test execution(s).`,
+        `This environment cannot be deleted because it has ${blockers.join(' and ')}.`,
       );
     }
 

@@ -18,8 +18,9 @@ const TEST_SCENARIO_INCLUDE = {
 export class TestScenariosService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
+  findAll(productId?: string) {
     return this.prisma.testScenario.findMany({
+      where: productId ? { productId } : {},
       include: TEST_SCENARIO_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });

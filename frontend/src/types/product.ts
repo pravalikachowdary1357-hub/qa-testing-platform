@@ -2,19 +2,6 @@ export type ProductStatus = 'Active' | 'On Hold' | 'Deprecated';
 
 export type ReleaseReadiness = 'Ready' | 'Conditional' | 'Not Ready';
 
-export interface Product {
-  id: string;
-  name: string;
-  description: string;
-  status: ProductStatus;
-  environment: string;
-  release: string;
-  testCoverage: number;
-  passRate: number;
-  openDefects: number;
-  releaseReadiness: ReleaseReadiness;
-}
-
 // Shape returned by the real backend (GET /products), using the raw
 // Prisma enum values rather than the human-readable labels above.
 export type ApiProductStatus = 'ACTIVE' | 'ON_HOLD' | 'DEPRECATED';

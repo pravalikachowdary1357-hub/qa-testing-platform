@@ -39,6 +39,7 @@ import {
 import { fetchProducts } from '../api/products';
 import { fetchRequirements } from '../api/requirements';
 import { ApiError } from '../api/client';
+import { useProductContext } from '../context/ProductContext';
 import type {
   ApiTestPlan,
   ApiTestPlanPriority,
@@ -86,6 +87,7 @@ function formatDateRange(start: string | null, end: string | null): string {
 }
 
 export function TestPlansPage() {
+  const { currentProduct } = useProductContext();
   const [testPlans, setTestPlans] = useState<ApiTestPlan[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [requirements, setRequirements] = useState<ApiRequirement[]>([]);
@@ -94,7 +96,6 @@ export function TestPlansPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ApiTestPlanStatus | typeof ALL>(ALL);
   const [priorityFilter, setPriorityFilter] = useState<ApiTestPlanPriority | typeof ALL>(ALL);
-  const [productFilter, setProductFilter] = useState<string | typeof ALL>(ALL);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
 
   const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
@@ -108,7 +109,7 @@ export function TestPlansPage() {
 
   const loadTestPlans = () => {
     setError(null);
-    return fetchTestPlans()
+    return fetchTestPlans(currentProduct?.id)
       .then((data) => setTestPlans(data))
       .catch((err: unknown) => {
         setError(
@@ -121,8 +122,9 @@ export function TestPlansPage() {
 
   useEffect(() => {
     let cancelled = false;
+    setTestPlans(null);
 
-    fetchTestPlans()
+    fetchTestPlans(currentProduct?.id)
       .then((data) => {
         if (!cancelled) setTestPlans(data);
       })
@@ -156,7 +158,7 @@ export function TestPlansPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentProduct?.id]);
 
   const visibleTestPlans = useMemo(() => {
     if (!testPlans) return [];
@@ -166,7 +168,6 @@ export function TestPlansPage() {
       if (query && !plan.name.toLowerCase().includes(query)) return false;
       if (statusFilter !== ALL && plan.status !== statusFilter) return false;
       if (priorityFilter !== ALL && plan.priority !== priorityFilter) return false;
-      if (productFilter !== ALL && plan.productId !== productFilter) return false;
       return true;
     });
 
@@ -186,14 +187,11 @@ export function TestPlansPage() {
         break;
     }
     return sorted;
-  }, [testPlans, searchQuery, statusFilter, priorityFilter, productFilter, sortBy]);
+  }, [testPlans, searchQuery, statusFilter, priorityFilter, sortBy]);
 
   const isLoading = testPlans === null && !error;
   const hasActiveFilters =
-    searchQuery.trim() !== '' ||
-    statusFilter !== ALL ||
-    priorityFilter !== ALL ||
-    productFilter !== ALL;
+    searchQuery.trim() !== '' || statusFilter !== ALL || priorityFilter !== ALL;
 
   const handleCreateSubmit = async (data: CreateTestPlanPayload) => {
     await createTestPlan(data);
@@ -250,21 +248,6 @@ export function TestPlansPage() {
               },
             }}
           />
-          <TextField
-            select
-            size="small"
-            label="Product"
-            value={productFilter}
-            onChange={(e) => setProductFilter(e.target.value)}
-            sx={{ width: { xs: '100%', sm: 170 } }}
-          >
-            <MenuItem value={ALL}>All Products</MenuItem>
-            {products.map((product) => (
-              <MenuItem key={product.id} value={product.id}>
-                {product.name}
-              </MenuItem>
-            ))}
-          </TextField>
           <TextField
             select
             size="small"

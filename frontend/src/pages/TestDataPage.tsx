@@ -39,6 +39,7 @@ import {
 } from '../api/testData';
 import { fetchTestCases } from '../api/testCases';
 import { ApiError } from '../api/client';
+import { useProductContext } from '../context/ProductContext';
 import type {
   ApiTestDataListItem,
   ApiTestDataType,
@@ -69,6 +70,7 @@ interface EditingTestData {
 }
 
 export function TestDataPage() {
+  const { currentProduct } = useProductContext();
   const [testDataList, setTestDataList] = useState<ApiTestDataListItem[] | null>(null);
   const [testCases, setTestCases] = useState<ApiTestCase[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +91,7 @@ export function TestDataPage() {
 
   const loadTestDataList = () => {
     setError(null);
-    return fetchTestDataList()
+    return fetchTestDataList(currentProduct?.id)
       .then((data) => setTestDataList(data))
       .catch((err: unknown) => {
         setError(
@@ -102,8 +104,9 @@ export function TestDataPage() {
 
   useEffect(() => {
     let cancelled = false;
+    setTestDataList(null);
 
-    fetchTestDataList()
+    fetchTestDataList(currentProduct?.id)
       .then((data) => {
         if (!cancelled) setTestDataList(data);
       })
@@ -116,7 +119,7 @@ export function TestDataPage() {
         );
       });
 
-    fetchTestCases()
+    fetchTestCases(currentProduct?.id)
       .then((data) => {
         if (!cancelled) setTestCases(data);
       })
@@ -127,7 +130,7 @@ export function TestDataPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentProduct?.id]);
 
   const visibleTestDataList = useMemo(() => {
     if (!testDataList) return [];

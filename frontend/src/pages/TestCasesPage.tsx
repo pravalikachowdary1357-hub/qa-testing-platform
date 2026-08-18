@@ -33,6 +33,7 @@ import { DeleteTestCaseDialog } from '../components/testcase/DeleteTestCaseDialo
 import { createTestCase, deleteTestCase, fetchTestCases, updateTestCase } from '../api/testCases';
 import { fetchTestScenarios } from '../api/testScenarios';
 import { ApiError } from '../api/client';
+import { useProductContext } from '../context/ProductContext';
 import type {
   ApiTestCase,
   ApiTestCasePriority,
@@ -69,6 +70,7 @@ type SortOption = 'newest' | 'oldest' | 'priority' | 'title';
 const ALL = 'ALL' as const;
 
 export function TestCasesPage() {
+  const { currentProduct } = useProductContext();
   const [testCases, setTestCases] = useState<ApiTestCase[] | null>(null);
   const [testScenarios, setTestScenarios] = useState<ApiTestScenario[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -90,7 +92,7 @@ export function TestCasesPage() {
 
   const loadTestCases = () => {
     setError(null);
-    return fetchTestCases()
+    return fetchTestCases(currentProduct?.id)
       .then((data) => setTestCases(data))
       .catch((err: unknown) => {
         setError(
@@ -103,8 +105,9 @@ export function TestCasesPage() {
 
   useEffect(() => {
     let cancelled = false;
+    setTestCases(null);
 
-    fetchTestCases()
+    fetchTestCases(currentProduct?.id)
       .then((data) => {
         if (!cancelled) setTestCases(data);
       })
@@ -117,7 +120,7 @@ export function TestCasesPage() {
         );
       });
 
-    fetchTestScenarios()
+    fetchTestScenarios(currentProduct?.id)
       .then((data) => {
         if (!cancelled) setTestScenarios(data);
       })
@@ -128,7 +131,7 @@ export function TestCasesPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentProduct?.id]);
 
   const visibleTestCases = useMemo(() => {
     if (!testCases) return [];

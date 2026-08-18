@@ -1,8 +1,9 @@
 import { apiFetch } from './client';
 import type { ApiTestPlan, CreateTestPlanPayload, UpdateTestPlanPayload } from '../types/testPlan';
 
-export function fetchTestPlans(): Promise<ApiTestPlan[]> {
-  return apiFetch<ApiTestPlan[]>('/test-plans');
+export function fetchTestPlans(productId?: string): Promise<ApiTestPlan[]> {
+  const qs = productId ? `?productId=${productId}` : '';
+  return apiFetch<ApiTestPlan[]>(`/test-plans${qs}`);
 }
 
 export function fetchTestPlan(id: string): Promise<ApiTestPlan> {

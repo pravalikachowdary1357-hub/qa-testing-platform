@@ -6,8 +6,9 @@ import type {
   UpdateTestDataPayload,
 } from '../types/testData';
 
-export function fetchTestDataList(): Promise<ApiTestDataListItem[]> {
-  return apiFetch<ApiTestDataListItem[]>('/test-data');
+export function fetchTestDataList(productId?: string): Promise<ApiTestDataListItem[]> {
+  const qs = productId ? `?productId=${productId}` : '';
+  return apiFetch<ApiTestDataListItem[]>(`/test-data${qs}`);
 }
 
 export function fetchTestDataById(id: string): Promise<ApiTestData> {

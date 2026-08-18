@@ -39,6 +39,7 @@ import {
 import { fetchProducts } from '../api/products';
 import { fetchRequirements } from '../api/requirements';
 import { ApiError } from '../api/client';
+import { useProductContext } from '../context/ProductContext';
 import type {
   ApiTestScenario,
   ApiTestScenarioPriority,
@@ -87,6 +88,7 @@ type SortOption = 'newest' | 'oldest' | 'priority' | 'title';
 const ALL = 'ALL' as const;
 
 export function TestScenariosPage() {
+  const { currentProduct } = useProductContext();
   const [scenarios, setScenarios] = useState<ApiTestScenario[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [requirements, setRequirements] = useState<ApiRequirement[]>([]);
@@ -96,7 +98,6 @@ export function TestScenariosPage() {
   const [statusFilter, setStatusFilter] = useState<ApiTestScenarioStatus | typeof ALL>(ALL);
   const [priorityFilter, setPriorityFilter] = useState<ApiTestScenarioPriority | typeof ALL>(ALL);
   const [typeFilter, setTypeFilter] = useState<ApiTestScenarioType | typeof ALL>(ALL);
-  const [productFilter, setProductFilter] = useState<string | typeof ALL>(ALL);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
 
   const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
@@ -110,7 +111,7 @@ export function TestScenariosPage() {
 
   const loadScenarios = () => {
     setError(null);
-    return fetchTestScenarios()
+    return fetchTestScenarios(currentProduct?.id)
       .then((data) => setScenarios(data))
       .catch((err: unknown) => {
         setError(
@@ -123,8 +124,9 @@ export function TestScenariosPage() {
 
   useEffect(() => {
     let cancelled = false;
+    setScenarios(null);
 
-    fetchTestScenarios()
+    fetchTestScenarios(currentProduct?.id)
       .then((data) => {
         if (!cancelled) setScenarios(data);
       })
@@ -156,7 +158,7 @@ export function TestScenariosPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentProduct?.id]);
 
   const visibleScenarios = useMemo(() => {
     if (!scenarios) return [];
@@ -167,7 +169,6 @@ export function TestScenariosPage() {
       if (statusFilter !== ALL && scenario.status !== statusFilter) return false;
       if (priorityFilter !== ALL && scenario.priority !== priorityFilter) return false;
       if (typeFilter !== ALL && scenario.type !== typeFilter) return false;
-      if (productFilter !== ALL && scenario.productId !== productFilter) return false;
       return true;
     });
 
@@ -187,15 +188,14 @@ export function TestScenariosPage() {
         break;
     }
     return sorted;
-  }, [scenarios, searchQuery, statusFilter, priorityFilter, typeFilter, productFilter, sortBy]);
+  }, [scenarios, searchQuery, statusFilter, priorityFilter, typeFilter, sortBy]);
 
   const isLoading = scenarios === null && !error;
   const hasActiveFilters =
     searchQuery.trim() !== '' ||
     statusFilter !== ALL ||
     priorityFilter !== ALL ||
-    typeFilter !== ALL ||
-    productFilter !== ALL;
+    typeFilter !== ALL;
 
   const handleCreateSubmit = async (data: CreateTestScenarioPayload) => {
     await createTestScenario(data);
@@ -252,21 +252,6 @@ export function TestScenariosPage() {
               },
             }}
           />
-          <TextField
-            select
-            size="small"
-            label="Product"
-            value={productFilter}
-            onChange={(e) => setProductFilter(e.target.value)}
-            sx={{ width: { xs: '100%', sm: 160 } }}
-          >
-            <MenuItem value={ALL}>All Products</MenuItem>
-            {products.map((product) => (
-              <MenuItem key={product.id} value={product.id}>
-                {product.name}
-              </MenuItem>
-            ))}
-          </TextField>
           <TextField
             select
             size="small"

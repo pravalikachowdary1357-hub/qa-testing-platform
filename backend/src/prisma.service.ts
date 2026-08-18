@@ -8,7 +8,15 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   constructor() {
     super({
-      adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+      // The local Postgres server's session timezone defaults to the OS
+      // locale (observed: Asia/Calcutta), which causes DateTime values to
+      // round-trip through Prisma's driver adapter skewed by that offset
+      // relative to the true UTC instant. Forcing the session to UTC fixes
+      // this for every model's timestamps, not just newly added ones.
+      adapter: new PrismaPg({
+        connectionString: process.env.DATABASE_URL,
+        options: '-c timezone=UTC',
+      }),
     });
   }
 

@@ -38,6 +38,7 @@ import {
 } from '../api/environments';
 import { fetchProducts } from '../api/products';
 import { ApiError } from '../api/client';
+import { useProductContext } from '../context/ProductContext';
 import type {
   ApiEnvironment,
   ApiEnvironmentStatus,
@@ -67,12 +68,12 @@ type SortOption = 'newest' | 'oldest' | 'name';
 const ALL = 'ALL' as const;
 
 export function EnvironmentsPage() {
+  const { currentProduct } = useProductContext();
   const [environments, setEnvironments] = useState<ApiEnvironment[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [productFilter, setProductFilter] = useState<string | typeof ALL>(ALL);
   const [typeFilter, setTypeFilter] = useState<ApiEnvironmentType | typeof ALL>(ALL);
   const [statusFilter, setStatusFilter] = useState<ApiEnvironmentStatus | typeof ALL>(ALL);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
@@ -88,7 +89,7 @@ export function EnvironmentsPage() {
 
   const loadEnvironments = () => {
     setError(null);
-    return fetchEnvironments()
+    return fetchEnvironments(currentProduct?.id)
       .then((data) => setEnvironments(data))
       .catch((err: unknown) => {
         setError(
@@ -101,8 +102,9 @@ export function EnvironmentsPage() {
 
   useEffect(() => {
     let cancelled = false;
+    setEnvironments(null);
 
-    fetchEnvironments()
+    fetchEnvironments(currentProduct?.id)
       .then((data) => {
         if (!cancelled) setEnvironments(data);
       })
@@ -126,7 +128,7 @@ export function EnvironmentsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentProduct?.id]);
 
   const visibleEnvironments = useMemo(() => {
     if (!environments) return [];
@@ -134,7 +136,6 @@ export function EnvironmentsPage() {
     const query = searchQuery.trim().toLowerCase();
     const filtered = environments.filter((environment) => {
       if (query && !environment.name.toLowerCase().includes(query)) return false;
-      if (productFilter !== ALL && environment.productId !== productFilter) return false;
       if (typeFilter !== ALL && environment.type !== typeFilter) return false;
       if (statusFilter !== ALL && environment.status !== statusFilter) return false;
       return true;
@@ -153,11 +154,10 @@ export function EnvironmentsPage() {
         break;
     }
     return sorted;
-  }, [environments, searchQuery, productFilter, typeFilter, statusFilter, sortBy]);
+  }, [environments, searchQuery, typeFilter, statusFilter, sortBy]);
 
   const isLoading = environments === null && !error;
-  const hasActiveFilters =
-    searchQuery.trim() !== '' || productFilter !== ALL || typeFilter !== ALL || statusFilter !== ALL;
+  const hasActiveFilters = searchQuery.trim() !== '' || typeFilter !== ALL || statusFilter !== ALL;
 
   const handleCreateSubmit = async (data: CreateEnvironmentPayload) => {
     await createEnvironment(data);
@@ -214,21 +214,6 @@ export function EnvironmentsPage() {
               },
             }}
           />
-          <TextField
-            select
-            size="small"
-            label="Product"
-            value={productFilter}
-            onChange={(e) => setProductFilter(e.target.value)}
-            sx={{ width: { xs: '100%', sm: 160 } }}
-          >
-            <MenuItem value={ALL}>All Products</MenuItem>
-            {products.map((product) => (
-              <MenuItem key={product.id} value={product.id}>
-                {product.name}
-              </MenuItem>
-            ))}
-          </TextField>
           <TextField
             select
             size="small"

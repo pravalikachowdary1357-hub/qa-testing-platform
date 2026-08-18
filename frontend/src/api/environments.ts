@@ -5,8 +5,9 @@ import type {
   UpdateEnvironmentPayload,
 } from '../types/environment';
 
-export function fetchEnvironments(): Promise<ApiEnvironment[]> {
-  return apiFetch<ApiEnvironment[]>('/environments');
+export function fetchEnvironments(productId?: string): Promise<ApiEnvironment[]> {
+  const qs = productId ? `?productId=${productId}` : '';
+  return apiFetch<ApiEnvironment[]>(`/environments${qs}`);
 }
 
 export function fetchEnvironment(id: string): Promise<ApiEnvironment> {

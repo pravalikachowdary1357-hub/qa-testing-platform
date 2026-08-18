@@ -5,8 +5,9 @@ import type {
   UpdateRequirementPayload,
 } from '../types/requirement';
 
-export function fetchRequirements(): Promise<ApiRequirement[]> {
-  return apiFetch<ApiRequirement[]>('/requirements');
+export function fetchRequirements(productId?: string): Promise<ApiRequirement[]> {
+  const qs = productId ? `?productId=${productId}` : '';
+  return apiFetch<ApiRequirement[]>(`/requirements${qs}`);
 }
 
 export function fetchRequirement(id: string): Promise<ApiRequirement> {
