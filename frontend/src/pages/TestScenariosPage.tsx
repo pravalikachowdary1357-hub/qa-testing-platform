@@ -203,24 +203,45 @@ export function TestScenariosPage() {
     priorityFilter !== ALL ||
     typeFilter !== ALL;
 
+  // Create/edit/delete apply their result to local state immediately (the
+  // API response is already the authoritative, fully-included record), then
+  // kick off a background loadScenarios() to reconcile with the server.
+  // This matters because loadScenarios() swallows its own fetch failures
+  // into `error` state and always resolves -- if we relied on it alone, a
+  // transient failure on that second round-trip (e.g. the backend restarting)
+  // would leave a real, successfully-created record invisible in the list
+  // while still reporting success. Applying the mutation's own response
+  // locally means the list is correct even if the reconciliation fetch fails.
   const handleCreateSubmit = async (data: CreateTestScenarioPayload) => {
-    await createTestScenario(data);
-    await loadScenarios();
+    const created = await createTestScenario(data);
+    setScenarios((prev) => {
+      if (currentProduct && created.productId !== currentProduct.id) return prev;
+      return prev ? [created, ...prev] : [created];
+    });
     setSnackbar({ message: 'Test scenario created.', severity: 'success' });
+    void loadScenarios();
   };
 
   const handleEditSubmit = async (data: CreateTestScenarioPayload) => {
     if (!editingScenario) return;
-    await updateTestScenario(editingScenario.id, data);
-    await loadScenarios();
+    const updated = await updateTestScenario(editingScenario.id, data);
+    setScenarios((prev) => {
+      if (!prev) return prev;
+      if (currentProduct && updated.productId !== currentProduct.id) {
+        return prev.filter((s) => s.id !== updated.id);
+      }
+      return prev.map((s) => (s.id === updated.id ? updated : s));
+    });
     setSnackbar({ message: 'Test scenario updated.', severity: 'success' });
+    void loadScenarios();
   };
 
   const handleDeleteConfirm = async () => {
     if (!deletingScenario) return;
     await deleteTestScenario(deletingScenario.id);
-    await loadScenarios();
+    setScenarios((prev) => (prev ? prev.filter((s) => s.id !== deletingScenario.id) : prev));
     setSnackbar({ message: 'Test scenario deleted.', severity: 'success' });
+    void loadScenarios();
   };
 
   const handleImport = async (file: File) => {
@@ -262,7 +283,7 @@ export function TestScenariosPage() {
               onImport={handleImport}
               onExport={handleExport}
               importDisabled={!currentProduct}
-              exportDisabled={!scenarios || scenarios.length === 0}
+              exportDisabled={visibleScenarios.length === 0}
               importLabel="Import Test Scenarios"
               exportLabel="Export Test Scenarios"
             />
