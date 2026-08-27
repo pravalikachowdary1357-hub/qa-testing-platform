@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { Button, Stack } from '@mui/material';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import FileUploadIcon from '@mui/icons-material/FileUpload';
 
 interface ImportExportToolbarProps {
   onImport?: (file: File) => void;
@@ -45,7 +45,7 @@ export function ImportExportToolbar({
           <Button
             variant="outlined"
             size="small"
-            startIcon={<UploadFileIcon fontSize="small" />}
+            startIcon={<FileDownloadIcon fontSize="small" />}
             disabled={importDisabled}
             onClick={() => fileInputRef.current?.click()}
           >
@@ -57,7 +57,7 @@ export function ImportExportToolbar({
         <Button
           variant="outlined"
           size="small"
-          startIcon={<FileDownloadIcon fontSize="small" />}
+          startIcon={<FileUploadIcon fontSize="small" />}
           disabled={exportDisabled}
           onClick={onExport}
         >
