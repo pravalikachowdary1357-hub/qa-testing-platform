@@ -35,6 +35,7 @@ import HowToRegIcon from '@mui/icons-material/HowToReg';
 import { PageHeader } from '../components/common/PageHeader';
 import { SummaryCard } from '../components/common/SummaryCard';
 import { StatusChip } from '../components/common/StatusChip';
+import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
 import { ReleaseFormDialog, releaseToFormValues } from '../components/release/ReleaseFormDialog';
 import { ReleaseDetailDialog } from '../components/release/ReleaseDetailDialog';
 import { DeleteReleaseDialog } from '../components/release/DeleteReleaseDialog';
@@ -49,6 +50,7 @@ import {
 import { fetchProducts } from '../api/products';
 import { fetchEnvironments } from '../api/environments';
 import { ApiError } from '../api/client';
+import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
 import {
   ALL_READINESS_VALUES,
@@ -230,15 +232,35 @@ export function ReleaseQualityPage() {
     });
   };
 
+  const handleExport = () => {
+    exportToCsvWithAudit('Release', 'releases.csv', visibleReleases, [
+      { header: 'Name', value: (r) => r.name },
+      { header: 'Version', value: (r) => r.version },
+      { header: 'Status', value: (r) => RELEASE_STATUS_LABELS[r.status] },
+      {
+        header: 'Release Date',
+        value: (r) => (r.releaseDate ? new Date(r.releaseDate).toLocaleDateString() : ''),
+      },
+      { header: 'Sign-off By', value: (r) => r.signOffBy },
+    ]);
+  };
+
   return (
     <>
       <PageHeader
         title="Release Quality"
         subtitle="Track release readiness based on real test, defect, and quality-gate data"
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
-            Create Release
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <ImportExportToolbar
+              onExport={handleExport}
+              exportDisabled={!releases || releases.length === 0}
+              exportLabel="Export Releases"
+            />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
+              Create Release
+            </Button>
+          </Stack>
         }
       />
 

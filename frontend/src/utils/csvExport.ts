@@ -1,3 +1,5 @@
+import { logExportEvent } from '../api/auditLog';
+
 export interface CsvColumn<T> {
   header: string;
   value: (row: T) => string | number | null | undefined;
@@ -27,4 +29,19 @@ export function exportToCsv<T>(filename: string, rows: T[], columns: CsvColumn<T
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+// Same as exportToCsv, plus a fire-and-forget audit trail entry. The export
+// itself already happened client-side by the time this runs, so a failed
+// audit call is logged but never blocks or undoes the download.
+export function exportToCsvWithAudit<T>(
+  entityType: string,
+  filename: string,
+  rows: T[],
+  columns: CsvColumn<T>[],
+): void {
+  exportToCsv(filename, rows, columns);
+  logExportEvent(entityType, `Exported ${rows.length} row(s) to ${filename}`).catch((error) => {
+    console.error('Failed to record export audit event', error);
+  });
 }

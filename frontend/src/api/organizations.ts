@@ -1,10 +1,11 @@
-import { apiFetch } from './client';
+import { apiFetch, apiUpload } from './client';
 import type {
   ApiOrganization,
   ApiOrganizationDetail,
   CreateOrganizationPayload,
   UpdateOrganizationPayload,
 } from '../types/organization';
+import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 
 export function fetchOrganizations(): Promise<ApiOrganization[]> {
   return apiFetch<ApiOrganization[]>('/organizations');
@@ -35,4 +36,10 @@ export function updateOrganization(
 
 export function deleteOrganization(id: string): Promise<void> {
   return apiFetch<void>(`/organizations/${id}`, { method: 'DELETE' });
+}
+
+export function importOrganizations(file: File): Promise<ImportResultSummary> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiUpload<ImportResultSummary>('/organizations/import', formData);
 }

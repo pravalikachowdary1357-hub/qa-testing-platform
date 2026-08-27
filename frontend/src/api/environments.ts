@@ -1,9 +1,10 @@
-import { apiFetch } from './client';
+import { apiFetch, apiUpload } from './client';
 import type {
   ApiEnvironment,
   CreateEnvironmentPayload,
   UpdateEnvironmentPayload,
 } from '../types/environment';
+import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 
 export function fetchEnvironments(productId?: string): Promise<ApiEnvironment[]> {
   const qs = productId ? `?productId=${productId}` : '';
@@ -33,4 +34,16 @@ export function updateEnvironment(
 
 export function deleteEnvironment(id: string): Promise<void> {
   return apiFetch<void>(`/environments/${id}`, { method: 'DELETE' });
+}
+
+export function importEnvironments(
+  productId: string,
+  file: File,
+): Promise<ImportResultSummary> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiUpload<ImportResultSummary>(
+    `/environments/import?productId=${productId}`,
+    formData,
+  );
 }

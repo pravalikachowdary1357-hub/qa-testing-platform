@@ -8,12 +8,19 @@ import { PrismaService } from '../prisma.service';
 import { Prisma } from '../../generated/prisma/client.js';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import type { AuthenticatedUser } from '../auth/current-user.decorator';
+import { validateRow } from '../common/import/validate-row.util';
+import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
 
 const ORGANIZATION_REF_SELECT = { select: { id: true, name: true } };
 
 @Injectable()
 export class ProductsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLog: AuditLogService,
+  ) {}
 
   findAll() {
     return this.prisma.product.findMany({
@@ -74,6 +81,80 @@ export class ProductsService {
       }
       throw error;
     }
+  }
+
+  async bulkImport(
+    rows: Record<string, string>[],
+    actor: AuthenticatedUser,
+  ): Promise<ImportResult> {
+    const errors: ImportRowError[] = [];
+    let successCount = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const rowNumber = i + 2; // account for the header line
+      const raw = rows[i];
+
+      const organizationName = raw['Organization Name']?.trim();
+      const organization = organizationName
+        ? await this.prisma.organization.findFirst({
+            where: { name: { equals: organizationName, mode: 'insensitive' } },
+          })
+        : null;
+
+      if (!organization) {
+        errors.push({
+          row: rowNumber,
+          message: `Organization "${organizationName ?? ''}" not found`,
+        });
+        continue;
+      }
+
+      const candidate = {
+        organizationId: organization.id,
+        name: raw.name,
+        description: raw.description,
+        status: raw.status?.trim().toUpperCase() || undefined,
+        environment: raw.environment,
+        release: raw.release,
+        testCoverage: this.parseImportInt(raw.testCoverage),
+        passRate: this.parseImportInt(raw.passRate),
+        releaseReadiness: raw.releaseReadiness?.trim().toUpperCase() || undefined,
+      };
+
+      const result = await validateRow(CreateProductDto, candidate);
+      if ('error' in result) {
+        errors.push({ row: rowNumber, message: result.error });
+        continue;
+      }
+
+      try {
+        await this.create(result.dto);
+        successCount++;
+      } catch (error) {
+        errors.push({
+          row: rowNumber,
+          message: error instanceof Error ? error.message : 'Failed to create row',
+        });
+      }
+    }
+
+    await this.auditLog.record({
+      actorUserId: actor.id,
+      action: 'import',
+      entityType: 'Product',
+      entityId: undefined,
+      summary: `Imported ${successCount} of ${rows.length} product(s)`,
+    });
+
+    return { totalRows: rows.length, successCount, errors };
+  }
+
+  // CSV cells arrive as strings (or missing); testCoverage/passRate are
+  // required numeric fields on CreateProductDto, so an empty cell must fail
+  // validation ("required") rather than silently becoming 0.
+  private parseImportInt(value: string | undefined): number | undefined {
+    const trimmed = value?.trim();
+    return trimmed ? Number(trimmed) : undefined;
   }
 
   async remove(id: string) {

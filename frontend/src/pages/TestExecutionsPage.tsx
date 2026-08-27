@@ -27,6 +27,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
+import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
 import { TestExecutionFormDialog } from '../components/testexecution/TestExecutionFormDialog';
 import { TestExecutionDetailDialog } from '../components/testexecution/TestExecutionDetailDialog';
 import { DeleteTestExecutionDialog } from '../components/testexecution/DeleteTestExecutionDialog';
@@ -41,6 +42,7 @@ import { fetchTestScenarios } from '../api/testScenarios';
 import { fetchEnvironments } from '../api/environments';
 import { fetchTestDataList } from '../api/testData';
 import { ApiError } from '../api/client';
+import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
 import type {
   ApiTestExecution,
@@ -213,15 +215,33 @@ export function TestExecutionsPage() {
     setSnackbar({ message: 'Test execution deleted.', severity: 'success' });
   };
 
+  const handleExport = () => {
+    exportToCsvWithAudit('TestExecution', 'test-executions.csv', visibleExecutions, [
+      { header: 'Test Case', value: (e) => e.testCase.title },
+      { header: 'Environment', value: (e) => e.environment.name },
+      { header: 'Status', value: (e) => STATUS_LABELS[e.status] },
+      { header: 'Executed By', value: (e) => e.executedBy },
+      { header: 'Executed At', value: (e) => new Date(e.executedAt).toLocaleString() },
+      { header: 'Notes', value: (e) => e.notes ?? '' },
+    ]);
+  };
+
   return (
     <>
       <PageHeader
         title="Test Execution"
         subtitle="Run test cases against real environments and record the results"
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
-            Start Execution
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <ImportExportToolbar
+              onExport={handleExport}
+              exportDisabled={!executions || executions.length === 0}
+              exportLabel="Export Test Executions"
+            />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
+              Start Execution
+            </Button>
+          </Stack>
         }
       />
 

@@ -27,6 +27,9 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
+import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { ImportResultDialog } from '../components/common/ImportResultDialog';
+import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 import { TestScenarioFormDialog } from '../components/testscenario/TestScenarioFormDialog';
 import { TestScenarioDetailDialog } from '../components/testscenario/TestScenarioDetailDialog';
 import { DeleteTestScenarioDialog } from '../components/testscenario/DeleteTestScenarioDialog';
@@ -34,11 +37,13 @@ import {
   createTestScenario,
   deleteTestScenario,
   fetchTestScenarios,
+  importTestScenarios,
   updateTestScenario,
 } from '../api/testScenarios';
 import { fetchProducts } from '../api/products';
 import { fetchRequirements } from '../api/requirements';
 import { ApiError } from '../api/client';
+import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
 import type {
   ApiTestScenario,
@@ -108,6 +113,7 @@ export function TestScenariosPage() {
   const [snackbar, setSnackbar] = useState<{ message: string; severity: 'success' | 'error' } | null>(
     null,
   );
+  const [importResult, setImportResult] = useState<ImportResultSummary | null>(null);
 
   const loadScenarios = () => {
     setError(null);
@@ -217,15 +223,53 @@ export function TestScenariosPage() {
     setSnackbar({ message: 'Test scenario deleted.', severity: 'success' });
   };
 
+  const handleImport = async (file: File) => {
+    if (!currentProduct) {
+      setSnackbar({ message: 'Select a product before importing test scenarios.', severity: 'error' });
+      return;
+    }
+    try {
+      const result = await importTestScenarios(currentProduct.id, file);
+      setImportResult(result);
+      await loadScenarios();
+    } catch (err: unknown) {
+      setSnackbar({
+        message: err instanceof ApiError ? `Import failed (HTTP ${err.status}).` : 'Import failed.',
+        severity: 'error',
+      });
+    }
+  };
+
+  const handleExport = () => {
+    exportToCsvWithAudit('TestScenario', 'test-scenarios.csv', visibleScenarios, [
+      { header: 'Title', value: (s) => s.title },
+      { header: 'Requirement', value: (s) => s.requirement?.title ?? '' },
+      { header: 'Type', value: (s) => TYPE_LABELS[s.type] },
+      { header: 'Priority', value: (s) => PRIORITY_LABELS[s.priority] },
+      { header: 'Status', value: (s) => STATUS_LABELS[s.status] },
+      { header: 'Created', value: (s) => new Date(s.createdAt).toLocaleDateString() },
+    ]);
+  };
+
   return (
     <>
       <PageHeader
         title="Test Scenarios"
         subtitle="Define testing conditions that trace back to products and requirements"
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
-            Create Test Scenario
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <ImportExportToolbar
+              onImport={handleImport}
+              onExport={handleExport}
+              importDisabled={!currentProduct}
+              exportDisabled={!scenarios || scenarios.length === 0}
+              importLabel="Import Test Scenarios"
+              exportLabel="Export Test Scenarios"
+            />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
+              Create Test Scenario
+            </Button>
+          </Stack>
         }
       />
 
@@ -449,6 +493,8 @@ export function TestScenariosPage() {
         onClose={() => setDeletingScenario(null)}
         onConfirm={handleDeleteConfirm}
       />
+
+      <ImportResultDialog result={importResult} onClose={() => setImportResult(null)} />
 
       <Snackbar
         open={Boolean(snackbar)}

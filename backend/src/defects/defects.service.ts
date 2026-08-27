@@ -3,6 +3,10 @@ import { PrismaService } from '../prisma.service';
 import { Prisma } from '../../generated/prisma/client.js';
 import { CreateDefectDto } from './dto/create-defect.dto';
 import { UpdateDefectDto } from './dto/update-defect.dto';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import type { AuthenticatedUser } from '../auth/current-user.decorator';
+import { validateRow } from '../common/import/validate-row.util';
+import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
 
 const DEFECT_INCLUDE = {
   product: { select: { id: true, name: true } },
@@ -13,7 +17,10 @@ const DEFECT_INCLUDE = {
 
 @Injectable()
 export class DefectsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLog: AuditLogService,
+  ) {}
 
   findAll(productId?: string) {
     return this.prisma.defect.findMany({
@@ -69,6 +76,101 @@ export class DefectsService {
       }
       throw error;
     }
+  }
+
+  async bulkImport(
+    rows: Record<string, string>[],
+    productId: string,
+    actor: AuthenticatedUser,
+  ): Promise<ImportResult> {
+    const errors: ImportRowError[] = [];
+    let successCount = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const rowNumber = i + 2; // account for the header line
+      const raw = rows[i];
+
+      let environmentId: string | undefined;
+      const environmentName = raw['Environment Name']?.trim();
+      if (environmentName) {
+        const environment = await this.prisma.environment.findFirst({
+          where: {
+            productId,
+            name: { equals: environmentName, mode: 'insensitive' },
+          },
+          select: { id: true },
+        });
+        if (!environment) {
+          errors.push({
+            row: rowNumber,
+            message: `Environment "${environmentName}" not found in this product`,
+          });
+          continue;
+        }
+        environmentId = environment.id;
+      }
+
+      let testCaseId: string | undefined;
+      const testCaseTitle = raw['Test Case Title']?.trim();
+      if (testCaseTitle) {
+        const testCase = await this.prisma.testCase.findFirst({
+          where: {
+            title: { equals: testCaseTitle, mode: 'insensitive' },
+            testScenario: { productId },
+          },
+          select: { id: true },
+        });
+        if (!testCase) {
+          errors.push({
+            row: rowNumber,
+            message: `Test case "${testCaseTitle}" not found in this product`,
+          });
+          continue;
+        }
+        testCaseId = testCase.id;
+      }
+
+      const candidate = {
+        productId,
+        environmentId,
+        testCaseId,
+        title: raw.title,
+        description: raw.description,
+        stepsToReproduce: raw.stepsToReproduce,
+        expectedResult: raw.expectedResult,
+        actualResult: raw.actualResult,
+        severity: raw.severity?.trim().toUpperCase() || undefined,
+        priority: raw.priority?.trim().toUpperCase() || undefined,
+        status: raw.status?.trim().toUpperCase() || undefined,
+        assignedTo: raw.assignedTo || undefined,
+      };
+
+      const result = await validateRow(CreateDefectDto, candidate);
+      if ('error' in result) {
+        errors.push({ row: rowNumber, message: result.error });
+        continue;
+      }
+
+      try {
+        await this.create(result.dto);
+        successCount++;
+      } catch (error) {
+        errors.push({
+          row: rowNumber,
+          message: error instanceof Error ? error.message : 'Failed to create row',
+        });
+      }
+    }
+
+    await this.auditLog.record({
+      actorUserId: actor.id,
+      action: 'import',
+      entityType: 'Defect',
+      entityId: productId,
+      summary: `Imported ${successCount} of ${rows.length} defect(s)`,
+    });
+
+    return { totalRows: rows.length, successCount, errors };
   }
 
   async update(id: string, dto: UpdateDefectDto) {

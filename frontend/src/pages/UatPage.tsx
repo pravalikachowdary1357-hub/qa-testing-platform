@@ -28,6 +28,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import GavelIcon from '@mui/icons-material/Gavel';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
+import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
 import { UatCycleFormDialog, uatCycleToFormValues } from '../components/uat/UatCycleFormDialog';
 import type { UatCycleFormValues } from '../components/uat/UatCycleFormDialog';
 import { UatCycleDetailDialog } from '../components/uat/UatCycleDetailDialog';
@@ -46,6 +47,7 @@ import { fetchEnvironments } from '../api/environments';
 import { fetchDefects } from '../api/defects';
 import { fetchRequirements } from '../api/requirements';
 import { ApiError } from '../api/client';
+import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
 import { CYCLE_STATUS_LABELS } from '../types/uat';
 import type {
@@ -252,15 +254,34 @@ export function UatPage() {
     }
   };
 
+  const handleExport = () => {
+    exportToCsvWithAudit('UatCycle', 'uat-cycles.csv', visibleCycles, [
+      { header: 'Name', value: (c) => c.name },
+      { header: 'Status', value: (c) => CYCLE_STATUS_LABELS[c.status] },
+      { header: 'Sign-off By', value: (c) => c.signOffBy },
+      {
+        header: 'Sign-off At',
+        value: (c) => (c.signOffAt ? new Date(c.signOffAt).toLocaleDateString() : ''),
+      },
+    ]);
+  };
+
   return (
     <>
       <PageHeader
         title="UAT"
         subtitle="Plan user acceptance test cycles, execute test cases, and record sign-off"
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
-            New UAT Cycle
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <ImportExportToolbar
+              onExport={handleExport}
+              exportDisabled={!cycles || cycles.length === 0}
+              exportLabel="Export UAT Cycles"
+            />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
+              New UAT Cycle
+            </Button>
+          </Stack>
         }
       />
 

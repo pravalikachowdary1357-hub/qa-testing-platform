@@ -1,5 +1,6 @@
-import { apiFetch } from './client';
+import { apiFetch, apiUpload } from './client';
 import type { ApiTestCase, CreateTestCasePayload, UpdateTestCasePayload } from '../types/testCase';
+import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 
 export function fetchTestCases(productId?: string): Promise<ApiTestCase[]> {
   const qs = productId ? `?productId=${productId}` : '';
@@ -26,4 +27,16 @@ export function updateTestCase(id: string, data: UpdateTestCasePayload): Promise
 
 export function deleteTestCase(id: string): Promise<void> {
   return apiFetch<void>(`/test-cases/${id}`, { method: 'DELETE' });
+}
+
+export function importTestCases(
+  productId: string,
+  file: File,
+): Promise<ImportResultSummary> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiUpload<ImportResultSummary>(
+    `/test-cases/import?productId=${productId}`,
+    formData,
+  );
 }

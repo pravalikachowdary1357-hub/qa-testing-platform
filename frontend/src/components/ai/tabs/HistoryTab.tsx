@@ -23,8 +23,10 @@ import {
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { StatusChip } from '../../common/StatusChip';
+import { ImportExportToolbar } from '../../common/ImportExportToolbar';
 import { deleteAiSuggestion, fetchAiSuggestions } from '../../../api/ai';
 import { aiErrorMessage } from '../../../utils/aiErrorMessage';
+import { exportToCsvWithAudit } from '../../../utils/csvExport';
 import { useProductContext } from '../../../context/ProductContext';
 import type { ApiAiSuggestion } from '../../../types/ai';
 import type { ApiProduct } from '../../../types/product';
@@ -74,14 +76,40 @@ export function HistoryTab({ products }: { products: ApiProduct[] }) {
     load();
   };
 
+  const handleExport = () => {
+    if (!suggestions) return;
+    exportToCsvWithAudit('AiSuggestion', 'ai-suggestion-history.csv', suggestions, [
+      { header: 'Capability', value: (s) => CAPABILITY_LABELS[s.capability] ?? s.capability },
+      { header: 'Prompt', value: (s) => s.prompt },
+      { header: 'Response', value: (s) => s.response },
+      { header: 'Status', value: (s) => STATUS_LABELS[s.status] ?? s.status },
+      { header: 'Timestamp', value: (s) => new Date(s.createdAt).toLocaleString() },
+    ]);
+  };
+
   const isLoading = suggestions === null && !error;
 
   return (
     <Box>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Every AI request and its response is recorded here -- the real audit trail behind "prompt/input
-        history", independent of what's shown transiently in each tab.
-      </Typography>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={2}
+        sx={{
+          mb: 2,
+          justifyContent: 'space-between',
+          alignItems: { xs: 'flex-start', sm: 'center' },
+        }}
+      >
+        <Typography variant="body2" color="text.secondary">
+          Every AI request and its response is recorded here -- the real audit trail behind "prompt/input
+          history", independent of what's shown transiently in each tab.
+        </Typography>
+        <ImportExportToolbar
+          onExport={handleExport}
+          exportDisabled={!suggestions || suggestions.length === 0}
+          exportLabel="Export History"
+        />
+      </Stack>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
         <TextField select size="small" label="Product" value={productId} onChange={(e) => setProductId(e.target.value)} sx={{ width: 200 }}>
           <MenuItem value="">All Products</MenuItem>

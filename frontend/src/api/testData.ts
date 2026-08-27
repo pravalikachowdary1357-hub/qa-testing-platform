@@ -1,10 +1,11 @@
-import { apiFetch } from './client';
+import { apiFetch, apiUpload } from './client';
 import type {
   ApiTestData,
   ApiTestDataListItem,
   CreateTestDataPayload,
   UpdateTestDataPayload,
 } from '../types/testData';
+import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 
 export function fetchTestDataList(productId?: string): Promise<ApiTestDataListItem[]> {
   const qs = productId ? `?productId=${productId}` : '';
@@ -31,4 +32,10 @@ export function updateTestData(id: string, data: UpdateTestDataPayload): Promise
 
 export function deleteTestData(id: string): Promise<void> {
   return apiFetch<void>(`/test-data/${id}`, { method: 'DELETE' });
+}
+
+export function importTestData(file: File): Promise<ImportResultSummary> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiUpload<ImportResultSummary>('/test-data/import', formData);
 }

@@ -28,6 +28,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
+import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
 import { AutomationFormDialog } from '../components/automation/AutomationFormDialog';
 import { AutomationDetailDialog } from '../components/automation/AutomationDetailDialog';
 import { DeleteAutomationDialog } from '../components/automation/DeleteAutomationDialog';
@@ -43,6 +44,7 @@ import { fetchTestCases } from '../api/testCases';
 import { fetchTestScenarios } from '../api/testScenarios';
 import { fetchEnvironments } from '../api/environments';
 import { ApiError } from '../api/client';
+import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
 import type {
   ApiAutomationFramework,
@@ -241,15 +243,37 @@ export function AutomationPage() {
     setSnackbar({ message: 'Run result recorded.', severity: 'success' });
   };
 
+  const handleExport = () => {
+    exportToCsvWithAudit('Automation', 'automation.csv', visibleAutomations, [
+      { header: 'Name', value: (a) => a.name },
+      { header: 'Test Case', value: (a) => a.testCase.title },
+      { header: 'Type', value: (a) => TYPE_LABELS[a.type] },
+      { header: 'Framework', value: (a) => FRAMEWORK_LABELS[a.framework] },
+      { header: 'Enabled', value: (a) => (a.enabled ? 'Yes' : 'No') },
+      { header: 'Last Run Status', value: (a) => RUN_STATUS_LABELS[a.lastRunStatus] },
+      {
+        header: 'Last Run At',
+        value: (a) => (a.lastRunAt ? new Date(a.lastRunAt).toLocaleString() : ''),
+      },
+    ]);
+  };
+
   return (
     <>
       <PageHeader
         title="Automation"
         subtitle="Manage automated test scripts and manually record their run results"
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
-            New Automation
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <ImportExportToolbar
+              onExport={handleExport}
+              exportDisabled={!automations || automations.length === 0}
+              exportLabel="Export Automations"
+            />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
+              New Automation
+            </Button>
+          </Stack>
         }
       />
 

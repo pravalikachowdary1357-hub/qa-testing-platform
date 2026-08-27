@@ -1,9 +1,10 @@
-import { apiFetch } from './client';
+import { apiFetch, apiUpload } from './client';
 import type {
   ApiRequirement,
   CreateRequirementPayload,
   UpdateRequirementPayload,
 } from '../types/requirement';
+import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 
 export function fetchRequirements(productId?: string): Promise<ApiRequirement[]> {
   const qs = productId ? `?productId=${productId}` : '';
@@ -35,4 +36,16 @@ export function updateRequirement(
 
 export function deleteRequirement(id: string): Promise<void> {
   return apiFetch<void>(`/requirements/${id}`, { method: 'DELETE' });
+}
+
+export function importRequirements(
+  productId: string,
+  file: File,
+): Promise<ImportResultSummary> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiUpload<ImportResultSummary>(
+    `/requirements/import?productId=${productId}`,
+    formData,
+  );
 }

@@ -8,6 +8,7 @@ import {
   InputAdornment,
   Paper,
   Snackbar,
+  Stack,
   Table,
   TableBody,
   TableCell,
@@ -25,6 +26,9 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
+import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { ImportResultDialog } from '../components/common/ImportResultDialog';
+import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 import { OrganizationFormDialog } from '../components/organization/OrganizationFormDialog';
 import { OrganizationDetailDialog } from '../components/organization/OrganizationDetailDialog';
 import { DeleteOrganizationDialog } from '../components/organization/DeleteOrganizationDialog';
@@ -32,9 +36,11 @@ import {
   createOrganization,
   deleteOrganization,
   fetchOrganizations,
+  importOrganizations,
   updateOrganization,
 } from '../api/organizations';
 import { ApiError } from '../api/client';
+import { exportToCsvWithAudit } from '../utils/csvExport';
 import type {
   ApiOrganization,
   ApiOrganizationStatus,
@@ -60,6 +66,7 @@ export function OrganizationsPage() {
   const [snackbar, setSnackbar] = useState<{ message: string; severity: 'success' | 'error' } | null>(
     null,
   );
+  const [importResult, setImportResult] = useState<ImportResultSummary | null>(null);
 
   const loadOrganizations = () => {
     setError(null);
@@ -126,19 +133,51 @@ export function OrganizationsPage() {
     setSnackbar({ message: 'Organization deleted.', severity: 'success' });
   };
 
+  const handleImport = async (file: File) => {
+    try {
+      const result = await importOrganizations(file);
+      setImportResult(result);
+      await loadOrganizations();
+    } catch (err: unknown) {
+      setSnackbar({
+        message: err instanceof ApiError ? `Import failed (HTTP ${err.status}).` : 'Import failed.',
+        severity: 'error',
+      });
+    }
+  };
+
+  const handleExport = () => {
+    exportToCsvWithAudit('Organization', 'organizations.csv', filteredOrganizations, [
+      { header: 'Name', value: (o) => o.name },
+      { header: 'Description', value: (o) => o.description },
+      { header: 'Status', value: (o) => STATUS_LABELS[o.status] },
+      { header: 'Created', value: (o) => new Date(o.createdAt).toLocaleDateString() },
+    ]);
+  };
+
   return (
     <>
       <PageHeader
         title="Organizations"
         subtitle="Manage the organizations that own products in this workspace"
         actions={
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setFormMode('create')}
-          >
-            Create Organization
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <ImportExportToolbar
+              onImport={handleImport}
+              onExport={handleExport}
+              importDisabled={false}
+              exportDisabled={!organizations || organizations.length === 0}
+              importLabel="Import Organizations"
+              exportLabel="Export Organizations"
+            />
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setFormMode('create')}
+            >
+              Create Organization
+            </Button>
+          </Stack>
         }
       />
 
@@ -282,6 +321,8 @@ export function OrganizationsPage() {
         onClose={() => setDeletingOrganization(null)}
         onConfirm={handleDeleteConfirm}
       />
+
+      <ImportResultDialog result={importResult} onClose={() => setImportResult(null)} />
 
       <Snackbar
         open={Boolean(snackbar)}

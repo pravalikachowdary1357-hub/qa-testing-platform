@@ -8,6 +8,8 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { CreateProductDocumentDto } from './dto/create-product-document.dto';
 import { UpdateProductDocumentDto } from './dto/update-product-document.dto';
 import { ReplaceProductDocumentDto } from './dto/replace-product-document.dto';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import type { AuthenticatedUser } from '../auth/current-user.decorator';
 
 // Never select `content` for list/detail/version-history responses -- these
 // can be multi-megabyte blobs and the frontend only ever needs the bytes
@@ -49,7 +51,10 @@ interface UploadedFileLike {
 
 @Injectable()
 export class ProductDocumentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLog: AuditLogService,
+  ) {}
 
   findAll(productId: string) {
     return this.prisma.productDocument.findMany({
@@ -110,30 +115,48 @@ export class ProductDocumentsService {
     ];
   }
 
-  async getContent(id: string) {
+  async getContent(id: string, actor: AuthenticatedUser) {
     const document = await this.prisma.productDocument.findUnique({
       where: { id },
     });
     if (!document) {
       throw new NotFoundException(`Document ${id} not found`);
     }
+    await this.auditLog.record({
+      actorUserId: actor.id,
+      action: 'download',
+      entityType: 'ProductDocument',
+      entityId: document.id,
+      summary: `Downloaded "${document.fileName}" (v${document.version})`,
+    });
     return document;
   }
 
-  async getVersionContent(documentId: string, versionId: string) {
+  async getVersionContent(
+    documentId: string,
+    versionId: string,
+    actor: AuthenticatedUser,
+  ) {
     const version = await this.prisma.productDocumentVersion.findFirst({
       where: { id: versionId, documentId },
     });
     if (!version) {
       throw new NotFoundException(`Document version ${versionId} not found`);
     }
+    await this.auditLog.record({
+      actorUserId: actor.id,
+      action: 'download',
+      entityType: 'ProductDocument',
+      entityId: documentId,
+      summary: `Downloaded "${version.fileName}" (v${version.version})`,
+    });
     return version;
   }
 
   async create(
     dto: CreateProductDocumentDto,
     file: UploadedFileLike | undefined,
-    uploadedBy: string,
+    actor: AuthenticatedUser,
   ) {
     if (!file) {
       throw new BadRequestException('A file is required.');
@@ -142,8 +165,9 @@ export class ProductDocumentsService {
       throw new BadRequestException('The selected file is empty.');
     }
 
+    let created;
     try {
-      return await this.prisma.productDocument.create({
+      created = await this.prisma.productDocument.create({
         data: {
           productId: dto.productId,
           documentType: dto.documentType,
@@ -153,7 +177,7 @@ export class ProductDocumentsService {
           mimeType: file.mimetype || 'application/octet-stream',
           fileSize: file.size,
           content: Uint8Array.from(file.buffer),
-          uploadedBy,
+          uploadedBy: actor.name,
         },
         select: DOCUMENT_SELECT,
       });
@@ -166,11 +190,21 @@ export class ProductDocumentsService {
       }
       throw error;
     }
+
+    await this.auditLog.record({
+      actorUserId: actor.id,
+      action: 'upload',
+      entityType: 'ProductDocument',
+      entityId: created.id,
+      summary: `Uploaded "${created.fileName}"`,
+    });
+    return created;
   }
 
-  async update(id: string, dto: UpdateProductDocumentDto) {
+  async update(id: string, dto: UpdateProductDocumentDto, actor: AuthenticatedUser) {
+    let updated;
     try {
-      return await this.prisma.productDocument.update({
+      updated = await this.prisma.productDocument.update({
         where: { id },
         data: dto,
         select: DOCUMENT_SELECT,
@@ -184,13 +218,22 @@ export class ProductDocumentsService {
       }
       throw error;
     }
+
+    await this.auditLog.record({
+      actorUserId: actor.id,
+      action: 'update',
+      entityType: 'ProductDocument',
+      entityId: updated.id,
+      summary: `Updated metadata for "${updated.fileName}"`,
+    });
+    return updated;
   }
 
   async replace(
     id: string,
     file: UploadedFileLike | undefined,
     dto: ReplaceProductDocumentDto,
-    uploadedBy: string,
+    actor: AuthenticatedUser,
   ) {
     if (!file) {
       throw new BadRequestException('A file is required.');
@@ -231,18 +274,26 @@ export class ProductDocumentsService {
           content: Uint8Array.from(file.buffer),
           description: dto.description ?? existing.description,
           status: dto.status ?? existing.status,
-          uploadedBy,
+          uploadedBy: actor.name,
         },
         select: DOCUMENT_SELECT,
       }),
     ]);
 
+    await this.auditLog.record({
+      actorUserId: actor.id,
+      action: 'replace',
+      entityType: 'ProductDocument',
+      entityId: updated.id,
+      summary: `Replaced "${existing.fileName}" with "${updated.fileName}" (now v${updated.version})`,
+    });
     return updated;
   }
 
-  async remove(id: string) {
+  async remove(id: string, actor: AuthenticatedUser) {
+    let existing;
     try {
-      await this.prisma.productDocument.delete({ where: { id } });
+      existing = await this.prisma.productDocument.delete({ where: { id } });
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -252,5 +303,13 @@ export class ProductDocumentsService {
       }
       throw error;
     }
+
+    await this.auditLog.record({
+      actorUserId: actor.id,
+      action: 'delete',
+      entityType: 'ProductDocument',
+      entityId: existing.id,
+      summary: `Deleted "${existing.fileName}"`,
+    });
   }
 }

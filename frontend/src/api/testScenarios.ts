@@ -1,9 +1,10 @@
-import { apiFetch } from './client';
+import { apiFetch, apiUpload } from './client';
 import type {
   ApiTestScenario,
   CreateTestScenarioPayload,
   UpdateTestScenarioPayload,
 } from '../types/testScenario';
+import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 
 export function fetchTestScenarios(productId?: string): Promise<ApiTestScenario[]> {
   const qs = productId ? `?productId=${productId}` : '';
@@ -33,4 +34,16 @@ export function updateTestScenario(
 
 export function deleteTestScenario(id: string): Promise<void> {
   return apiFetch<void>(`/test-scenarios/${id}`, { method: 'DELETE' });
+}
+
+export function importTestScenarios(
+  productId: string,
+  file: File,
+): Promise<ImportResultSummary> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiUpload<ImportResultSummary>(
+    `/test-scenarios/import?productId=${productId}`,
+    formData,
+  );
 }

@@ -8,6 +8,10 @@ import { PrismaService } from '../prisma.service';
 import { Prisma } from '../../generated/prisma/client.js';
 import { CreateEnvironmentDto } from './dto/create-environment.dto';
 import { UpdateEnvironmentDto } from './dto/update-environment.dto';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import type { AuthenticatedUser } from '../auth/current-user.decorator';
+import { validateRow } from '../common/import/validate-row.util';
+import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
 
 const ENVIRONMENT_INCLUDE = {
   product: { select: { id: true, name: true } },
@@ -15,7 +19,10 @@ const ENVIRONMENT_INCLUDE = {
 
 @Injectable()
 export class EnvironmentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLog: AuditLogService,
+  ) {}
 
   findAll(productId?: string) {
     return this.prisma.environment.findMany({
@@ -82,6 +89,54 @@ export class EnvironmentsService {
       }
       throw error;
     }
+  }
+
+  async bulkImport(
+    rows: Record<string, string>[],
+    productId: string,
+    actor: AuthenticatedUser,
+  ): Promise<ImportResult> {
+    const errors: ImportRowError[] = [];
+    let successCount = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const rowNumber = i + 2; // account for the header line
+      const raw = rows[i];
+      const candidate = {
+        productId,
+        name: raw.name,
+        type: raw.type?.trim().toUpperCase() || undefined,
+        status: raw.status?.trim().toUpperCase() || undefined,
+        baseUrl: raw.baseUrl,
+        description: raw.description,
+      };
+
+      const result = await validateRow(CreateEnvironmentDto, candidate);
+      if ('error' in result) {
+        errors.push({ row: rowNumber, message: result.error });
+        continue;
+      }
+
+      try {
+        await this.create(result.dto);
+        successCount++;
+      } catch (error) {
+        errors.push({
+          row: rowNumber,
+          message: error instanceof Error ? error.message : 'Failed to create row',
+        });
+      }
+    }
+
+    await this.auditLog.record({
+      actorUserId: actor.id,
+      action: 'import',
+      entityType: 'Environment',
+      entityId: productId,
+      summary: `Imported ${successCount} of ${rows.length} environment(s)`,
+    });
+
+    return { totalRows: rows.length, successCount, errors };
   }
 
   async remove(id: string) {

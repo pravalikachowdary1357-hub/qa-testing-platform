@@ -27,12 +27,22 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
+import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { ImportResultDialog } from '../components/common/ImportResultDialog';
+import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 import { ProductFormDialog } from '../components/product/ProductFormDialog';
 import { ProductDetailDialog } from '../components/product/ProductDetailDialog';
 import { DeleteProductDialog } from '../components/product/DeleteProductDialog';
-import { createProduct, deleteProduct, fetchProducts, updateProduct } from '../api/products';
+import {
+  createProduct,
+  deleteProduct,
+  fetchProducts,
+  importProducts,
+  updateProduct,
+} from '../api/products';
 import { fetchOrganizations } from '../api/organizations';
 import { ApiError } from '../api/client';
+import { exportToCsvWithAudit } from '../utils/csvExport';
 import type {
   ApiProduct,
   ApiProductStatus,
@@ -78,6 +88,7 @@ export function ProductsPage() {
   const [snackbar, setSnackbar] = useState<{ message: string; severity: 'success' | 'error' } | null>(
     null,
   );
+  const [importResult, setImportResult] = useState<ImportResultSummary | null>(null);
 
   const loadProducts = () => {
     setError(null);
@@ -183,15 +194,53 @@ export function ProductsPage() {
     setSnackbar({ message: 'Product deleted.', severity: 'success' });
   };
 
+  const handleImport = async (file: File) => {
+    try {
+      const result = await importProducts(file);
+      setImportResult(result);
+      await loadProducts();
+    } catch (err: unknown) {
+      setSnackbar({
+        message: err instanceof ApiError ? `Import failed (HTTP ${err.status}).` : 'Import failed.',
+        severity: 'error',
+      });
+    }
+  };
+
+  const handleExport = () => {
+    exportToCsvWithAudit('Product', 'products.csv', visibleProducts, [
+      { header: 'Name', value: (p) => p.name },
+      { header: 'Organization', value: (p) => p.organization.name },
+      { header: 'Status', value: (p) => STATUS_LABELS[p.status] },
+      { header: 'Environment', value: (p) => p.environment },
+      { header: 'Release', value: (p) => p.release },
+      { header: 'Test Coverage %', value: (p) => p.testCoverage },
+      { header: 'Pass Rate %', value: (p) => p.passRate },
+      { header: 'Open Defects', value: (p) => p.openDefects },
+      { header: 'Release Readiness', value: (p) => READINESS_LABELS[p.releaseReadiness] },
+      { header: 'Created', value: (p) => new Date(p.createdAt).toLocaleDateString() },
+    ]);
+  };
+
   return (
     <>
       <PageHeader
         title="Products"
         subtitle="Manage the products tracked in this workspace"
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
-            Create Product
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <ImportExportToolbar
+              onImport={handleImport}
+              onExport={handleExport}
+              importDisabled={false}
+              exportDisabled={!products || products.length === 0}
+              importLabel="Import Products"
+              exportLabel="Export Products"
+            />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
+              Create Product
+            </Button>
+          </Stack>
         }
       />
 
@@ -408,6 +457,8 @@ export function ProductsPage() {
         onClose={() => setDeletingProduct(null)}
         onConfirm={handleDeleteConfirm}
       />
+
+      <ImportResultDialog result={importResult} onClose={() => setImportResult(null)} />
 
       <Snackbar
         open={Boolean(snackbar)}

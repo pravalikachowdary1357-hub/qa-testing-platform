@@ -37,6 +37,7 @@ import BugReportIcon from '@mui/icons-material/BugReport';
 import { PageHeader } from '../components/common/PageHeader';
 import { SummaryCard } from '../components/common/SummaryCard';
 import { StatusChip } from '../components/common/StatusChip';
+import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
 import { TestScenarioDetailDialog } from '../components/testscenario/TestScenarioDetailDialog';
 import { TestCaseDetailDialog } from '../components/testcase/TestCaseDetailDialog';
 import { TestExecutionDetailDialog } from '../components/testexecution/TestExecutionDetailDialog';
@@ -44,6 +45,7 @@ import { DefectDetailDialog } from '../components/defect/DefectDetailDialog';
 import { RequirementTraceabilityDetailDialog } from '../components/traceability/RequirementTraceabilityDetailDialog';
 import { fetchTraceabilityMatrix } from '../api/traceability';
 import { ApiError } from '../api/client';
+import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
 import { COVERAGE_STATUS_LABELS } from '../types/traceability';
 import type {
@@ -183,11 +185,52 @@ export function TraceabilityPage() {
 
   const summary = matrix?.summary;
 
+  const handleExportMatrix = () => {
+    exportToCsvWithAudit('TraceabilityMatrix', 'traceability-matrix.csv', visibleRequirements, [
+      { header: 'Product', value: (r) => r.product.name },
+      { header: 'Requirement', value: (r) => r.title },
+      { header: 'Priority', value: (r) => PRIORITY_LABELS[r.priority] },
+      { header: 'Scenario Count', value: (r) => r.testScenarioCount },
+      { header: 'Test Case Count', value: (r) => r.testCaseCount },
+      { header: 'Coverage %', value: (r) => r.coveragePercent },
+      { header: 'Coverage Status', value: (r) => COVERAGE_STATUS_LABELS[r.coverageStatus] },
+      { header: 'Defect Count', value: (r) => r.defectCount },
+    ]);
+  };
+
+  const handleExportOrphanTestCases = () => {
+    exportToCsvWithAudit(
+      'TraceabilityOrphanTestCase',
+      'traceability-orphan-test-cases.csv',
+      visibleOrphanTestCases,
+      [
+        { header: 'Test Case', value: (tc) => tc.title },
+        { header: 'Test Scenario', value: (tc) => tc.testScenario.title },
+        { header: 'Requirement', value: (tc) => tc.requirement?.title ?? '' },
+        { header: 'Product', value: (tc) => tc.product.name },
+      ],
+    );
+  };
+
   return (
     <>
       <PageHeader
         title="Traceability"
         subtitle="End-to-end coverage from requirements through test scenarios, test cases, executions, and defects"
+        actions={
+          <Stack direction="row" spacing={1}>
+            <ImportExportToolbar
+              onExport={handleExportMatrix}
+              exportDisabled={!matrix || visibleRequirements.length === 0}
+              exportLabel="Export Coverage"
+            />
+            <ImportExportToolbar
+              onExport={handleExportOrphanTestCases}
+              exportDisabled={!matrix || visibleOrphanTestCases.length === 0}
+              exportLabel="Export Orphan Test Cases"
+            />
+          </Stack>
+        }
       />
 
       {isLoading && (

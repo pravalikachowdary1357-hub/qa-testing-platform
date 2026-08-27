@@ -11,6 +11,7 @@ import { ReportToolbar } from '../ReportToolbar';
 import { BreakdownBar, colorForStatusLabel } from '../BreakdownBar';
 import { useReportData } from '../../../hooks/useReportData';
 import { fetchOverviewReport } from '../../../api/reports';
+import { exportToCsvWithAudit } from '../../../utils/csvExport';
 import { useProductContext } from '../../../context/ProductContext';
 import type { ApiProduct } from '../../../types/product';
 
@@ -74,7 +75,80 @@ export function OverviewTab({ products }: OverviewTabProps) {
       </Stack>
 
       <Box sx={{ mb: 2 }}>
-        <ReportToolbar onRefresh={refresh} />
+        <ReportToolbar
+          onRefresh={refresh}
+          onExport={
+            data
+              ? () =>
+                  exportToCsvWithAudit(
+                    'Report:Overview',
+                    'overview-report.csv',
+                    [
+                      { category: 'Overview', metric: 'Products', value: data.productCount },
+                      { category: 'Requirement Coverage', metric: 'Coverage %', value: data.requirementCoverage.requirementCoveragePercent },
+                      { category: 'Requirement Coverage', metric: 'Covered Requirements', value: data.requirementCoverage.coveredRequirements },
+                      { category: 'Requirement Coverage', metric: 'Total Requirements', value: data.requirementCoverage.totalRequirements },
+                      { category: 'Test Execution', metric: 'Test Coverage %', value: data.testExecution.testCoveragePercent },
+                      { category: 'Test Execution', metric: 'Pass Rate %', value: data.testExecution.passRatePercent },
+                      { category: 'Test Execution', metric: 'Total Test Cases', value: data.testExecution.totalTestCases },
+                      { category: 'Test Execution', metric: 'Executed Test Cases', value: data.testExecution.executedTestCases },
+                      { category: 'Test Execution', metric: 'Pass', value: data.testExecution.resultCounts.pass },
+                      { category: 'Test Execution', metric: 'Fail', value: data.testExecution.resultCounts.fail },
+                      { category: 'Test Execution', metric: 'Blocked', value: data.testExecution.resultCounts.blocked },
+                      { category: 'Test Execution', metric: 'Pending', value: data.testExecution.resultCounts.pending },
+                      { category: 'Test Execution', metric: 'Not Run', value: data.testExecution.resultCounts.notRun },
+                      { category: 'Defects', metric: 'Total Defects', value: data.defects.total },
+                      { category: 'Defects', metric: 'Open Defects', value: data.defects.openCount },
+                      { category: 'Defects', metric: 'Critical Open Defects', value: data.defects.criticalOpenCount },
+                      ...(data.automation
+                        ? [
+                            { category: 'Automation', metric: 'Total', value: data.automation.total },
+                            { category: 'Automation', metric: 'Pass Rate %', value: data.automation.passRatePercent },
+                          ]
+                        : []),
+                      ...(data.apiTesting
+                        ? [
+                            { category: 'API Testing', metric: 'Total', value: data.apiTesting.total },
+                            { category: 'API Testing', metric: 'Pass Rate %', value: data.apiTesting.passRatePercent },
+                          ]
+                        : []),
+                      ...(data.performance
+                        ? [
+                            { category: 'Performance', metric: 'Total', value: data.performance.total },
+                            { category: 'Performance', metric: 'Pass Rate %', value: data.performance.passRatePercent },
+                          ]
+                        : []),
+                      ...(data.security
+                        ? [
+                            { category: 'Security', metric: 'Total Findings', value: data.security.totalFindings },
+                            { category: 'Security', metric: 'Open Critical/High', value: data.security.openCriticalHighCount },
+                          ]
+                        : []),
+                      ...(data.uat
+                        ? [
+                            { category: 'UAT', metric: 'Total Cycles', value: data.uat.totalCycles },
+                            { category: 'UAT', metric: 'Approved', value: data.uat.approved },
+                            { category: 'UAT', metric: 'Rejected', value: data.uat.rejected },
+                          ]
+                        : []),
+                      ...(data.releaseQuality
+                        ? [
+                            { category: 'Release Quality', metric: 'Total', value: data.releaseQuality.total },
+                            { category: 'Release Quality', metric: 'Ready', value: data.releaseQuality.ready },
+                            { category: 'Release Quality', metric: 'Not Ready', value: data.releaseQuality.notReady },
+                          ]
+                        : []),
+                    ],
+                    [
+                      { header: 'Category', value: (r) => r.category },
+                      { header: 'Metric', value: (r) => r.metric },
+                      { header: 'Value', value: (r) => r.value },
+                    ],
+                  )
+              : undefined
+          }
+          exportDisabled={!data}
+        />
       </Box>
 
       {loading && (

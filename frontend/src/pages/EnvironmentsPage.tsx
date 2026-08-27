@@ -27,6 +27,9 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
+import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { ImportResultDialog } from '../components/common/ImportResultDialog';
+import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 import { EnvironmentFormDialog } from '../components/environment/EnvironmentFormDialog';
 import { EnvironmentDetailDialog } from '../components/environment/EnvironmentDetailDialog';
 import { DeleteEnvironmentDialog } from '../components/environment/DeleteEnvironmentDialog';
@@ -34,10 +37,12 @@ import {
   createEnvironment,
   deleteEnvironment,
   fetchEnvironments,
+  importEnvironments,
   updateEnvironment,
 } from '../api/environments';
 import { fetchProducts } from '../api/products';
 import { ApiError } from '../api/client';
+import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
 import type {
   ApiEnvironment,
@@ -86,6 +91,7 @@ export function EnvironmentsPage() {
   const [snackbar, setSnackbar] = useState<{ message: string; severity: 'success' | 'error' } | null>(
     null,
   );
+  const [importResult, setImportResult] = useState<ImportResultSummary | null>(null);
 
   const loadEnvironments = () => {
     setError(null);
@@ -179,15 +185,53 @@ export function EnvironmentsPage() {
     setSnackbar({ message: 'Environment deleted.', severity: 'success' });
   };
 
+  const handleImport = async (file: File) => {
+    if (!currentProduct) {
+      setSnackbar({ message: 'Select a product before importing environments.', severity: 'error' });
+      return;
+    }
+    try {
+      const result = await importEnvironments(currentProduct.id, file);
+      setImportResult(result);
+      await loadEnvironments();
+    } catch (err: unknown) {
+      setSnackbar({
+        message: err instanceof ApiError ? `Import failed (HTTP ${err.status}).` : 'Import failed.',
+        severity: 'error',
+      });
+    }
+  };
+
+  const handleExport = () => {
+    exportToCsvWithAudit('Environment', 'environments.csv', visibleEnvironments, [
+      { header: 'Name', value: (e) => e.name },
+      { header: 'Type', value: (e) => TYPE_LABELS[e.type] },
+      { header: 'Status', value: (e) => STATUS_LABELS[e.status] },
+      { header: 'Base URL', value: (e) => e.baseUrl ?? '' },
+      { header: 'Description', value: (e) => e.description ?? '' },
+      { header: 'Created', value: (e) => new Date(e.createdAt).toLocaleDateString() },
+    ]);
+  };
+
   return (
     <>
       <PageHeader
         title="Environments"
         subtitle="Manage the environments test executions run against"
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
-            Create Environment
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <ImportExportToolbar
+              onImport={handleImport}
+              onExport={handleExport}
+              importDisabled={!currentProduct}
+              exportDisabled={!environments || environments.length === 0}
+              importLabel="Import Environments"
+              exportLabel="Export Environments"
+            />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
+              Create Environment
+            </Button>
+          </Stack>
         }
       />
 
@@ -389,6 +433,8 @@ export function EnvironmentsPage() {
         onClose={() => setDeletingEnvironment(null)}
         onConfirm={handleDeleteConfirm}
       />
+
+      <ImportResultDialog result={importResult} onClose={() => setImportResult(null)} />
 
       <Snackbar
         open={Boolean(snackbar)}

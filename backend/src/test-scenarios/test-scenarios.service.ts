@@ -8,6 +8,10 @@ import { PrismaService } from '../prisma.service';
 import { Prisma } from '../../generated/prisma/client.js';
 import { CreateTestScenarioDto } from './dto/create-test-scenario.dto';
 import { UpdateTestScenarioDto } from './dto/update-test-scenario.dto';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import type { AuthenticatedUser } from '../auth/current-user.decorator';
+import { validateRow } from '../common/import/validate-row.util';
+import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
 
 const TEST_SCENARIO_INCLUDE = {
   product: { select: { id: true, name: true } },
@@ -16,7 +20,10 @@ const TEST_SCENARIO_INCLUDE = {
 
 @Injectable()
 export class TestScenariosService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLog: AuditLogService,
+  ) {}
 
   findAll(productId?: string) {
     return this.prisma.testScenario.findMany({
@@ -89,6 +96,76 @@ export class TestScenariosService {
       }
       throw error;
     }
+  }
+
+  async bulkImport(
+    rows: Record<string, string>[],
+    productId: string,
+    actor: AuthenticatedUser,
+  ): Promise<ImportResult> {
+    const errors: ImportRowError[] = [];
+    let successCount = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const rowNumber = i + 2; // account for the header line
+      const raw = rows[i];
+
+      const requirementTitle = raw['Requirement Title']?.trim();
+      let requirementId: string | undefined;
+      if (requirementTitle) {
+        const requirement = await this.prisma.requirement.findFirst({
+          where: {
+            productId,
+            title: { equals: requirementTitle, mode: 'insensitive' },
+          },
+          select: { id: true },
+        });
+        if (!requirement) {
+          errors.push({
+            row: rowNumber,
+            message: `Requirement "${requirementTitle}" not found in this product`,
+          });
+          continue;
+        }
+        requirementId = requirement.id;
+      }
+
+      const candidate = {
+        productId,
+        requirementId,
+        title: raw.title,
+        description: raw.description,
+        type: raw.type?.trim().toUpperCase() || undefined,
+        priority: raw.priority?.trim().toUpperCase() || undefined,
+        status: raw.status?.trim().toUpperCase() || undefined,
+      };
+
+      const result = await validateRow(CreateTestScenarioDto, candidate);
+      if ('error' in result) {
+        errors.push({ row: rowNumber, message: result.error });
+        continue;
+      }
+
+      try {
+        await this.create(result.dto);
+        successCount++;
+      } catch (error) {
+        errors.push({
+          row: rowNumber,
+          message: error instanceof Error ? error.message : 'Failed to create row',
+        });
+      }
+    }
+
+    await this.auditLog.record({
+      actorUserId: actor.id,
+      action: 'import',
+      entityType: 'TestScenario',
+      entityId: productId,
+      summary: `Imported ${successCount} of ${rows.length} testscenario(s)`,
+    });
+
+    return { totalRows: rows.length, successCount, errors };
   }
 
   async remove(id: string) {

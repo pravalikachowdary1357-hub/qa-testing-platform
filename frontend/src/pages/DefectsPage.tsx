@@ -27,16 +27,26 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
+import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { ImportResultDialog } from '../components/common/ImportResultDialog';
+import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 import { DefectFormDialog } from '../components/defect/DefectFormDialog';
 import { DefectDetailDialog } from '../components/defect/DefectDetailDialog';
 import { DeleteDefectDialog } from '../components/defect/DeleteDefectDialog';
-import { createDefect, deleteDefect, fetchDefects, updateDefect } from '../api/defects';
+import {
+  createDefect,
+  deleteDefect,
+  fetchDefects,
+  importDefects,
+  updateDefect,
+} from '../api/defects';
 import { fetchProducts } from '../api/products';
 import { fetchEnvironments } from '../api/environments';
 import { fetchTestCases } from '../api/testCases';
 import { fetchTestScenarios } from '../api/testScenarios';
 import { fetchTestExecutions } from '../api/testExecutions';
 import { ApiError } from '../api/client';
+import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
 import type {
   ApiDefect,
@@ -118,6 +128,7 @@ export function DefectsPage() {
   const [snackbar, setSnackbar] = useState<{ message: string; severity: 'success' | 'error' } | null>(
     null,
   );
+  const [importResult, setImportResult] = useState<ImportResultSummary | null>(null);
 
   const loadDefects = () => {
     setError(null);
@@ -243,15 +254,55 @@ export function DefectsPage() {
     setSnackbar({ message: 'Defect deleted.', severity: 'success' });
   };
 
+  const handleImport = async (file: File) => {
+    if (!currentProduct) {
+      setSnackbar({ message: 'Select a product before importing defects.', severity: 'error' });
+      return;
+    }
+    try {
+      const result = await importDefects(currentProduct.id, file);
+      setImportResult(result);
+      await loadDefects();
+    } catch (err: unknown) {
+      setSnackbar({
+        message: err instanceof ApiError ? `Import failed (HTTP ${err.status}).` : 'Import failed.',
+        severity: 'error',
+      });
+    }
+  };
+
+  const handleExport = () => {
+    exportToCsvWithAudit('Defect', 'defects.csv', visibleDefects, [
+      { header: 'Title', value: (d) => d.title },
+      { header: 'Severity', value: (d) => SEVERITY_LABELS[d.severity] },
+      { header: 'Priority', value: (d) => PRIORITY_LABELS[d.priority] },
+      { header: 'Status', value: (d) => STATUS_LABELS[d.status] },
+      { header: 'Environment', value: (d) => d.environment?.name ?? '' },
+      { header: 'Test Case', value: (d) => d.testCase?.title ?? '' },
+      { header: 'Assigned To', value: (d) => d.assignedTo ?? '' },
+      { header: 'Created', value: (d) => new Date(d.createdAt).toLocaleDateString() },
+    ]);
+  };
+
   return (
     <>
       <PageHeader
         title="Defects"
         subtitle="Track and triage defects found during testing"
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
-            Report Defect
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <ImportExportToolbar
+              onImport={handleImport}
+              onExport={handleExport}
+              importDisabled={!currentProduct}
+              exportDisabled={!defects || defects.length === 0}
+              importLabel="Import Defects"
+              exportLabel="Export Defects"
+            />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
+              Report Defect
+            </Button>
+          </Stack>
         }
       />
 
@@ -458,6 +509,8 @@ export function DefectsPage() {
         onClose={() => setDeletingDefect(null)}
         onConfirm={handleDeleteConfirm}
       />
+
+      <ImportResultDialog result={importResult} onClose={() => setImportResult(null)} />
 
       <Snackbar
         open={Boolean(snackbar)}

@@ -5,6 +5,7 @@ import { SummaryCard } from '../../common/SummaryCard';
 import { ReportToolbar } from '../ReportToolbar';
 import { useReportData } from '../../../hooks/useReportData';
 import { fetchTraceabilityReport } from '../../../api/reports';
+import { exportToCsvWithAudit } from '../../../utils/csvExport';
 import { useProductContext } from '../../../context/ProductContext';
 import type { ApiProduct } from '../../../types/product';
 
@@ -42,7 +43,61 @@ export function TraceabilityTab({ products }: TraceabilityTabProps) {
       </Stack>
 
       <Box sx={{ mb: 2 }}>
-        <ReportToolbar onRefresh={refresh} openModulePath="/traceability" openModuleLabel="Open Full Traceability Matrix" />
+        <ReportToolbar
+          onRefresh={refresh}
+          onExport={
+            data
+              ? () =>
+                  exportToCsvWithAudit(
+                    'Report:Traceability',
+                    'traceability-report.csv',
+                    [
+                      { category: 'Summary', item: 'Requirement Coverage %', product: '', value: data.summary.requirementCoveragePercent },
+                      {
+                        category: 'Summary',
+                        item: 'Requirements Covered',
+                        product: '',
+                        value: `${data.summary.requirementsCovered}/${data.summary.totalRequirements}`,
+                      },
+                      { category: 'Summary', item: 'Test Case Coverage %', product: '', value: data.summary.testCaseCoveragePercent },
+                      {
+                        category: 'Summary',
+                        item: 'Test Cases Executed',
+                        product: '',
+                        value: `${data.summary.testCasesExecuted}/${data.summary.totalTestCases}`,
+                      },
+                      { category: 'Summary', item: 'Pass Rate %', product: '', value: data.summary.passRatePercent },
+                      { category: 'Summary', item: 'Unlinked Test Scenarios', product: '', value: data.summary.unlinkedTestScenarioCount },
+                      { category: 'Summary', item: 'Orphan Test Cases', product: '', value: data.summary.orphanTestCaseCount },
+                      { category: 'Summary', item: 'Failed Without Defect', product: '', value: data.summary.failedWithoutDefectCount },
+                      { category: 'Summary', item: 'Defects Without Linkage', product: '', value: data.summary.defectsWithoutLinkageCount },
+                      { category: 'Summary', item: 'Total Defects', product: '', value: data.summary.totalDefects },
+                      ...data.gaps.orphanTestCases.map((gap) => ({
+                        category: 'Orphan Test Case',
+                        item: gap.title ?? '',
+                        product: gap.product?.name ?? '',
+                        value: '' as string | number,
+                      })),
+                      ...data.gaps.failedWithoutDefects.map((gap) => ({
+                        category: 'Failed Without Defect',
+                        item: gap.testCaseTitle ?? '',
+                        product: gap.product?.name ?? '',
+                        value: '' as string | number,
+                      })),
+                    ],
+                    [
+                      { header: 'Category', value: (r) => r.category },
+                      { header: 'Item', value: (r) => r.item },
+                      { header: 'Product', value: (r) => r.product },
+                      { header: 'Value', value: (r) => r.value },
+                    ],
+                  )
+              : undefined
+          }
+          exportDisabled={!data}
+          openModulePath="/traceability"
+          openModuleLabel="Open Full Traceability Matrix"
+        />
       </Box>
 
       {loading && (

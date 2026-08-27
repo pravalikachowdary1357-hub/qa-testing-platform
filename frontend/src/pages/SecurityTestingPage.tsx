@@ -27,6 +27,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
+import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
 import {
   SecurityTestFormDialog,
   securityTestToFormValues,
@@ -47,6 +48,7 @@ import { fetchEnvironments } from '../api/environments';
 import { fetchTestCases } from '../api/testCases';
 import { fetchTestScenarios } from '../api/testScenarios';
 import { ApiError } from '../api/client';
+import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
 import {
   ALL_SEVERITIES,
@@ -262,15 +264,35 @@ export function SecurityTestingPage() {
     }
   };
 
+  const handleExport = () => {
+    exportToCsvWithAudit('SecurityTest', 'security-tests.csv', visibleTests, [
+      { header: 'Name', value: (t) => t.name },
+      { header: 'Target', value: (t) => t.target },
+      { header: 'Test Type', value: (t) => TEST_TYPE_LABELS[t.testType] },
+      { header: 'Status', value: (t) => TEST_STATUS_LABELS[t.status] },
+      {
+        header: 'Last Executed At',
+        value: (t) => (t.lastExecutedAt ? new Date(t.lastExecutedAt).toLocaleString() : ''),
+      },
+    ]);
+  };
+
   return (
     <>
       <PageHeader
         title="Security Testing"
         subtitle="Track security test suites, execution status, and vulnerability findings"
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
-            New Security Test
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <ImportExportToolbar
+              onExport={handleExport}
+              exportDisabled={!tests || tests.length === 0}
+              exportLabel="Export Security Tests"
+            />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
+              New Security Test
+            </Button>
+          </Stack>
         }
       />
 

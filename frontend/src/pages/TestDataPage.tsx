@@ -27,6 +27,9 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
+import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { ImportResultDialog } from '../components/common/ImportResultDialog';
+import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 import { TestDataFormDialog } from '../components/testdata/TestDataFormDialog';
 import { TestDataDetailDialog } from '../components/testdata/TestDataDetailDialog';
 import { DeleteTestDataDialog } from '../components/testdata/DeleteTestDataDialog';
@@ -35,10 +38,12 @@ import {
   deleteTestData,
   fetchTestDataById,
   fetchTestDataList,
+  importTestData,
   updateTestData,
 } from '../api/testData';
 import { fetchTestCases } from '../api/testCases';
 import { ApiError } from '../api/client';
+import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
 import type {
   ApiTestDataListItem,
@@ -88,6 +93,7 @@ export function TestDataPage() {
   const [snackbar, setSnackbar] = useState<{ message: string; severity: 'success' | 'error' } | null>(
     null,
   );
+  const [importResult, setImportResult] = useState<ImportResultSummary | null>(null);
 
   const loadTestDataList = () => {
     setError(null);
@@ -205,15 +211,48 @@ export function TestDataPage() {
     }
   };
 
+  const handleImport = async (file: File) => {
+    try {
+      const result = await importTestData(file);
+      setImportResult(result);
+      await loadTestDataList();
+    } catch (err: unknown) {
+      setSnackbar({
+        message: err instanceof ApiError ? `Import failed (HTTP ${err.status}).` : 'Import failed.',
+        severity: 'error',
+      });
+    }
+  };
+
+  const handleExport = () => {
+    exportToCsvWithAudit('TestData', 'test-data.csv', visibleTestDataList, [
+      { header: 'Name', value: (r) => r.name },
+      { header: 'Description', value: (r) => r.description ?? '' },
+      { header: 'Type', value: (r) => TYPE_LABELS[r.type] },
+      { header: 'Test Case', value: (r) => r.testCase?.title ?? '' },
+      { header: 'Created', value: (r) => new Date(r.createdAt).toLocaleDateString() },
+    ]);
+  };
+
   return (
     <>
       <PageHeader
         title="Test Data"
         subtitle="Reusable data records for driving and verifying test execution"
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
-            Create Test Data
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <ImportExportToolbar
+              onImport={handleImport}
+              onExport={handleExport}
+              importDisabled={false}
+              exportDisabled={!testDataList || testDataList.length === 0}
+              importLabel="Import Test Data"
+              exportLabel="Export Test Data"
+            />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
+              Create Test Data
+            </Button>
+          </Stack>
         }
       />
 
@@ -405,6 +444,8 @@ export function TestDataPage() {
         onClose={() => setDeletingTestData(null)}
         onConfirm={handleDeleteConfirm}
       />
+
+      <ImportResultDialog result={importResult} onClose={() => setImportResult(null)} />
 
       <Snackbar
         open={Boolean(snackbar)}

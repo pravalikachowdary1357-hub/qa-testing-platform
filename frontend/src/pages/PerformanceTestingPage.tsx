@@ -28,6 +28,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
+import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
 import {
   PerformanceTestFormDialog,
   performanceTestToFormValues,
@@ -45,6 +46,7 @@ import {
 import { fetchProducts } from '../api/products';
 import { fetchEnvironments } from '../api/environments';
 import { ApiError } from '../api/client';
+import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
 import { RUN_STATUS_LABELS } from '../types/performanceTesting';
 import type {
@@ -184,6 +186,20 @@ export function PerformanceTestingPage() {
     setSnackbar({ message: 'Performance test deleted.', severity: 'success' });
   };
 
+  const handleExport = () => {
+    exportToCsvWithAudit('PerformanceTest', 'performance-tests.csv', visibleTests, [
+      { header: 'Name', value: (t) => t.name },
+      { header: 'Target URL', value: (t) => t.targetUrl },
+      { header: 'Virtual Users', value: (t) => t.virtualUsers },
+      { header: 'Duration (s)', value: (t) => t.durationSeconds },
+      { header: 'Last Run Status', value: (t) => (t.lastRunStatus ? RUN_STATUS_LABELS[t.lastRunStatus] : '') },
+      {
+        header: 'Last Run At',
+        value: (t) => (t.lastRunAt ? new Date(t.lastRunAt).toLocaleString() : ''),
+      },
+    ]);
+  };
+
   const handleEditClick = async (item: PerformanceTestListItem) => {
     try {
       const full = await fetchPerformanceTest(item.id);
@@ -207,9 +223,16 @@ export function PerformanceTestingPage() {
         title="Performance Testing"
         subtitle="Configure and run real load tests against your environments"
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
-            New Performance Test
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <ImportExportToolbar
+              onExport={handleExport}
+              exportDisabled={!tests || tests.length === 0}
+              exportLabel="Export Performance Tests"
+            />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
+              New Performance Test
+            </Button>
+          </Stack>
         }
       />
 

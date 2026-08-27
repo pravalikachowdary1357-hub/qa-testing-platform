@@ -27,6 +27,9 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
+import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { ImportResultDialog } from '../components/common/ImportResultDialog';
+import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 import { RequirementFormDialog } from '../components/requirement/RequirementFormDialog';
 import { RequirementDetailDialog } from '../components/requirement/RequirementDetailDialog';
 import { DeleteRequirementDialog } from '../components/requirement/DeleteRequirementDialog';
@@ -34,10 +37,12 @@ import {
   createRequirement,
   deleteRequirement,
   fetchRequirements,
+  importRequirements,
   updateRequirement,
 } from '../api/requirements';
 import { fetchProducts } from '../api/products';
 import { ApiError } from '../api/client';
+import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
 import type {
   ApiRequirement,
@@ -104,6 +109,7 @@ export function RequirementsPage() {
   const [snackbar, setSnackbar] = useState<{ message: string; severity: 'success' | 'error' } | null>(
     null,
   );
+  const [importResult, setImportResult] = useState<ImportResultSummary | null>(null);
 
   const loadRequirements = () => {
     setError(null);
@@ -204,15 +210,54 @@ export function RequirementsPage() {
     setSnackbar({ message: 'Requirement deleted.', severity: 'success' });
   };
 
+  const handleImport = async (file: File) => {
+    if (!currentProduct) {
+      setSnackbar({ message: 'Select a product before importing requirements.', severity: 'error' });
+      return;
+    }
+    try {
+      const result = await importRequirements(currentProduct.id, file);
+      setImportResult(result);
+      await loadRequirements();
+    } catch (err: unknown) {
+      setSnackbar({
+        message: err instanceof ApiError ? `Import failed (HTTP ${err.status}).` : 'Import failed.',
+        severity: 'error',
+      });
+    }
+  };
+
+  const handleExport = () => {
+    exportToCsvWithAudit('Requirement', 'requirements.csv', visibleRequirements, [
+      { header: 'Title', value: (r) => r.title },
+      { header: 'Description', value: (r) => r.description },
+      { header: 'Product', value: (r) => r.product.name },
+      { header: 'Type', value: (r) => TYPE_LABELS[r.type] },
+      { header: 'Priority', value: (r) => PRIORITY_LABELS[r.priority] },
+      { header: 'Status', value: (r) => STATUS_LABELS[r.status] },
+      { header: 'Created', value: (r) => new Date(r.createdAt).toLocaleDateString() },
+    ]);
+  };
+
   return (
     <>
       <PageHeader
         title="Requirements"
         subtitle="Track functional and non-functional requirements across products"
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
-            Create Requirement
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <ImportExportToolbar
+              onImport={handleImport}
+              onExport={handleExport}
+              importDisabled={!currentProduct}
+              exportDisabled={!requirements || requirements.length === 0}
+              importLabel="Import Requirements"
+              exportLabel="Export Requirements"
+            />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
+              Create Requirement
+            </Button>
+          </Stack>
         }
       />
 
@@ -434,6 +479,8 @@ export function RequirementsPage() {
         onClose={() => setDeletingRequirement(null)}
         onConfirm={handleDeleteConfirm}
       />
+
+      <ImportResultDialog result={importResult} onClose={() => setImportResult(null)} />
 
       <Snackbar
         open={Boolean(snackbar)}

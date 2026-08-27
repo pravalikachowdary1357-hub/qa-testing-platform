@@ -27,6 +27,9 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
+import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { ImportResultDialog } from '../components/common/ImportResultDialog';
+import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 import { TestPlanFormDialog } from '../components/testplan/TestPlanFormDialog';
 import { TestPlanDetailDialog } from '../components/testplan/TestPlanDetailDialog';
 import { DeleteTestPlanDialog } from '../components/testplan/DeleteTestPlanDialog';
@@ -34,11 +37,13 @@ import {
   createTestPlan,
   deleteTestPlan,
   fetchTestPlans,
+  importTestPlans,
   updateTestPlan,
 } from '../api/testPlans';
 import { fetchProducts } from '../api/products';
 import { fetchRequirements } from '../api/requirements';
 import { ApiError } from '../api/client';
+import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
 import type {
   ApiTestPlan,
@@ -106,6 +111,7 @@ export function TestPlansPage() {
   const [snackbar, setSnackbar] = useState<{ message: string; severity: 'success' | 'error' } | null>(
     null,
   );
+  const [importResult, setImportResult] = useState<ImportResultSummary | null>(null);
 
   const loadTestPlans = () => {
     setError(null);
@@ -213,15 +219,55 @@ export function TestPlansPage() {
     setSnackbar({ message: 'Test plan deleted.', severity: 'success' });
   };
 
+  const handleImport = async (file: File) => {
+    if (!currentProduct) {
+      setSnackbar({ message: 'Select a product before importing test plans.', severity: 'error' });
+      return;
+    }
+    try {
+      const result = await importTestPlans(currentProduct.id, file);
+      setImportResult(result);
+      await loadTestPlans();
+    } catch (err: unknown) {
+      setSnackbar({
+        message: err instanceof ApiError ? `Import failed (HTTP ${err.status}).` : 'Import failed.',
+        severity: 'error',
+      });
+    }
+  };
+
+  const handleExport = () => {
+    exportToCsvWithAudit('TestPlan', 'test-plans.csv', visibleTestPlans, [
+      { header: 'Name', value: (p) => p.name },
+      { header: 'Description', value: (p) => p.description },
+      { header: 'Status', value: (p) => STATUS_LABELS[p.status] },
+      { header: 'Priority', value: (p) => PRIORITY_LABELS[p.priority] },
+      { header: 'Owner', value: (p) => p.owner },
+      { header: 'Start Date', value: (p) => (p.startDate ? new Date(p.startDate).toLocaleDateString() : '') },
+      { header: 'End Date', value: (p) => (p.endDate ? new Date(p.endDate).toLocaleDateString() : '') },
+      { header: 'Created', value: (p) => new Date(p.createdAt).toLocaleDateString() },
+    ]);
+  };
+
   return (
     <>
       <PageHeader
         title="Test Planning"
         subtitle="Plan and organize test coverage across products and requirements"
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
-            Create Test Plan
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <ImportExportToolbar
+              onImport={handleImport}
+              onExport={handleExport}
+              importDisabled={!currentProduct}
+              exportDisabled={!testPlans || testPlans.length === 0}
+              importLabel="Import Test Plans"
+              exportLabel="Export Test Plans"
+            />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
+              Create Test Plan
+            </Button>
+          </Stack>
         }
       />
 
@@ -438,6 +484,8 @@ export function TestPlansPage() {
         onClose={() => setDeletingTestPlan(null)}
         onConfirm={handleDeleteConfirm}
       />
+
+      <ImportResultDialog result={importResult} onClose={() => setImportResult(null)} />
 
       <Snackbar
         open={Boolean(snackbar)}

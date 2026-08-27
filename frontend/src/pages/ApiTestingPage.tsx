@@ -29,6 +29,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
+import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { exportToCsvWithAudit } from '../utils/csvExport';
 import {
   ApiTestRequestFormDialog,
   apiTestRequestToFormValues,
@@ -63,6 +65,14 @@ const METHOD_COLORS: Record<ApiHttpMethod, ChipProps['color']> = {
   PUT: 'warning',
   PATCH: 'secondary',
   DELETE: 'error',
+};
+
+// Matches the labels used by ApiTestRequestDetailDialog's AUTH_TYPE_LABELS.
+const AUTH_TYPE_LABELS: Record<string, string> = {
+  NONE: 'None',
+  BEARER: 'Bearer',
+  BASIC: 'Basic',
+  API_KEY: 'API Key',
 };
 
 type SortOption = 'newest' | 'name' | 'method';
@@ -207,6 +217,17 @@ export function ApiTestingPage() {
     setSnackbar({ message: 'API test request deleted.', severity: 'success' });
   };
 
+  const handleExport = () => {
+    exportToCsvWithAudit('ApiTestRequest', 'api-tests.csv', visibleRequests, [
+      { header: 'Name', value: (r) => r.name },
+      { header: 'Method', value: (r) => r.method },
+      { header: 'URL', value: (r) => r.url },
+      { header: 'Auth Type', value: (r) => AUTH_TYPE_LABELS[r.authType] ?? r.authType },
+      { header: 'Expected Status', value: (r) => r.expectedStatus },
+      { header: 'Created', value: (r) => new Date(r.createdAt).toLocaleDateString() },
+    ]);
+  };
+
   const handleEditClick = async (item: ApiTestRequestListItem) => {
     try {
       // The list view deliberately omits `authConfig`, so the full detail
@@ -232,9 +253,16 @@ export function ApiTestingPage() {
         title="API Testing"
         subtitle="Configure and send real HTTP requests against your environments"
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
-            New Request
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <ImportExportToolbar
+              onExport={handleExport}
+              exportDisabled={!requests || requests.length === 0}
+              exportLabel="Export API Tests"
+            />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
+              New Request
+            </Button>
+          </Stack>
         }
       />
 

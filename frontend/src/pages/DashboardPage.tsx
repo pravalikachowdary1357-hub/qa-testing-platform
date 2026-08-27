@@ -4,6 +4,7 @@ import {
   CircularProgress,
   Grid,
   Paper,
+  Stack,
   Table,
   TableBody,
   TableCell,
@@ -27,7 +28,9 @@ import VerifiedIcon from '@mui/icons-material/Verified';
 import { PageHeader } from '../components/common/PageHeader';
 import { SummaryCard } from '../components/common/SummaryCard';
 import { StatusChip } from '../components/common/StatusChip';
+import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
 import { mockDashboardSummary } from '../data/mockDashboard';
+import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
 import type {
   ApiProductStatus,
@@ -82,11 +85,39 @@ const kpis = [
 export function DashboardPage() {
   const { products, loading, error } = useProductContext();
 
+  const handleExportKpis = () => {
+    exportToCsvWithAudit('Dashboard', 'dashboard-kpis.csv', kpis, [
+      { header: 'Metric', value: (kpi) => kpi.title },
+      { header: 'Value', value: (kpi) => kpi.value },
+    ]);
+  };
+
+  const handleExportProductOverview = () => {
+    exportToCsvWithAudit('Dashboard', 'dashboard-product-overview.csv', products, [
+      { header: 'Product', value: (p) => p.name },
+      { header: 'Status', value: (p) => STATUS_LABELS[p.status] },
+      { header: 'Test Coverage', value: (p) => `${p.testCoverage}%` },
+      { header: 'Pass Rate', value: (p) => `${p.passRate}%` },
+      { header: 'Open Defects', value: (p) => p.openDefects },
+      { header: 'Release Readiness', value: (p) => READINESS_LABELS[p.releaseReadiness] },
+    ]);
+  };
+
   return (
     <>
       <PageHeader
         title="Dashboard"
         subtitle="Organization-wide testing overview across all products"
+        actions={
+          <Stack direction="row" spacing={1}>
+            <ImportExportToolbar onExport={handleExportKpis} exportLabel="Export KPIs" />
+            <ImportExportToolbar
+              onExport={handleExportProductOverview}
+              exportDisabled={loading || products.length === 0}
+              exportLabel="Export Product Overview"
+            />
+          </Stack>
+        }
       />
 
       <Grid container spacing={2} sx={{ mb: 4 }}>

@@ -63,8 +63,9 @@ export class ProductDocumentsController {
     @Param('id') id: string,
     @Query('download') download: string | undefined,
     @Res() res: Response,
+    @CurrentUser() actor: AuthenticatedUser,
   ) {
-    const document = await this.documentsService.getContent(id);
+    const document = await this.documentsService.getContent(id, actor);
     res.set({
       'Content-Type': document.mimeType,
       'Content-Length': document.fileSize.toString(),
@@ -80,8 +81,9 @@ export class ProductDocumentsController {
     @Param('versionId') versionId: string,
     @Query('download') download: string | undefined,
     @Res() res: Response,
+    @CurrentUser() actor: AuthenticatedUser,
   ) {
-    const version = await this.documentsService.getVersionContent(id, versionId);
+    const version = await this.documentsService.getVersionContent(id, versionId, actor);
     res.set({
       'Content-Type': version.mimeType,
       'Content-Length': version.fileSize.toString(),
@@ -98,13 +100,17 @@ export class ProductDocumentsController {
     @Body() dto: CreateProductDocumentDto,
     @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.documentsService.create(dto, file, actor.name);
+    return this.documentsService.create(dto, file, actor);
   }
 
   @Patch(':id')
   @RequirePermission('product_documents:write')
-  update(@Param('id') id: string, @Body() dto: UpdateProductDocumentDto) {
-    return this.documentsService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateProductDocumentDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.documentsService.update(id, dto, actor);
   }
 
   @Post(':id/replace')
@@ -116,13 +122,13 @@ export class ProductDocumentsController {
     @Body() dto: ReplaceProductDocumentDto,
     @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.documentsService.replace(id, file, dto, actor.name);
+    return this.documentsService.replace(id, file, dto, actor);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission('product_documents:manage')
-  remove(@Param('id') id: string) {
-    return this.documentsService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.documentsService.remove(id, actor);
   }
 }

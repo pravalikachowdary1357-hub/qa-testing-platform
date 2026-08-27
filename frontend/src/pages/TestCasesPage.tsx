@@ -27,12 +27,22 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
+import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { ImportResultDialog } from '../components/common/ImportResultDialog';
+import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 import { TestCaseFormDialog } from '../components/testcase/TestCaseFormDialog';
 import { TestCaseDetailDialog } from '../components/testcase/TestCaseDetailDialog';
 import { DeleteTestCaseDialog } from '../components/testcase/DeleteTestCaseDialog';
-import { createTestCase, deleteTestCase, fetchTestCases, updateTestCase } from '../api/testCases';
+import {
+  createTestCase,
+  deleteTestCase,
+  fetchTestCases,
+  importTestCases,
+  updateTestCase,
+} from '../api/testCases';
 import { fetchTestScenarios } from '../api/testScenarios';
 import { ApiError } from '../api/client';
+import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
 import type {
   ApiTestCase,
@@ -89,6 +99,7 @@ export function TestCasesPage() {
   const [snackbar, setSnackbar] = useState<{ message: string; severity: 'success' | 'error' } | null>(
     null,
   );
+  const [importResult, setImportResult] = useState<ImportResultSummary | null>(null);
 
   const loadTestCases = () => {
     setError(null);
@@ -190,15 +201,54 @@ export function TestCasesPage() {
     setSnackbar({ message: 'Test case deleted.', severity: 'success' });
   };
 
+  const handleImport = async (file: File) => {
+    if (!currentProduct) {
+      setSnackbar({ message: 'Select a product before importing test cases.', severity: 'error' });
+      return;
+    }
+    try {
+      const result = await importTestCases(currentProduct.id, file);
+      setImportResult(result);
+      await loadTestCases();
+    } catch (err: unknown) {
+      setSnackbar({
+        message: err instanceof ApiError ? `Import failed (HTTP ${err.status}).` : 'Import failed.',
+        severity: 'error',
+      });
+    }
+  };
+
+  const handleExport = () => {
+    exportToCsvWithAudit('TestCase', 'test-cases.csv', visibleTestCases, [
+      { header: 'Title', value: (tc) => tc.title },
+      { header: 'Test Scenario', value: (tc) => tc.testScenario.title },
+      { header: 'Priority', value: (tc) => PRIORITY_LABELS[tc.priority] },
+      { header: 'Status', value: (tc) => STATUS_LABELS[tc.status] },
+      { header: 'Preconditions', value: (tc) => tc.preconditions ?? '' },
+      { header: 'Expected Result', value: (tc) => tc.expectedResult },
+      { header: 'Created', value: (tc) => new Date(tc.createdAt).toLocaleDateString() },
+    ]);
+  };
+
   return (
     <>
       <PageHeader
         title="Test Cases"
         subtitle="Detailed, executable test procedures derived from test scenarios"
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
-            Create Test Case
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <ImportExportToolbar
+              onImport={handleImport}
+              onExport={handleExport}
+              importDisabled={!currentProduct}
+              exportDisabled={!testCases || testCases.length === 0}
+              importLabel="Import Test Cases"
+              exportLabel="Export Test Cases"
+            />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
+              Create Test Case
+            </Button>
+          </Stack>
         }
       />
 
@@ -418,6 +468,8 @@ export function TestCasesPage() {
         onClose={() => setDeletingTestCase(null)}
         onConfirm={handleDeleteConfirm}
       />
+
+      <ImportResultDialog result={importResult} onClose={() => setImportResult(null)} />
 
       <Snackbar
         open={Boolean(snackbar)}
