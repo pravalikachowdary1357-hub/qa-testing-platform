@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { PrismaModule } from './prisma.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { ProductsModule } from './products/products.module';
+import { ProductDocumentsModule } from './product-documents/product-documents.module';
 import { RequirementsModule } from './requirements/requirements.module';
 import { TestPlansModule } from './test-plans/test-plans.module';
 import { TestScenariosModule } from './test-scenarios/test-scenarios.module';
@@ -37,6 +38,7 @@ import { AppSettingsModule } from './app-settings/app-settings.module';
     AppSettingsModule,
     OrganizationsModule,
     ProductsModule,
+    ProductDocumentsModule,
     RequirementsModule,
     TestPlansModule,
     TestScenariosModule,

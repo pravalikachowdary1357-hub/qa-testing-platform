@@ -281,6 +281,27 @@ enum AiSuggestionStatus {
   EDITED_AND_ACCEPTED
 }
 
+enum ProductDocumentType {
+  PRODUCT_REQUIREMENTS_BRD
+  FUNCTIONAL_SPEC_FRD
+  TECHNICAL_SPEC
+  USER_MANUAL
+  ARCHITECTURE_DESIGN
+  API_DOCUMENTATION
+  RELEASE_NOTES
+  INSTALLATION_DEPLOYMENT_GUIDE
+  CONFIGURATION_DOCUMENTS
+  COMPLIANCE_REGULATORY
+  REFERENCE_DOCUMENTS
+  OTHER_SUPPORTING_FILES
+}
+
+enum ProductDocumentStatus {
+  DRAFT
+  APPROVED
+  ARCHIVED
+}
+
 model Organization {
   id          String             @id @default(uuid())
   name        String             @unique
@@ -321,9 +342,54 @@ model Product {
   uatCycles        UatCycle[]
   releases         Release[]
   aiSuggestions    AiSuggestion[]
+  documents        ProductDocument[]
 
   @@index([organizationId])
   @@map("products")
+}
+
+model ProductDocument {
+  id           String                 @id @default(uuid())
+  productId    String                 @map("product_id")
+  documentType ProductDocumentType    @map("document_type")
+  fileName     String                 @map("file_name")
+  mimeType     String                 @map("mime_type")
+  fileSize     Int                    @map("file_size")
+  content      Bytes
+  version      Int                    @default(1)
+  description  String?
+  status       ProductDocumentStatus  @default(DRAFT)
+  uploadedBy   String                 @map("uploaded_by")
+  createdAt    DateTime               @default(now()) @map("created_at")
+  updatedAt    DateTime               @updatedAt @map("updated_at")
+
+  product  Product                   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  versions ProductDocumentVersion[]
+
+  @@index([productId])
+  @@map("product_documents")
+}
+
+// Snapshot of a ProductDocument's content/metadata as of the moment it was
+// superseded by a "Replace" upload -- created alongside (not instead of) the
+// live update, so the current document row always reflects the latest file.
+model ProductDocumentVersion {
+  id          String                 @id @default(uuid())
+  documentId  String                 @map("document_id")
+  version     Int
+  fileName    String                 @map("file_name")
+  mimeType    String                 @map("mime_type")
+  fileSize    Int                    @map("file_size")
+  content     Bytes
+  description String?
+  status      ProductDocumentStatus
+  uploadedBy  String                 @map("uploaded_by")
+  createdAt   DateTime               @map("created_at")
+
+  document ProductDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@map("product_document_versions")
 }
 
 model Requirement {

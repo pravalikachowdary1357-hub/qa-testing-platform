@@ -422,6 +422,7 @@ export function UatPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         products={products}
+        currentProductId={currentProduct?.id}
         initialValues={formMode === 'edit' ? (editingFormValues ?? undefined) : undefined}
         onClose={() => {
           setFormMode(null);

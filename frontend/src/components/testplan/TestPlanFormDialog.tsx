@@ -66,6 +66,7 @@ interface TestPlanFormDialogProps {
   mode: 'create' | 'edit';
   products: ApiProduct[];
   requirements: ApiRequirement[];
+  currentProductId?: string;
   initialValues?: TestPlanFormValues;
   onClose: () => void;
   onSubmit: (data: CreateTestPlanPayload) => Promise<void>;
@@ -76,6 +77,7 @@ export function TestPlanFormDialog({
   mode,
   products,
   requirements,
+  currentProductId,
   initialValues,
   onClose,
   onSubmit,
@@ -90,7 +92,11 @@ export function TestPlanFormDialog({
 
   useEffect(() => {
     if (open) {
-      setValues(initialValues ?? emptyValues(products[0]?.id ?? ''));
+      const preferredProductId =
+        currentProductId && products.some((p) => p.id === currentProductId)
+          ? currentProductId
+          : (products[0]?.id ?? '');
+      setValues(initialValues ?? emptyValues(preferredProductId));
       setNameError(null);
       setDescriptionError(null);
       setOwnerError(null);
@@ -98,7 +104,7 @@ export function TestPlanFormDialog({
       setSubmitError(null);
       setSubmitting(false);
     }
-  }, [open, initialValues, products]);
+  }, [open, initialValues, products, currentProductId]);
 
   const noProductsAvailable = mode === 'create' && products.length === 0;
 
@@ -297,6 +303,7 @@ export function TestPlanFormDialog({
                 label="Requirements Covered"
                 fullWidth
                 value={values.requirementIds}
+                disabled={requirementsForProduct.length === 0}
                 helperText={
                   requirementsForProduct.length === 0
                     ? 'No requirements exist for this product yet.'

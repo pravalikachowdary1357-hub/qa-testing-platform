@@ -424,6 +424,7 @@ export function DefectsPage() {
         testCases={testCases}
         testScenarios={testScenarios}
         testExecutions={testExecutions}
+        currentProductId={currentProduct?.id}
         initialValues={
           formMode === 'edit' && editingDefect
             ? {

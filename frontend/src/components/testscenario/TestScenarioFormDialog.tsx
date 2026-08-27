@@ -71,6 +71,7 @@ interface TestScenarioFormDialogProps {
   mode: 'create' | 'edit';
   products: ApiProduct[];
   requirements: ApiRequirement[];
+  currentProductId?: string;
   initialValues?: TestScenarioFormValues;
   onClose: () => void;
   onSubmit: (data: CreateTestScenarioPayload) => Promise<void>;
@@ -81,6 +82,7 @@ export function TestScenarioFormDialog({
   mode,
   products,
   requirements,
+  currentProductId,
   initialValues,
   onClose,
   onSubmit,
@@ -93,13 +95,17 @@ export function TestScenarioFormDialog({
 
   useEffect(() => {
     if (open) {
-      setValues(initialValues ?? emptyValues(products[0]?.id ?? ''));
+      const preferredProductId =
+        currentProductId && products.some((p) => p.id === currentProductId)
+          ? currentProductId
+          : (products[0]?.id ?? '');
+      setValues(initialValues ?? emptyValues(preferredProductId));
       setTitleError(null);
       setDescriptionError(null);
       setSubmitError(null);
       setSubmitting(false);
     }
-  }, [open, initialValues, products]);
+  }, [open, initialValues, products, currentProductId]);
 
   const noProductsAvailable = mode === 'create' && products.length === 0;
 

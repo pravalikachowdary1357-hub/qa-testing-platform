@@ -72,6 +72,7 @@ interface SecurityTestFormDialogProps {
   environments: ApiEnvironment[];
   testCases: ApiTestCase[];
   testScenarios: ApiTestScenario[];
+  currentProductId?: string;
   initialValues?: SecurityTestFormValues;
   onClose: () => void;
   onSubmit: (data: CreateSecurityTestPayload) => Promise<void>;
@@ -84,6 +85,7 @@ export function SecurityTestFormDialog({
   environments,
   testCases,
   testScenarios,
+  currentProductId,
   initialValues,
   onClose,
   onSubmit,
@@ -96,13 +98,17 @@ export function SecurityTestFormDialog({
 
   useEffect(() => {
     if (open) {
-      setValues(initialValues ?? emptyValues(products[0]?.id ?? ''));
+      const preferredProductId =
+        currentProductId && products.some((p) => p.id === currentProductId)
+          ? currentProductId
+          : (products[0]?.id ?? '');
+      setValues(initialValues ?? emptyValues(preferredProductId));
       setNameError(null);
       setTargetError(null);
       setSubmitError(null);
       setSubmitting(false);
     }
-  }, [open, initialValues, products]);
+  }, [open, initialValues, products, currentProductId]);
 
   const noProductsAvailable = mode === 'create' && products.length === 0;
 

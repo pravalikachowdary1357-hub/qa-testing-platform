@@ -38,6 +38,7 @@ interface UatCycleFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   products: ApiProduct[];
+  currentProductId?: string;
   initialValues?: UatCycleFormValues;
   onClose: () => void;
   onSubmit: (data: CreateUatCyclePayload & { status?: UatCycleStatus }) => Promise<void>;
@@ -47,6 +48,7 @@ export function UatCycleFormDialog({
   open,
   mode,
   products,
+  currentProductId,
   initialValues,
   onClose,
   onSubmit,
@@ -58,12 +60,16 @@ export function UatCycleFormDialog({
 
   useEffect(() => {
     if (open) {
-      setValues(initialValues ?? emptyValues(products[0]?.id ?? ''));
+      const preferredProductId =
+        currentProductId && products.some((p) => p.id === currentProductId)
+          ? currentProductId
+          : (products[0]?.id ?? '');
+      setValues(initialValues ?? emptyValues(preferredProductId));
       setNameError(null);
       setSubmitError(null);
       setSubmitting(false);
     }
-  }, [open, initialValues, products]);
+  }, [open, initialValues, products, currentProductId]);
 
   const noProductsAvailable = mode === 'create' && products.length === 0;
   // A cycle already APPROVED/REJECTED keeps showing its real status here

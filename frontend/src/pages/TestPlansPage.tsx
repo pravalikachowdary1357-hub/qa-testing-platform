@@ -405,6 +405,7 @@ export function TestPlansPage() {
         mode={formMode ?? 'create'}
         products={products}
         requirements={requirements}
+        currentProductId={currentProduct?.id}
         initialValues={
           formMode === 'edit' && editingTestPlan
             ? {

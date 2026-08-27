@@ -8,9 +8,12 @@ import {
   DialogTitle,
   Divider,
   Stack,
+  Tab,
+  Tabs,
   Typography,
 } from '@mui/material';
 import { StatusChip } from '../common/StatusChip';
+import { ProductDocumentsTab } from '../productdocument/ProductDocumentsTab';
 import { fetchProduct } from '../../api/products';
 import { ApiError } from '../../api/client';
 import type { ApiProduct, ProductStatus, ReleaseReadiness } from '../../types/product';
@@ -35,6 +38,11 @@ interface ProductDetailDialogProps {
 export function ProductDetailDialog({ productId, onClose }: ProductDetailDialogProps) {
   const [product, setProduct] = useState<ApiProduct | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState(0);
+
+  useEffect(() => {
+    setActiveTab(0);
+  }, [productId]);
 
   useEffect(() => {
     if (!productId) {
@@ -66,8 +74,20 @@ export function ProductDetailDialog({ productId, onClose }: ProductDetailDialogP
   }, [productId]);
 
   return (
-    <Dialog open={Boolean(productId)} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Product Details</DialogTitle>
+    <Dialog open={Boolean(productId)} onClose={onClose} fullWidth maxWidth="md">
+      <DialogTitle sx={{ pb: 0 }}>Product Details</DialogTitle>
+
+      {product && (
+        <Tabs
+          value={activeTab}
+          onChange={(_e, value: number) => setActiveTab(value)}
+          sx={{ px: 3, borderBottom: 1, borderColor: 'divider' }}
+        >
+          <Tab label="Overview" />
+          <Tab label="Files/Documents" />
+        </Tabs>
+      )}
+
       <DialogContent>
         {!product && !error && (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -77,7 +97,9 @@ export function ProductDetailDialog({ productId, onClose }: ProductDetailDialogP
 
         {error && <Alert severity="error">{error}</Alert>}
 
-        {product && (
+        {product && activeTab === 1 && <ProductDocumentsTab productId={product.id} />}
+
+        {product && activeTab === 0 && (
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Box>
               <Typography variant="h6">{product.name}</Typography>

@@ -167,6 +167,7 @@ interface PerformanceTestFormDialogProps {
   mode: 'create' | 'edit';
   products: ApiProduct[];
   environments: ApiEnvironment[];
+  currentProductId?: string;
   initialValues?: PerformanceTestFormValues;
   onClose: () => void;
   onSubmit: (data: CreatePerformanceTestPayload) => Promise<void>;
@@ -177,6 +178,7 @@ export function PerformanceTestFormDialog({
   mode,
   products,
   environments,
+  currentProductId,
   initialValues,
   onClose,
   onSubmit,
@@ -191,7 +193,11 @@ export function PerformanceTestFormDialog({
 
   useEffect(() => {
     if (open) {
-      setValues(initialValues ?? emptyValues(products[0]?.id ?? ''));
+      const preferredProductId =
+        currentProductId && products.some((p) => p.id === currentProductId)
+          ? currentProductId
+          : (products[0]?.id ?? '');
+      setValues(initialValues ?? emptyValues(preferredProductId));
       setNameError(null);
       setUrlError(null);
       setVuError(null);
@@ -199,7 +205,7 @@ export function PerformanceTestFormDialog({
       setSubmitError(null);
       setSubmitting(false);
     }
-  }, [open, initialValues, products]);
+  }, [open, initialValues, products, currentProductId]);
 
   const noProductsAvailable = mode === 'create' && products.length === 0;
 

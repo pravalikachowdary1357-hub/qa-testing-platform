@@ -50,6 +50,58 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   return response.json() as Promise<T>;
 }
 
+// Multipart uploads: unlike apiFetch, the Content-Type must be left unset so
+// the browser can add its own multipart boundary -- forcing
+// 'application/json' (or any fixed value) here would break the upload.
+export async function apiUpload<T>(
+  path: string,
+  formData: FormData,
+  init?: { method?: string },
+): Promise<T> {
+  const headers: Record<string, string> = {
+    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+  };
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: init?.method ?? 'POST',
+    body: formData,
+    headers,
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      onUnauthorized?.();
+    }
+    throw new ApiError(await extractErrorMessage(response, path), response.status);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return response.json() as Promise<T>;
+}
+
+// Fetches binary content (a document's file bytes) as a Blob for
+// viewing/downloading in the browser, reusing the same auth/error handling
+// as apiFetch rather than a plain unauthenticated <a href>.
+export async function apiDownload(path: string): Promise<Blob> {
+  const headers: Record<string, string> = {
+    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+  };
+
+  const response = await fetch(`${API_BASE_URL}${path}`, { headers });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      onUnauthorized?.();
+    }
+    throw new ApiError(await extractErrorMessage(response, path), response.status);
+  }
+
+  return response.blob();
+}
+
 // NestJS error responses carry a human-readable `message` (string or
 // string[] from class-validator); prefer it over a generic fallback so
 // the UI can show the backend's actual explanation (e.g. a 409 conflict).

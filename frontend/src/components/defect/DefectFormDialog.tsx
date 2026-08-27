@@ -96,6 +96,7 @@ interface DefectFormDialogProps {
   testCases: ApiTestCase[];
   testScenarios: ApiTestScenario[];
   testExecutions: ApiTestExecution[];
+  currentProductId?: string;
   initialValues?: DefectFormValues;
   onClose: () => void;
   onSubmit: (data: CreateDefectPayload) => Promise<void>;
@@ -109,6 +110,7 @@ export function DefectFormDialog({
   testCases,
   testScenarios,
   testExecutions,
+  currentProductId,
   initialValues,
   onClose,
   onSubmit,
@@ -120,12 +122,16 @@ export function DefectFormDialog({
 
   useEffect(() => {
     if (open) {
-      setValues(initialValues ?? emptyValues(products[0]?.id ?? ''));
+      const preferredProductId =
+        currentProductId && products.some((p) => p.id === currentProductId)
+          ? currentProductId
+          : (products[0]?.id ?? '');
+      setValues(initialValues ?? emptyValues(preferredProductId));
       setFieldErrors({});
       setSubmitError(null);
       setSubmitting(false);
     }
-  }, [open, initialValues, products]);
+  }, [open, initialValues, products, currentProductId]);
 
   const noProductsAvailable = mode === 'create' && products.length === 0;
 

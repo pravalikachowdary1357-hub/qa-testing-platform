@@ -54,6 +54,7 @@ interface ReleaseFormDialogProps {
   mode: 'create' | 'edit';
   products: ApiProduct[];
   environments: ApiEnvironment[];
+  currentProductId?: string;
   initialValues?: ReleaseFormValues;
   onClose: () => void;
   onSubmit: (data: CreateReleasePayload & { status?: ReleaseStatus }) => Promise<void>;
@@ -64,6 +65,7 @@ export function ReleaseFormDialog({
   mode,
   products,
   environments,
+  currentProductId,
   initialValues,
   onClose,
   onSubmit,
@@ -76,13 +78,17 @@ export function ReleaseFormDialog({
 
   useEffect(() => {
     if (open) {
-      setValues(initialValues ?? emptyValues(products[0]?.id ?? ''));
+      const preferredProductId =
+        currentProductId && products.some((p) => p.id === currentProductId)
+          ? currentProductId
+          : (products[0]?.id ?? '');
+      setValues(initialValues ?? emptyValues(preferredProductId));
       setNameError(null);
       setVersionError(null);
       setSubmitError(null);
       setSubmitting(false);
     }
-  }, [open, initialValues, products]);
+  }, [open, initialValues, products, currentProductId]);
 
   const noProductsAvailable = mode === 'create' && products.length === 0;
   const statusIsEditable = EDITABLE_RELEASE_STATUSES.includes(values.status);

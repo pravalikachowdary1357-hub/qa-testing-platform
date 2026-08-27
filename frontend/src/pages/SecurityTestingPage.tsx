@@ -452,6 +452,7 @@ export function SecurityTestingPage() {
         environments={environments}
         testCases={testCases}
         testScenarios={testScenarios}
+        currentProductId={currentProduct?.id}
         initialValues={formMode === 'edit' ? (editingFormValues ?? undefined) : undefined}
         onClose={() => {
           setFormMode(null);

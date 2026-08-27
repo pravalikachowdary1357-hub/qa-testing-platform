@@ -404,6 +404,7 @@ export function RequirementsPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         products={products}
+        currentProductId={currentProduct?.id}
         initialValues={
           formMode === 'edit' && editingRequirement
             ? {

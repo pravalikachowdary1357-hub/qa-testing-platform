@@ -51,6 +51,7 @@ const ADMIN_PERMISSIONS = [
 const MODULES = {
   organizations: ['read', 'write', 'manage'],
   products: ['read', 'write', 'manage'],
+  product_documents: ['read', 'write', 'manage'],
   requirements: ['read', 'write', 'manage'],
   test_plans: ['read', 'write', 'manage'],
   test_scenarios: ['read', 'write', 'manage'],
@@ -121,6 +122,7 @@ const ROLE_GRANTS = {
   // gap.
   'QA Manager': [
     ...allKeys('requirements'),
+    ...allKeys('product_documents'),
     ...allKeys('test_plans'),
     ...allKeys('test_scenarios'),
     ...allKeys('test_cases'),
@@ -147,6 +149,7 @@ const ROLE_GRANTS = {
   // against them, not listed as an owned module).
   'Test Lead / Test Manager': [
     ...keys('requirements', 'read'),
+    ...keys('product_documents', 'read'),
     ...allKeys('test_plans'),
     ...allKeys('test_scenarios'),
     ...allKeys('test_cases'),
@@ -164,6 +167,7 @@ const ROLE_GRANTS = {
   // security or AI at this role level in the 6-role design.
   Tester: [
     ...keys('requirements', 'read'),
+    ...keys('product_documents', 'read'),
     ...keys('test_scenarios', 'read'),
     ...keys('test_cases', 'read', 'write'),
     ...keys('test_data', 'read'),
@@ -181,6 +185,7 @@ const ROLE_GRANTS = {
   // UAT and release status.
   Developer: [
     ...keys('requirements', 'read'),
+    ...keys('product_documents', 'read'),
     ...keys('test_cases', 'read'),
     ...keys('test_data', 'read'),
     ...keys('environments', 'read'),
@@ -198,6 +203,7 @@ const ROLE_GRANTS = {
   // and release readiness rather than test-case-level detail.
   'Business/Release Approver': [
     ...keys('requirements', 'read', 'write', 'manage'),
+    ...allKeys('product_documents'),
     ...keys('defects', 'read'),
     ...allKeys('uat'),
     ...allKeys('release_quality'),

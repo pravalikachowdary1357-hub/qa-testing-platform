@@ -64,6 +64,7 @@ interface RequirementFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   products: ApiProduct[];
+  currentProductId?: string;
   initialValues?: RequirementFormValues;
   onClose: () => void;
   onSubmit: (data: CreateRequirementPayload) => Promise<void>;
@@ -73,6 +74,7 @@ export function RequirementFormDialog({
   open,
   mode,
   products,
+  currentProductId,
   initialValues,
   onClose,
   onSubmit,
@@ -85,13 +87,17 @@ export function RequirementFormDialog({
 
   useEffect(() => {
     if (open) {
-      setValues(initialValues ?? emptyValues(products[0]?.id ?? ''));
+      const preferredProductId =
+        currentProductId && products.some((p) => p.id === currentProductId)
+          ? currentProductId
+          : (products[0]?.id ?? '');
+      setValues(initialValues ?? emptyValues(preferredProductId));
       setTitleError(null);
       setDescriptionError(null);
       setSubmitError(null);
       setSubmitting(false);
     }
-  }, [open, initialValues, products]);
+  }, [open, initialValues, products, currentProductId]);
 
   const noProductsAvailable = mode === 'create' && products.length === 0;
 

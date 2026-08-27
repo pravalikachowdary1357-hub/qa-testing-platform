@@ -1,8 +1,8 @@
 import { Box, Button, Typography } from '@mui/material';
-import CheckIcon from '@mui/icons-material/Check';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import qmicsLogo from '../../assets/qmics-logo.png';
 import { floatY } from '../../utils/motion';
 
 export function AboutQmicsSection() {
@@ -12,11 +12,6 @@ export function AboutQmicsSection() {
         position: 'relative',
         overflow: 'hidden',
         bgcolor: '#0B1F2A',
-        backgroundImage:
-          'radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(90deg, #2E8B99 0%, rgba(46,139,153,0) 55%)',
-        backgroundSize: '22px 22px, 100% 4px',
-        backgroundPosition: '0 0, 0 0',
-        backgroundRepeat: 'repeat, no-repeat',
       }}
     >
       <TerminalIcon
@@ -43,36 +38,12 @@ export function AboutQmicsSection() {
       />
 
       <Box sx={{ position: 'relative', maxWidth: 760, mx: 'auto', px: { xs: 3, md: 4 }, py: { xs: 8, md: 10 }, textAlign: 'center' }}>
-        <Box sx={{ position: 'relative', width: 90, height: 90, mx: 'auto', mb: 2.5 }}>
-          <Box
-            component="svg"
-            viewBox="0 0 100 100"
-            sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-          >
-            <polygon points="50,6 94,90 6,90" fill="none" stroke="#2E8B99" strokeWidth="4" strokeLinejoin="round" />
-          </Box>
-          <Box
-            sx={{
-              position: 'absolute',
-              left: '50%',
-              top: '60%',
-              transform: 'translate(-50%, -50%)',
-              width: 50,
-              height: 50,
-              borderRadius: '50%',
-              bgcolor: '#0B1F2A',
-              border: '4px solid #2E8B99',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <CheckIcon sx={{ color: '#F2B705', fontSize: 28 }} />
-          </Box>
-        </Box>
-        <Typography sx={{ fontWeight: 800, letterSpacing: 3, color: '#4FB3C2', fontSize: '0.95rem', mb: 4 }}>
-          QMICS
-        </Typography>
+        <Box
+          component="img"
+          src={qmicsLogo}
+          alt="QMICS"
+          sx={{ width: 120, height: 'auto', mx: 'auto', mb: 4, display: 'block' }}
+        />
 
         <Typography variant="h4" sx={{ fontWeight: 800, color: '#fff', mb: 1.5, fontSize: { xs: '1.6rem', md: '2rem' } }}>
           About QMICS Solutions

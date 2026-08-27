@@ -3,7 +3,7 @@ import { Box, Grid, Typography } from '@mui/material';
 const STATS = [
   { value: '7', label: 'stages in the traceability chain' },
   { value: '6', label: 'built-in roles, Tester to System Administrator' },
-  { value: '19', label: 'integrated testing modules' },
+  { value: '14', label: 'integrated testing modules' },
   { value: 'Session · RBAC', label: 'protecting every session and route' },
 ];
 

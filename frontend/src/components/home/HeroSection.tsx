@@ -2,27 +2,33 @@ import { Box, Button, Chip, Paper, Stack, Typography } from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutlined';
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import ChecklistIcon from '@mui/icons-material/Checklist';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import PlayCircleIcon from '@mui/icons-material/PlayCircle';
 import BugReportIcon from '@mui/icons-material/BugReport';
+import ReplayIcon from '@mui/icons-material/Replay';
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import HistoryIcon from '@mui/icons-material/History';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import { Link as RouterLink } from 'react-router-dom';
 
 const CHAIN_STEPS = [
-  { label: 'Requirement raised', icon: AssignmentIcon, tone: '#EF6C00' },
-  { label: 'Test case written', icon: FactCheckIcon, tone: '#EF6C00' },
-  { label: 'Execution run', icon: PlayCircleIcon, tone: '#EF6C00' },
-  { label: 'Defect logged', icon: BugReportIcon, tone: '#EF6C00' },
-  { label: 'Release scored', icon: RocketLaunchIcon, tone: '#00897B', done: true },
+  { label: 'Requirement', icon: AssignmentIcon, tone: '#EF6C00' },
+  { label: 'Test Scenario', icon: ChecklistIcon, tone: '#EF6C00' },
+  { label: 'Test Case', icon: FactCheckIcon, tone: '#EF6C00' },
+  { label: 'Test Execution', icon: PlayCircleIcon, tone: '#EF6C00' },
+  { label: 'Defect', icon: BugReportIcon, tone: '#EF6C00' },
+  { label: 'Retest', icon: ReplayIcon, tone: '#EF6C00' },
+  { label: 'Release', icon: RocketLaunchIcon, tone: '#00897B', done: true },
 ];
 
 const TRUST_BADGES = [
   { label: 'Session + RBAC secured', icon: ShieldOutlinedIcon },
   { label: 'Full audit trail', icon: HistoryIcon },
-  { label: '19 integrated modules', icon: AccountTreeIcon },
+  { label: 'End-to-end traceability', icon: AccountTreeIcon },
+  { label: 'Complete QA lifecycle', icon: TaskAltIcon },
 ];
 
 export function HeroSection() {
@@ -52,8 +58,8 @@ export function HeroSection() {
             <Box component="span" sx={{ color: '#B45309' }}>entire test lifecycle.</Box>
           </Typography>
           <Typography variant="h6" color="text.secondary" sx={{ mb: 4, fontWeight: 400, maxWidth: 560 }}>
-            Requirements, test cases, executions, defects, and release sign-off — connected end to end, so quality
-            status is a query, not a spreadsheet.
+            Requirements, test planning, test cases, executions, defects, UAT, automation, and release quality —
+            connected end to end.
           </Typography>
 
           <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap', gap: 2, mb: 4 }}>
@@ -104,7 +110,7 @@ export function HeroSection() {
             }}
           >
             <Typography variant="overline" color="secondary" sx={{ fontWeight: 800, letterSpacing: 1 }}>
-              The Traceability Chain
+              The TestSphere Lifecycle
             </Typography>
             <Stack sx={{ mt: 2, position: 'relative' }}>
               <Box

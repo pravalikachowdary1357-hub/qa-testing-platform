@@ -2,32 +2,34 @@ import { Box, Grid, Paper, Typography } from '@mui/material';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import TuneIcon from '@mui/icons-material/Tune';
+import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
+import GavelIcon from '@mui/icons-material/Gavel';
 
 const PRINCIPLES = [
   {
-    title: 'Traceability by design',
-    description:
-      'The core value loop — Requirement → Scenario → Case → Execution → Defect → Retest → Release — drives the data model itself, not an afterthought bolted onto a generic issue tracker.',
+    title: 'Traceability by Design',
+    description: 'Testing artifacts remain connected throughout the lifecycle.',
     icon: AccountTreeIcon,
   },
   {
-    title: 'Compliance from day one',
-    description:
-      'Every module carries a real audit trail and role-based permissions in the data layer itself, because retrofitting compliance later is expensive — and risky.',
+    title: 'Compliance from Day One',
+    description: 'RBAC, approvals, audit history, and accountability are built into the platform.',
     icon: VerifiedUserIcon,
   },
   {
-    title: 'AI as a layer, never a dependency',
-    description:
-      'AI features sit on top of a stable data model and stay strictly opt-in — the core test lifecycle works completely without them.',
+    title: 'Complete QA Lifecycle',
+    description: 'Manual, automation, API, performance, security, and UAT testing work together.',
+    icon: WorkspacePremiumIcon,
+  },
+  {
+    title: 'AI as an Assistant',
+    description: 'AI supports QA teams while the core testing platform works independently.',
     icon: AutoAwesomeIcon,
   },
   {
-    title: 'Practical, not exhaustive',
-    description:
-      'Six roles, not ten. Every permission maps to what a person actually does inside a module, not just what they’re allowed to look at.',
-    icon: TuneIcon,
+    title: 'Release Decisions Based on Evidence',
+    description: 'Quality decisions come from actual testing data rather than spreadsheets.',
+    icon: GavelIcon,
   },
 ];
 
@@ -37,14 +39,10 @@ export function WhyChooseSection() {
       <Box sx={{ maxWidth: 1280, mx: 'auto', px: { xs: 2, md: 4 } }}>
         <Box sx={{ textAlign: 'center', maxWidth: 720, mx: 'auto', mb: 6 }}>
           <Typography variant="overline" color="secondary" sx={{ fontWeight: 800, letterSpacing: 1 }}>
-            Why choose us
+            Why TestSphere
           </Typography>
           <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, fontSize: { xs: '1.75rem', md: '2.25rem' } }}>
             Principles the build itself is held to
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            These aren&apos;t marketing lines — they&apos;re the guiding principles behind how TestSphere is designed
-            and built.
           </Typography>
         </Box>
 
@@ -52,7 +50,7 @@ export function WhyChooseSection() {
           {PRINCIPLES.map((p) => {
             const Icon = p.icon;
             return (
-              <Grid key={p.title} size={{ xs: 12, sm: 6 }}>
+              <Grid key={p.title} size={{ xs: 12, sm: 6, md: 4 }}>
                 <Paper variant="outlined" sx={{ p: 3, height: '100%', borderRadius: 3 }}>
                   <Box
                     sx={{

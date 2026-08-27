@@ -55,6 +55,7 @@ interface EnvironmentFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   products: ApiProduct[];
+  currentProductId?: string;
   initialValues?: EnvironmentFormValues;
   onClose: () => void;
   onSubmit: (data: CreateEnvironmentPayload) => Promise<void>;
@@ -64,6 +65,7 @@ export function EnvironmentFormDialog({
   open,
   mode,
   products,
+  currentProductId,
   initialValues,
   onClose,
   onSubmit,
@@ -75,12 +77,16 @@ export function EnvironmentFormDialog({
 
   useEffect(() => {
     if (open) {
-      setValues(initialValues ?? emptyValues(products[0]?.id ?? ''));
+      const preferredProductId =
+        currentProductId && products.some((p) => p.id === currentProductId)
+          ? currentProductId
+          : (products[0]?.id ?? '');
+      setValues(initialValues ?? emptyValues(preferredProductId));
       setNameError(null);
       setSubmitError(null);
       setSubmitting(false);
     }
-  }, [open, initialValues, products]);
+  }, [open, initialValues, products, currentProductId]);
 
   const noProductsAvailable = mode === 'create' && products.length === 0;
 

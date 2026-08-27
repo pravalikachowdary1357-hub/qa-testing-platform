@@ -363,6 +363,7 @@ export function PerformanceTestingPage() {
         mode={formMode ?? 'create'}
         products={products}
         environments={environments}
+        currentProductId={currentProduct?.id}
         initialValues={formMode === 'edit' ? (editingFormValues ?? undefined) : undefined}
         onClose={() => {
           setFormMode(null);

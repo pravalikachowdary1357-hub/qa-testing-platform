@@ -439,6 +439,7 @@ export function ReleaseQualityPage() {
         mode={formMode ?? 'create'}
         products={products}
         environments={environments}
+        currentProductId={currentProduct?.id}
         initialValues={formMode === 'edit' && editingRelease ? releaseToFormValues(editingRelease) : undefined}
         onClose={() => {
           setFormMode(null);

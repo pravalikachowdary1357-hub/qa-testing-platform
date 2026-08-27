@@ -19,11 +19,11 @@ export function HowItWorksSection() {
             How it works
           </Typography>
           <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, fontSize: { xs: '1.75rem', md: '2.25rem' } }}>
-            One chain, seven stages, zero blind spots
+            The TestSphere Lifecycle
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Every entity in TestSphere links back to the last one, so you can walk from any requirement all the way
-            to the release it shipped in — and back again.
+            Requirement → Test Scenario → Test Case → Test Execution → Defect → Retest → Release. Every stage remains
+            connected so teams can trace quality from the original requirement through release.
           </Typography>
         </Box>
 

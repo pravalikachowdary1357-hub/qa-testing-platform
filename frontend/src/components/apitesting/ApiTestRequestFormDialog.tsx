@@ -196,6 +196,7 @@ interface ApiTestRequestFormDialogProps {
   mode: 'create' | 'edit';
   products: ApiProduct[];
   environments: ApiEnvironment[];
+  currentProductId?: string;
   initialValues?: ApiTestRequestFormValues;
   onClose: () => void;
   onSubmit: (data: CreateApiTestRequestPayload) => Promise<void>;
@@ -206,6 +207,7 @@ export function ApiTestRequestFormDialog({
   mode,
   products,
   environments,
+  currentProductId,
   initialValues,
   onClose,
   onSubmit,
@@ -223,7 +225,11 @@ export function ApiTestRequestFormDialog({
 
   useEffect(() => {
     if (open) {
-      setValues(initialValues ?? emptyValues(products[0]?.id ?? ''));
+      const preferredProductId =
+        currentProductId && products.some((p) => p.id === currentProductId)
+          ? currentProductId
+          : (products[0]?.id ?? '');
+      setValues(initialValues ?? emptyValues(preferredProductId));
       setNameError(null);
       setUrlError(null);
       setTokenError(null);
@@ -234,7 +240,7 @@ export function ApiTestRequestFormDialog({
       setSubmitError(null);
       setSubmitting(false);
     }
-  }, [open, initialValues, products]);
+  }, [open, initialValues, products, currentProductId]);
 
   const noProductsAvailable = mode === 'create' && products.length === 0;
 
