@@ -41,6 +41,7 @@ import {
   updateRequirement,
 } from '../api/requirements';
 import { fetchProducts } from '../api/products';
+import { fetchReleases } from '../api/release';
 import { ApiError } from '../api/client';
 import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
@@ -55,6 +56,7 @@ import type {
   RequirementType,
 } from '../types/requirement';
 import type { ApiProduct } from '../types/product';
+import type { ApiRelease } from '../types/release';
 
 const TYPE_LABELS: Record<ApiRequirementType, RequirementType> = {
   FUNCTIONAL: 'Functional',
@@ -93,6 +95,7 @@ export function RequirementsPage() {
   const { currentProduct } = useProductContext();
   const [requirements, setRequirements] = useState<ApiRequirement[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
+  const [releases, setReleases] = useState<ApiRelease[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -149,6 +152,14 @@ export function RequirementsPage() {
         // The product list only feeds the create/edit dropdown; a failure
         // here surfaces naturally as "no products available" in the form
         // rather than blocking the requirements list itself.
+      });
+
+    fetchReleases()
+      .then((data) => {
+        if (!cancelled) setReleases(data);
+      })
+      .catch(() => {
+        // Only feeds the optional Release picker in the create/edit form.
       });
 
     return () => {
@@ -449,11 +460,13 @@ export function RequirementsPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         products={products}
+        releases={releases}
         currentProductId={currentProduct?.id}
         initialValues={
           formMode === 'edit' && editingRequirement
             ? {
                 productId: editingRequirement.productId,
+                releaseId: editingRequirement.releaseId ?? '',
                 title: editingRequirement.title,
                 description: editingRequirement.description,
                 type: editingRequirement.type,

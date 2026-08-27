@@ -7,6 +7,10 @@ export class CreateDefectDto {
 
   @IsOptional()
   @IsUUID()
+  releaseId?: string;
+
+  @IsOptional()
+  @IsUUID()
   environmentId?: string;
 
   @IsOptional()

@@ -16,6 +16,10 @@ export class UpdateProductDocumentDto {
   description?: string;
 
   @IsOptional()
+  @IsString()
+  relatedVersion?: string;
+
+  @IsOptional()
   @IsEnum(ProductDocumentStatus)
   status?: ProductDocumentStatus;
 }

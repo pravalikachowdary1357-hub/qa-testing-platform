@@ -121,12 +121,14 @@ export function ProductDocumentsTab({ productId }: ProductDocumentsTabProps) {
     file: File;
     documentType: ApiProductDocumentType;
     description: string;
+    relatedVersion: string;
     status: ApiProductDocumentStatus;
   }) => {
     await uploadProductDocument({
       productId,
       documentType: values.documentType,
       description: values.description || undefined,
+      relatedVersion: values.relatedVersion || undefined,
       status: values.status,
       file: values.file,
     });
@@ -134,11 +136,17 @@ export function ProductDocumentsTab({ productId }: ProductDocumentsTabProps) {
     setSnackbar({ message: 'File uploaded.', severity: 'success' });
   };
 
-  const handleReplace = async (values: { file: File; description: string; status: ApiProductDocument['status'] }) => {
+  const handleReplace = async (values: {
+    file: File;
+    description: string;
+    relatedVersion: string;
+    status: ApiProductDocument['status'];
+  }) => {
     if (!replacingDocument) return;
     await replaceProductDocumentFile(replacingDocument.id, {
       file: values.file,
       description: values.description || undefined,
+      relatedVersion: values.relatedVersion || undefined,
       status: values.status,
     });
     await loadDocuments();
@@ -235,6 +243,7 @@ export function ProductDocumentsTab({ productId }: ProductDocumentsTabProps) {
                 <TableCell>File Name</TableCell>
                 <TableCell>Document Type</TableCell>
                 <TableCell>Version</TableCell>
+                <TableCell>Related Version</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Uploaded By</TableCell>
                 <TableCell>Uploaded</TableCell>
@@ -255,6 +264,7 @@ export function ProductDocumentsTab({ productId }: ProductDocumentsTabProps) {
                   </TableCell>
                   <TableCell>{DOCUMENT_TYPE_LABELS[doc.documentType]}</TableCell>
                   <TableCell>v{doc.version}</TableCell>
+                  <TableCell>{doc.relatedVersion || '—'}</TableCell>
                   <TableCell>
                     <StatusChip status={DOCUMENT_STATUS_LABELS[doc.status]} />
                   </TableCell>

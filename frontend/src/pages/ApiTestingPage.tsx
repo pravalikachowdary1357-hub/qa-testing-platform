@@ -47,6 +47,7 @@ import {
 } from '../api/apiTesting';
 import { fetchProducts } from '../api/products';
 import { fetchEnvironments } from '../api/environments';
+import { fetchReleases } from '../api/release';
 import { ApiError } from '../api/client';
 import { useProductContext } from '../context/ProductContext';
 import type {
@@ -56,6 +57,7 @@ import type {
 } from '../types/apiTesting';
 import type { ApiProduct } from '../types/product';
 import type { ApiEnvironment } from '../types/environment';
+import type { ApiRelease } from '../types/release';
 
 // HTTP methods are not a status/severity concept, so this color mapping is
 // kept local to this page rather than added to the shared StatusChip.
@@ -91,6 +93,7 @@ export function ApiTestingPage() {
   const [requests, setRequests] = useState<ApiTestRequestListItem[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [environments, setEnvironments] = useState<ApiEnvironment[]>([]);
+  const [releases, setReleases] = useState<ApiRelease[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -154,6 +157,14 @@ export function ApiTestingPage() {
       })
       .catch(() => {
         // Only feeds the create/edit dropdown and the filter bar.
+      });
+
+    fetchReleases()
+      .then((data) => {
+        if (!cancelled) setReleases(data);
+      })
+      .catch(() => {
+        // Only feeds the optional Release picker in the create/edit form.
       });
 
     return () => {
@@ -436,6 +447,7 @@ export function ApiTestingPage() {
         mode={formMode ?? 'create'}
         products={products}
         environments={environments}
+        releases={releases}
         currentProductId={currentProduct?.id}
         initialValues={formMode === 'edit' ? (editingFormValues ?? undefined) : undefined}
         onClose={() => {

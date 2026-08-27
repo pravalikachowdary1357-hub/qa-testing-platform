@@ -19,6 +19,10 @@ export class UpdatePerformanceTestDto {
 
   @IsOptional()
   @IsUUID()
+  releaseId?: string;
+
+  @IsOptional()
+  @IsUUID()
   environmentId?: string;
 
   @IsOptional()

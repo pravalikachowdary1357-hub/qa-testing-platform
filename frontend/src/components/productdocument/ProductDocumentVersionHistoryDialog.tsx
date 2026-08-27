@@ -121,6 +121,12 @@ export function ProductDocumentVersionHistoryDialog({
                       {entry.fileName} · {formatFileSize(entry.fileSize)}
                       <br />
                       Uploaded by {entry.uploadedBy} on {new Date(entry.uploadedAt).toLocaleString()}
+                      {entry.relatedVersion && (
+                        <>
+                          <br />
+                          Related version: {entry.relatedVersion}
+                        </>
+                      )}
                       {entry.description && (
                         <>
                           <br />

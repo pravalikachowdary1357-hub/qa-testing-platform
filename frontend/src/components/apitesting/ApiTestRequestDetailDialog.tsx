@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  Link,
   Paper,
   Stack,
   Table,
@@ -21,6 +22,7 @@ import {
 import SendIcon from '@mui/icons-material/Send';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import { ProductDetailDialog } from '../product/ProductDetailDialog';
 import { executeApiTestRequest, fetchApiTestRequest } from '../../api/apiTesting';
 import { ApiError } from '../../api/client';
 import type { ApiTestExecution, ApiTestRequest } from '../../types/apiTesting';
@@ -72,6 +74,7 @@ export function ApiTestRequestDetailDialog({
 }: ApiTestRequestDetailDialogProps) {
   const [request, setRequest] = useState<ApiTestRequest | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [viewingProductId, setViewingProductId] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
@@ -154,7 +157,16 @@ export function ApiTestRequestDetailDialog({
             <Box>
               <Typography variant="h6">{request.name}</Typography>
               <Typography variant="body2" color="text.secondary">
-                {request.product.name}
+                <Link
+                  component="button"
+                  type="button"
+                  variant="body2"
+                  color="text.secondary"
+                  underline="hover"
+                  onClick={() => setViewingProductId(request.productId)}
+                >
+                  {request.product.name}
+                </Link>
                 {request.environment ? ` · ${request.environment.name}` : ''}
               </Typography>
             </Box>
@@ -316,6 +328,17 @@ export function ApiTestRequestDetailDialog({
               </Paper>
             )}
 
+            {request.release && (
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Release
+                </Typography>
+                <Typography variant="body2">
+                  {request.release.name} ({request.release.version})
+                </Typography>
+              </Box>
+            )}
+
             <Stack direction="row" spacing={4}>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
@@ -375,6 +398,8 @@ export function ApiTestRequestDetailDialog({
           </Stack>
         )}
       </DialogContent>
+
+      <ProductDetailDialog productId={viewingProductId} onClose={() => setViewingProductId(null)} />
     </Dialog>
   );
 }

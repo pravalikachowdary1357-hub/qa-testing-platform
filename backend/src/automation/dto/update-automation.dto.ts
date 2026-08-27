@@ -11,6 +11,10 @@ export class UpdateAutomationDto {
   environmentId?: string;
 
   @IsOptional()
+  @IsUUID()
+  releaseId?: string;
+
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
   name?: string;

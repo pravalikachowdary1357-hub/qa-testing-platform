@@ -18,6 +18,10 @@ export class UpdateTestCaseDto {
   testScenarioId?: string;
 
   @IsOptional()
+  @IsUUID()
+  releaseId?: string;
+
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
   title?: string;

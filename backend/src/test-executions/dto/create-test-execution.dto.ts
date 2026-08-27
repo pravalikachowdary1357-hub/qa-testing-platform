@@ -10,6 +10,10 @@ export class CreateTestExecutionDto {
 
   @IsOptional()
   @IsUUID()
+  releaseId?: string;
+
+  @IsOptional()
+  @IsUUID()
   testDataId?: string;
 
   @IsOptional()

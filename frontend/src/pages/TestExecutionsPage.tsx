@@ -41,6 +41,7 @@ import { fetchTestCases } from '../api/testCases';
 import { fetchTestScenarios } from '../api/testScenarios';
 import { fetchEnvironments } from '../api/environments';
 import { fetchTestDataList } from '../api/testData';
+import { fetchReleases } from '../api/release';
 import { ApiError } from '../api/client';
 import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
@@ -54,6 +55,7 @@ import type { ApiTestCase } from '../types/testCase';
 import type { ApiTestScenario } from '../types/testScenario';
 import type { ApiEnvironment } from '../types/environment';
 import type { ApiTestDataListItem } from '../types/testData';
+import type { ApiRelease } from '../types/release';
 
 const STATUS_LABELS: Record<ApiTestExecutionStatus, TestExecutionStatus> = {
   PENDING: 'Pending',
@@ -79,6 +81,7 @@ export function TestExecutionsPage() {
   const [testScenarios, setTestScenarios] = useState<ApiTestScenario[]>([]);
   const [environments, setEnvironments] = useState<ApiEnvironment[]>([]);
   const [testDataList, setTestDataList] = useState<ApiTestDataListItem[]>([]);
+  const [releases, setReleases] = useState<ApiRelease[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -147,6 +150,12 @@ export function TestExecutionsPage() {
     fetchTestDataList(currentProduct?.id)
       .then((data) => {
         if (!cancelled) setTestDataList(data);
+      })
+      .catch(() => {});
+
+    fetchReleases()
+      .then((data) => {
+        if (!cancelled) setReleases(data);
       })
       .catch(() => {});
 
@@ -425,12 +434,14 @@ export function TestExecutionsPage() {
         testScenarios={testScenarios}
         environments={environments}
         testDataList={testDataList}
+        releases={releases}
         initialValues={
           formMode === 'edit' && editingExecution
             ? {
                 testCaseId: editingExecution.testCaseId,
                 environmentId: editingExecution.environmentId,
                 testDataId: editingExecution.testDataId ?? '',
+                releaseId: editingExecution.releaseId ?? '',
                 status: editingExecution.status,
                 actualResult: editingExecution.actualResult ?? '',
                 notes: editingExecution.notes ?? '',

@@ -1,3 +1,5 @@
+import type { ApiReleaseRef } from './release';
+
 // HTTP methods read fine as-is in the UI, so no separate human-label union
 // is needed for them (unlike most other enums in this codebase).
 export type ApiHttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -48,6 +50,7 @@ export interface ApiTestRequestListItem {
   id: string;
   productId: string;
   environmentId: string | null;
+  releaseId: string | null;
   name: string;
   method: ApiHttpMethod;
   url: string;
@@ -60,6 +63,7 @@ export interface ApiTestRequestListItem {
   updatedAt: string;
   product: ApiTestRequestProductRef;
   environment: ApiTestRequestEnvironmentRef | null;
+  release: ApiReleaseRef | null;
   lastExecution: ApiTestExecutionSummary | null;
 }
 
@@ -71,6 +75,7 @@ export interface ApiTestRequest extends ApiTestRequestListItem {
 export interface CreateApiTestRequestPayload {
   productId: string;
   environmentId?: string;
+  releaseId?: string;
   name: string;
   method?: ApiHttpMethod;
   url: string;

@@ -323,6 +323,10 @@ model Product {
   status           ProductStatus    @default(ACTIVE)
   environment      String
   release          String
+  applicationUrl   String?          @map("application_url")
+  repositoryUrl    String?          @map("repository_url")
+  productOwnerId   String?          @map("product_owner_id")
+  currentVersion   String?          @map("current_version")
   testCoverage     Int              @map("test_coverage")
   passRate         Int              @map("pass_rate")
   openDefects      Int              @default(0) @map("open_defects")
@@ -330,11 +334,12 @@ model Product {
   createdAt        DateTime         @default(now()) @map("created_at")
   updatedAt        DateTime         @updatedAt @map("updated_at")
 
-  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  requirements    Requirement[]
-  testPlans       TestPlan[]
-  testScenarios   TestScenario[]
-  environments    Environment[]
+  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  productOwner     User?               @relation("ProductOwner", fields: [productOwnerId], references: [id], onDelete: SetNull)
+  requirements     Requirement[]
+  testPlans        TestPlan[]
+  testScenarios    TestScenario[]
+  environments     Environment[]
   defects          Defect[]
   apiTestRequests  ApiTestRequest[]
   performanceTests PerformanceTest[]
@@ -343,27 +348,63 @@ model Product {
   releases         Release[]
   aiSuggestions    AiSuggestion[]
   documents        ProductDocument[]
+  components       ProductComponent[]
+  teamMembers      ProductTeamMember[]
 
   @@index([organizationId])
+  @@index([productOwnerId])
   @@map("products")
 }
 
-model ProductDocument {
-  id           String                 @id @default(uuid())
-  productId    String                 @map("product_id")
-  documentType ProductDocumentType    @map("document_type")
-  fileName     String                 @map("file_name")
-  mimeType     String                 @map("mime_type")
-  fileSize     Int                    @map("file_size")
-  content      Bytes
-  version      Int                    @default(1)
-  description  String?
-  status       ProductDocumentStatus  @default(DRAFT)
-  uploadedBy   String                 @map("uploaded_by")
-  createdAt    DateTime               @default(now()) @map("created_at")
-  updatedAt    DateTime               @updatedAt @map("updated_at")
+model ProductComponent {
+  id          String   @id @default(uuid())
+  productId   String   @map("product_id")
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  product  Product                   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_components")
+}
+
+// Real users assigned to a product's testing team, with a free-text
+// role-on-this-product label (distinct from the system-wide Role model --
+// "Lead Tester on Product X" is not the same concept as an RBAC role).
+model ProductTeamMember {
+  id             String   @id @default(uuid())
+  productId      String   @map("product_id")
+  userId         String   @map("user_id")
+  responsibility String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User    @relation("ProductTeamMembership", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, userId])
+  @@index([productId])
+  @@index([userId])
+  @@map("product_team_members")
+}
+
+model ProductDocument {
+  id             String                @id @default(uuid())
+  productId      String                @map("product_id")
+  documentType   ProductDocumentType   @map("document_type")
+  fileName       String                @map("file_name")
+  mimeType       String                @map("mime_type")
+  fileSize       Int                   @map("file_size")
+  content        Bytes
+  version        Int                   @default(1)
+  description    String?
+  relatedVersion String?               @map("related_version")
+  status         ProductDocumentStatus @default(DRAFT)
+  uploadedBy     String                @map("uploaded_by")
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
+
+  product  Product                  @relation(fields: [productId], references: [id], onDelete: Restrict)
   versions ProductDocumentVersion[]
 
   @@index([productId])
@@ -374,17 +415,18 @@ model ProductDocument {
 // superseded by a "Replace" upload -- created alongside (not instead of) the
 // live update, so the current document row always reflects the latest file.
 model ProductDocumentVersion {
-  id          String                 @id @default(uuid())
-  documentId  String                 @map("document_id")
-  version     Int
-  fileName    String                 @map("file_name")
-  mimeType    String                 @map("mime_type")
-  fileSize    Int                    @map("file_size")
-  content     Bytes
-  description String?
-  status      ProductDocumentStatus
-  uploadedBy  String                 @map("uploaded_by")
-  createdAt   DateTime               @map("created_at")
+  id             String                @id @default(uuid())
+  documentId     String                @map("document_id")
+  version        Int
+  fileName       String                @map("file_name")
+  mimeType       String                @map("mime_type")
+  fileSize       Int                   @map("file_size")
+  content        Bytes
+  description    String?
+  relatedVersion String?               @map("related_version")
+  status         ProductDocumentStatus
+  uploadedBy     String                @map("uploaded_by")
+  createdAt      DateTime              @map("created_at")
 
   document ProductDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
@@ -395,6 +437,7 @@ model ProductDocumentVersion {
 model Requirement {
   id          String              @id @default(uuid())
   productId   String              @map("product_id")
+  releaseId   String?             @map("release_id")
   title       String
   description String
   type        RequirementType     @default(FUNCTIONAL)
@@ -404,17 +447,20 @@ model Requirement {
   updatedAt   DateTime            @updatedAt @map("updated_at")
 
   product       Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  release       Release?       @relation(fields: [releaseId], references: [id], onDelete: SetNull)
   testPlans     TestPlan[]     @relation("TestPlanRequirements")
   testScenarios TestScenario[]
   uatTestCases  UatTestCase[]
 
   @@index([productId])
+  @@index([releaseId])
   @@map("requirements")
 }
 
 model TestPlan {
   id          String           @id @default(uuid())
   productId   String           @map("product_id")
+  releaseId   String?          @map("release_id")
   name        String
   description String
   status      TestPlanStatus   @default(DRAFT)
@@ -426,15 +472,18 @@ model TestPlan {
   updatedAt   DateTime         @updatedAt @map("updated_at")
 
   product      Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  release      Release?      @relation(fields: [releaseId], references: [id], onDelete: SetNull)
   requirements Requirement[] @relation("TestPlanRequirements")
 
   @@index([productId])
+  @@index([releaseId])
   @@map("test_plans")
 }
 
 model TestScenario {
   id            String               @id @default(uuid())
   productId     String               @map("product_id")
+  releaseId     String?              @map("release_id")
   requirementId String?              @map("requirement_id")
   title         String
   description   String
@@ -445,10 +494,12 @@ model TestScenario {
   updatedAt     DateTime             @updatedAt @map("updated_at")
 
   product     Product      @relation(fields: [productId], references: [id], onDelete: Restrict)
+  release     Release?     @relation(fields: [releaseId], references: [id], onDelete: SetNull)
   requirement Requirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
   testCases   TestCase[]
 
   @@index([productId])
+  @@index([releaseId])
   @@index([requirementId])
   @@map("test_scenarios")
 }
@@ -456,6 +507,7 @@ model TestScenario {
 model TestCase {
   id             String           @id @default(uuid())
   testScenarioId String           @map("test_scenario_id")
+  releaseId      String?          @map("release_id")
   title          String
   description    String
   preconditions  String?
@@ -466,6 +518,7 @@ model TestCase {
   updatedAt      DateTime         @updatedAt @map("updated_at")
 
   testScenario   TestScenario    @relation(fields: [testScenarioId], references: [id], onDelete: Restrict)
+  release        Release?        @relation(fields: [releaseId], references: [id], onDelete: SetNull)
   steps          TestCaseStep[]
   testData       TestData[]
   testExecutions TestExecution[]
@@ -474,6 +527,7 @@ model TestCase {
   securityTests  SecurityTest[]
 
   @@index([testScenarioId])
+  @@index([releaseId])
   @@map("test_cases")
 }
 
@@ -538,6 +592,7 @@ model TestExecution {
   testCaseId    String              @map("test_case_id")
   environmentId String              @map("environment_id")
   testDataId    String?             @map("test_data_id")
+  releaseId     String?             @map("release_id")
   status        TestExecutionStatus @default(PENDING)
   actualResult  String?             @map("actual_result")
   notes         String?
@@ -546,14 +601,16 @@ model TestExecution {
   createdAt     DateTime            @default(now()) @map("created_at")
   updatedAt     DateTime            @updatedAt @map("updated_at")
 
-  testCase    TestCase     @relation(fields: [testCaseId], references: [id], onDelete: Restrict)
-  environment Environment  @relation(fields: [environmentId], references: [id], onDelete: Restrict)
-  testData    TestData?    @relation(fields: [testDataId], references: [id], onDelete: SetNull)
+  testCase    TestCase    @relation(fields: [testCaseId], references: [id], onDelete: Restrict)
+  environment Environment @relation(fields: [environmentId], references: [id], onDelete: Restrict)
+  testData    TestData?   @relation(fields: [testDataId], references: [id], onDelete: SetNull)
+  release     Release?    @relation(fields: [releaseId], references: [id], onDelete: SetNull)
   defects     Defect[]
 
   @@index([testCaseId])
   @@index([environmentId])
   @@index([testDataId])
+  @@index([releaseId])
   @@map("test_executions")
 }
 
@@ -563,6 +620,7 @@ model Defect {
   environmentId    String?        @map("environment_id")
   testCaseId       String?        @map("test_case_id")
   testExecutionId  String?        @map("test_execution_id")
+  releaseId        String?        @map("release_id")
   title            String
   description      String
   stepsToReproduce String         @map("steps_to_reproduce")
@@ -579,12 +637,14 @@ model Defect {
   environment   Environment?   @relation(fields: [environmentId], references: [id], onDelete: SetNull)
   testCase      TestCase?      @relation(fields: [testCaseId], references: [id], onDelete: SetNull)
   testExecution TestExecution? @relation(fields: [testExecutionId], references: [id], onDelete: SetNull)
+  release       Release?       @relation(fields: [releaseId], references: [id], onDelete: SetNull)
   uatExecutions UatExecution[]
 
   @@index([productId])
   @@index([environmentId])
   @@index([testCaseId])
   @@index([testExecutionId])
+  @@index([releaseId])
   @@map("defects")
 }
 
@@ -592,6 +652,7 @@ model Automation {
   id            String              @id @default(uuid())
   testCaseId    String              @map("test_case_id")
   environmentId String?             @map("environment_id")
+  releaseId     String?             @map("release_id")
   name          String
   type          AutomationType      @default(UI)
   framework     AutomationFramework @default(PLAYWRIGHT)
@@ -606,10 +667,12 @@ model Automation {
 
   testCase    TestCase        @relation(fields: [testCaseId], references: [id], onDelete: Restrict)
   environment Environment?    @relation(fields: [environmentId], references: [id], onDelete: SetNull)
+  release     Release?        @relation(fields: [releaseId], references: [id], onDelete: SetNull)
   runs        AutomationRun[]
 
   @@index([testCaseId])
   @@index([environmentId])
+  @@index([releaseId])
   @@map("automations")
 }
 
@@ -633,6 +696,7 @@ model ApiTestRequest {
   id             String      @id @default(uuid())
   productId      String      @map("product_id")
   environmentId  String?     @map("environment_id")
+  releaseId      String?     @map("release_id")
   name           String
   method         HttpMethod  @default(GET)
   url            String
@@ -647,10 +711,12 @@ model ApiTestRequest {
 
   product     Product            @relation(fields: [productId], references: [id], onDelete: Restrict)
   environment Environment?       @relation(fields: [environmentId], references: [id], onDelete: SetNull)
+  release     Release?           @relation(fields: [releaseId], references: [id], onDelete: SetNull)
   executions  ApiTestExecution[]
 
   @@index([productId])
   @@index([environmentId])
+  @@index([releaseId])
   @@map("api_test_requests")
 }
 
@@ -672,33 +738,36 @@ model ApiTestExecution {
 }
 
 model PerformanceTest {
-  id                        String     @id @default(uuid())
-  productId                 String     @map("product_id")
-  environmentId             String?    @map("environment_id")
+  id                        String                @id @default(uuid())
+  productId                 String                @map("product_id")
+  environmentId             String?               @map("environment_id")
+  releaseId                 String?               @map("release_id")
   name                      String
   description               String?
-  targetUrl                 String     @map("target_url")
-  method                    HttpMethod @default(GET)
+  targetUrl                 String                @map("target_url")
+  method                    HttpMethod            @default(GET)
   headers                   Json?
   body                      String?
-  virtualUsers              Int        @map("virtual_users")
-  rampUpSeconds             Int        @map("ramp_up_seconds")
-  durationSeconds           Int        @map("duration_seconds")
+  virtualUsers              Int                   @map("virtual_users")
+  rampUpSeconds             Int                   @map("ramp_up_seconds")
+  durationSeconds           Int                   @map("duration_seconds")
   iterations                Int?
-  thresholdResponseTimeMs   Int?       @map("threshold_response_time_ms")
-  thresholdErrorRatePercent Float?     @map("threshold_error_rate_percent")
-  thresholdThroughputRps    Float?     @map("threshold_throughput_rps")
+  thresholdResponseTimeMs   Int?                  @map("threshold_response_time_ms")
+  thresholdErrorRatePercent Float?                @map("threshold_error_rate_percent")
+  thresholdThroughputRps    Float?                @map("threshold_throughput_rps")
   lastRunStatus             PerformanceRunStatus? @map("last_run_status")
-  lastRunAt                 DateTime?  @map("last_run_at")
-  createdAt                 DateTime   @default(now()) @map("created_at")
-  updatedAt                 DateTime   @updatedAt @map("updated_at")
+  lastRunAt                 DateTime?             @map("last_run_at")
+  createdAt                 DateTime              @default(now()) @map("created_at")
+  updatedAt                 DateTime              @updatedAt @map("updated_at")
 
   product     Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
   environment Environment?         @relation(fields: [environmentId], references: [id], onDelete: SetNull)
+  release     Release?             @relation(fields: [releaseId], references: [id], onDelete: SetNull)
   runs        PerformanceTestRun[]
 
   @@index([productId])
   @@index([environmentId])
+  @@index([releaseId])
   @@map("performance_tests")
 }
 
@@ -726,29 +795,32 @@ model PerformanceTestRun {
 }
 
 model SecurityTest {
-  id             String              @id @default(uuid())
-  productId      String              @map("product_id")
-  environmentId  String?             @map("environment_id")
-  testCaseId     String?             @map("test_case_id")
+  id             String             @id @default(uuid())
+  productId      String             @map("product_id")
+  environmentId  String?            @map("environment_id")
+  testCaseId     String?            @map("test_case_id")
+  releaseId      String?            @map("release_id")
   name           String
   description    String?
   target         String
-  testType       SecurityTestType    @default(VULNERABILITY_SCAN) @map("test_type")
+  testType       SecurityTestType   @default(VULNERABILITY_SCAN) @map("test_type")
   configuration  String?
-  status         SecurityTestStatus  @default(NOT_STARTED)
-  lastExecutedAt DateTime?           @map("last_executed_at")
-  lastRunNotes   String?             @map("last_run_notes")
-  createdAt      DateTime            @default(now()) @map("created_at")
-  updatedAt      DateTime            @updatedAt @map("updated_at")
+  status         SecurityTestStatus @default(NOT_STARTED)
+  lastExecutedAt DateTime?          @map("last_executed_at")
+  lastRunNotes   String?            @map("last_run_notes")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
 
   product     Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
   environment Environment?      @relation(fields: [environmentId], references: [id], onDelete: SetNull)
   testCase    TestCase?         @relation(fields: [testCaseId], references: [id], onDelete: SetNull)
+  release     Release?          @relation(fields: [releaseId], references: [id], onDelete: SetNull)
   findings    SecurityFinding[]
 
   @@index([productId])
   @@index([environmentId])
   @@index([testCaseId])
+  @@index([releaseId])
   @@map("security_tests")
 }
 
@@ -774,6 +846,7 @@ model SecurityFinding {
 model UatCycle {
   id           String         @id @default(uuid())
   productId    String         @map("product_id")
+  releaseId    String?        @map("release_id")
   name         String
   description  String?
   status       UatCycleStatus @default(PLANNED)
@@ -784,9 +857,11 @@ model UatCycle {
   updatedAt    DateTime       @updatedAt @map("updated_at")
 
   product   Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  release   Release?      @relation(fields: [releaseId], references: [id], onDelete: SetNull)
   testCases UatTestCase[]
 
   @@index([productId])
+  @@index([releaseId])
   @@map("uat_cycles")
 }
 
@@ -866,6 +941,18 @@ model Release {
   product     Product      @relation(fields: [productId], references: [id], onDelete: Restrict)
   environment Environment? @relation(fields: [environmentId], references: [id], onDelete: SetNull)
 
+  requirements     Requirement[]
+  testPlans        TestPlan[]
+  testScenarios    TestScenario[]
+  testCases        TestCase[]
+  testExecutions   TestExecution[]
+  defects          Defect[]
+  automations      Automation[]
+  apiTestRequests  ApiTestRequest[]
+  performanceTests PerformanceTest[]
+  securityTests    SecurityTest[]
+  uatCycles        UatCycle[]
+
   @@index([productId])
   @@index([environmentId])
   @@map("releases")
@@ -879,20 +966,20 @@ model Release {
 // separate, explicit call into that entity's own existing create/update
 // endpoint, recorded back onto this row afterward.
 model AiSuggestion {
-  id         String              @id @default(uuid())
+  id         String             @id @default(uuid())
   capability AiCapability
   // Free-text tag naming the kind of source entity (e.g. "Requirement",
   // "TestScenario", "Defect", "Release") -- not an FK, since the source
   // entity type varies by capability and some capabilities have no single
   // source record (e.g. CHAT).
-  sourceType String?             @map("source_type")
-  sourceId   String?             @map("source_id")
-  productId  String?             @map("product_id")
+  sourceType String?            @map("source_type")
+  sourceId   String?            @map("source_id")
+  productId  String?            @map("product_id")
   prompt     String
   response   String
-  status     AiSuggestionStatus  @default(PENDING)
-  createdAt  DateTime            @default(now()) @map("created_at")
-  updatedAt  DateTime            @updatedAt @map("updated_at")
+  status     AiSuggestionStatus @default(PENDING)
+  createdAt  DateTime           @default(now()) @map("created_at")
+  updatedAt  DateTime           @updatedAt @map("updated_at")
 
   product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
 
@@ -963,10 +1050,12 @@ model User {
   createdAt                 DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                 DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  role              Role         @relation(fields: [roleId], references: [id], onDelete: Restrict)
-  sessions          Session[]
-  auditLogs         AuditLog[]   @relation("AuditLogActor")
-  appSettingUpdates AppSetting[]
+  role                   Role                @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  sessions               Session[]
+  auditLogs              AuditLog[]          @relation("AuditLogActor")
+  appSettingUpdates      AppSetting[]
+  ownedProducts          Product[]           @relation("ProductOwner")
+  productTeamMemberships ProductTeamMember[] @relation("ProductTeamMembership")
 
   @@index([roleId])
   @@map("users")
@@ -1012,15 +1101,15 @@ model AuditLog {
 // Singleton application-wide configuration row -- the service fetches (or
 // lazily creates) the first row rather than relying on a fixed known id.
 model AppSetting {
-  id                             String            @id @default(uuid())
-  defaultEnvironmentType         EnvironmentType?  @map("default_environment_type")
-  defaultTestCasePriority        TestCasePriority  @default(MEDIUM) @map("default_test_case_priority")
-  defaultDefectSeverity          DefectSeverity    @default(MAJOR) @map("default_defect_severity")
-  notifyOnDefectCreated          Boolean           @default(true) @map("notify_on_defect_created")
-  notifyOnReleaseReadinessChange Boolean           @default(true) @map("notify_on_release_readiness_change")
-  notifyOnTestExecutionFailure   Boolean           @default(true) @map("notify_on_test_execution_failure")
-  updatedAt                      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
-  updatedByUserId                String?           @map("updated_by_user_id")
+  id                             String           @id @default(uuid())
+  defaultEnvironmentType         EnvironmentType? @map("default_environment_type")
+  defaultTestCasePriority        TestCasePriority @default(MEDIUM) @map("default_test_case_priority")
+  defaultDefectSeverity          DefectSeverity   @default(MAJOR) @map("default_defect_severity")
+  notifyOnDefectCreated          Boolean          @default(true) @map("notify_on_defect_created")
+  notifyOnReleaseReadinessChange Boolean          @default(true) @map("notify_on_release_readiness_change")
+  notifyOnTestExecutionFailure   Boolean          @default(true) @map("notify_on_test_execution_failure")
+  updatedAt                      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  updatedByUserId                String?          @map("updated_by_user_id")
 
   updatedBy User? @relation(fields: [updatedByUserId], references: [id], onDelete: SetNull)
 

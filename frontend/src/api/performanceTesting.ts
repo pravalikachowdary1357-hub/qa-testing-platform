@@ -27,6 +27,7 @@ function baseFields(wire: PerformanceTestBaseWire): PerformanceTestBaseWire {
     id: wire.id,
     productId: wire.productId,
     environmentId: wire.environmentId,
+    releaseId: wire.releaseId,
     name: wire.name,
     description: wire.description,
     targetUrl: wire.targetUrl,
@@ -46,6 +47,7 @@ function baseFields(wire: PerformanceTestBaseWire): PerformanceTestBaseWire {
     updatedAt: wire.updatedAt,
     product: wire.product,
     environment: wire.environment,
+    release: wire.release,
   };
 }
 

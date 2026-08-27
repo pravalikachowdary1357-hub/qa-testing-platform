@@ -13,8 +13,11 @@ import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { validateRow } from '../common/import/validate-row.util';
 import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
 
+const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
+
 const TEST_SCENARIO_INCLUDE = {
   product: { select: { id: true, name: true } },
+  release: RELEASE_REF_SELECT,
   requirement: { select: { id: true, title: true } },
 };
 

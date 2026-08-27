@@ -43,6 +43,7 @@ import {
 import { fetchTestCases } from '../api/testCases';
 import { fetchTestScenarios } from '../api/testScenarios';
 import { fetchEnvironments } from '../api/environments';
+import { fetchReleases } from '../api/release';
 import { ApiError } from '../api/client';
 import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
@@ -60,6 +61,7 @@ import type {
 import type { ApiTestCase } from '../types/testCase';
 import type { ApiTestScenario } from '../types/testScenario';
 import type { ApiEnvironment } from '../types/environment';
+import type { ApiRelease } from '../types/release';
 
 const TYPE_LABELS: Record<ApiAutomationType, AutomationType> = {
   UI: 'UI',
@@ -96,6 +98,7 @@ export function AutomationPage() {
   const [testCases, setTestCases] = useState<ApiTestCase[]>([]);
   const [testScenarios, setTestScenarios] = useState<ApiTestScenario[]>([]);
   const [environments, setEnvironments] = useState<ApiEnvironment[]>([]);
+  const [releases, setReleases] = useState<ApiRelease[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -163,6 +166,15 @@ export function AutomationPage() {
     fetchEnvironments(currentProduct?.id)
       .then((data) => {
         if (!cancelled) setEnvironments(data);
+      })
+      .catch(() => {});
+
+    // Unfiltered on purpose -- the Automation form has no Product context to
+    // cascade off of, so the Release dropdown lists every release and labels
+    // each option with its product (see AutomationFormDialog).
+    fetchReleases()
+      .then((data) => {
+        if (!cancelled) setReleases(data);
       })
       .catch(() => {});
 
@@ -485,11 +497,13 @@ export function AutomationPage() {
         testCases={testCases}
         testScenarios={testScenarios}
         environments={environments}
+        releases={releases}
         initialValues={
           formMode === 'edit' && editingAutomation
             ? {
                 testCaseId: editingAutomation.testCaseId,
                 environmentId: editingAutomation.environmentId ?? '',
+                releaseId: editingAutomation.releaseId ?? '',
                 name: editingAutomation.name,
                 type: editingAutomation.type,
                 framework: editingAutomation.framework,

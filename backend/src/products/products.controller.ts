@@ -58,21 +58,25 @@ export class ProductsController {
 
   @Post()
   @RequirePermission('products:write')
-  create(@Body() dto: CreateProductDto) {
-    return this.productsService.create(dto);
+  create(@Body() dto: CreateProductDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.productsService.create(dto, actor);
   }
 
   @Patch(':id')
   @RequirePermission('products:write')
-  update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
-    return this.productsService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateProductDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.productsService.update(id, dto, actor);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission('products:manage')
-  remove(@Param('id') id: string) {
-    return this.productsService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.productsService.remove(id, actor);
   }
 
   @Post('import')

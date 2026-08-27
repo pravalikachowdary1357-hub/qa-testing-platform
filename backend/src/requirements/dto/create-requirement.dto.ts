@@ -9,6 +9,10 @@ export class CreateRequirementDto {
   @IsUUID()
   productId: string;
 
+  @IsOptional()
+  @IsUUID()
+  releaseId?: string;
+
   @IsString()
   @IsNotEmpty()
   title: string;

@@ -41,6 +41,7 @@ import {
   updateProduct,
 } from '../api/products';
 import { fetchOrganizations } from '../api/organizations';
+import { fetchUsers } from '../api/users';
 import { ApiError } from '../api/client';
 import { exportToCsvWithAudit } from '../utils/csvExport';
 import type {
@@ -52,6 +53,7 @@ import type {
   ReleaseReadiness,
 } from '../types/product';
 import type { ApiOrganization } from '../types/organization';
+import type { ApiUser } from '../types/settings';
 
 const STATUS_LABELS: Record<ApiProductStatus, ProductStatus> = {
   ACTIVE: 'Active',
@@ -72,6 +74,7 @@ const ALL = 'ALL' as const;
 export function ProductsPage() {
   const [products, setProducts] = useState<ApiProduct[] | null>(null);
   const [organizations, setOrganizations] = useState<ApiOrganization[]>([]);
+  const [users, setUsers] = useState<ApiUser[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -129,6 +132,14 @@ export function ProductsPage() {
         // available" rather than blocking the products list itself.
       });
 
+    fetchUsers()
+      .then((data) => {
+        if (!cancelled) setUsers(data);
+      })
+      .catch(() => {
+        // Only feeds the "product owner" picker in the create/edit form.
+      });
+
     return () => {
       cancelled = true;
     };
@@ -174,24 +185,33 @@ export function ProductsPage() {
     readinessFilter !== ALL ||
     organizationFilter !== ALL;
 
+  // Applied to local state immediately from the mutation's own response
+  // (already the complete, authoritative record) rather than relying solely
+  // on loadProducts() -- that reload swallows its own fetch failures into
+  // `error` state and always resolves, so a transient failure right after a
+  // successful save would otherwise leave the list stale while still
+  // reporting success. A background reload still runs for reconciliation.
   const handleCreateSubmit = async (data: CreateProductPayload) => {
-    await createProduct(data);
-    await loadProducts();
+    const created = await createProduct(data);
+    setProducts((prev) => (prev ? [created, ...prev] : [created]));
     setSnackbar({ message: 'Product created.', severity: 'success' });
+    void loadProducts();
   };
 
   const handleEditSubmit = async (data: CreateProductPayload) => {
     if (!editingProduct) return;
-    await updateProduct(editingProduct.id, data);
-    await loadProducts();
+    const updated = await updateProduct(editingProduct.id, data);
+    setProducts((prev) => (prev ? prev.map((p) => (p.id === updated.id ? updated : p)) : prev));
     setSnackbar({ message: 'Product updated.', severity: 'success' });
+    void loadProducts();
   };
 
   const handleDeleteConfirm = async () => {
     if (!deletingProduct) return;
     await deleteProduct(deletingProduct.id);
-    await loadProducts();
+    setProducts((prev) => (prev ? prev.filter((p) => p.id !== deletingProduct.id) : prev));
     setSnackbar({ message: 'Product deleted.', severity: 'success' });
+    void loadProducts();
   };
 
   const handleImport = async (file: File) => {
@@ -214,6 +234,10 @@ export function ProductsPage() {
       { header: 'Status', value: (p) => STATUS_LABELS[p.status] },
       { header: 'Environment', value: (p) => p.environment },
       { header: 'Release', value: (p) => p.release },
+      { header: 'Current Version', value: (p) => p.currentVersion ?? '' },
+      { header: 'Application URL', value: (p) => p.applicationUrl ?? '' },
+      { header: 'Repository URL', value: (p) => p.repositoryUrl ?? '' },
+      { header: 'Owner', value: (p) => p.productOwner?.name ?? '' },
       { header: 'Test Coverage %', value: (p) => p.testCoverage },
       { header: 'Pass Rate %', value: (p) => p.passRate },
       { header: 'Open Defects', value: (p) => p.openDefects },
@@ -427,6 +451,7 @@ export function ProductsPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         organizations={organizations}
+        users={users}
         initialValues={
           formMode === 'edit' && editingProduct
             ? {
@@ -436,6 +461,10 @@ export function ProductsPage() {
                 status: editingProduct.status,
                 environment: editingProduct.environment,
                 release: editingProduct.release,
+                applicationUrl: editingProduct.applicationUrl ?? '',
+                repositoryUrl: editingProduct.repositoryUrl ?? '',
+                productOwnerId: editingProduct.productOwnerId ?? '',
+                currentVersion: editingProduct.currentVersion ?? '',
                 testCoverage: String(editingProduct.testCoverage),
                 passRate: String(editingProduct.passRate),
                 openDefects: String(editingProduct.openDefects),

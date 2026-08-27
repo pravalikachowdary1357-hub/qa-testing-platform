@@ -10,6 +10,10 @@ export class UpdateUatCycleDto {
   productId?: string;
 
   @IsOptional()
+  @IsUUID()
+  releaseId?: string;
+
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
   name?: string;

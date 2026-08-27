@@ -13,6 +13,12 @@ export interface ApiProductOrganizationRef {
   name: string;
 }
 
+export interface ApiProductOwnerRef {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export interface ApiProduct {
   id: string;
   organizationId: string;
@@ -21,6 +27,10 @@ export interface ApiProduct {
   status: ApiProductStatus;
   environment: string;
   release: string;
+  applicationUrl: string | null;
+  repositoryUrl: string | null;
+  productOwnerId: string | null;
+  currentVersion: string | null;
   testCoverage: number;
   passRate: number;
   openDefects: number;
@@ -28,6 +38,7 @@ export interface ApiProduct {
   createdAt: string;
   updatedAt: string;
   organization: ApiProductOrganizationRef;
+  productOwner: ApiProductOwnerRef | null;
 }
 
 export interface CreateProductPayload {
@@ -37,6 +48,10 @@ export interface CreateProductPayload {
   status?: ApiProductStatus;
   environment: string;
   release: string;
+  applicationUrl?: string;
+  repositoryUrl?: string;
+  productOwnerId?: string;
+  currentVersion?: string;
   testCoverage: number;
   passRate: number;
   openDefects?: number;
@@ -44,3 +59,36 @@ export interface CreateProductPayload {
 }
 
 export type UpdateProductPayload = Partial<CreateProductPayload>;
+
+export interface ApiProductComponent {
+  id: string;
+  productId: string;
+  name: string;
+  description: string | null;
+  createdAt: string;
+}
+
+export interface CreateProductComponentPayload {
+  productId: string;
+  name: string;
+  description?: string;
+}
+
+export interface ApiProductTeamMember {
+  id: string;
+  productId: string;
+  userId: string;
+  responsibility: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
+export interface CreateProductTeamMemberPayload {
+  productId: string;
+  userId: string;
+  responsibility?: string;
+}

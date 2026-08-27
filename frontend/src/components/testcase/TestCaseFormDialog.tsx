@@ -22,6 +22,7 @@ import type {
   TestCaseStepInput,
 } from '../../types/testCase';
 import type { ApiTestScenario } from '../../types/testScenario';
+import type { ApiRelease } from '../../types/release';
 
 const PRIORITY_OPTIONS: { value: ApiTestCasePriority; label: string }[] = [
   { value: 'CRITICAL', label: 'Critical' },
@@ -49,6 +50,7 @@ interface TestCaseFormValues {
   expectedResult: string;
   priority: ApiTestCasePriority;
   status: ApiTestCaseStatus;
+  releaseId: string;
   steps: TestCaseStepInput[];
 }
 
@@ -61,6 +63,7 @@ function emptyValues(defaultScenarioId: string): TestCaseFormValues {
     expectedResult: '',
     priority: 'MEDIUM',
     status: 'DRAFT',
+    releaseId: '',
     steps: [emptyStep()],
   };
 }
@@ -74,6 +77,7 @@ interface TestCaseFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   testScenarios: ApiTestScenario[];
+  releases: ApiRelease[];
   initialValues?: TestCaseFormValues;
   onClose: () => void;
   onSubmit: (data: CreateTestCasePayload) => Promise<void>;
@@ -83,6 +87,7 @@ export function TestCaseFormDialog({
   open,
   mode,
   testScenarios,
+  releases,
   initialValues,
   onClose,
   onSubmit,
@@ -190,6 +195,7 @@ export function TestCaseFormDialog({
         expectedResult: trimmedExpectedResult,
         priority: values.priority,
         status: values.status,
+        releaseId: values.releaseId || undefined,
         steps: meaningfulSteps,
       });
       onClose();
@@ -226,6 +232,22 @@ export function TestCaseFormDialog({
                 {testScenarios.map((scenario) => (
                   <MenuItem key={scenario.id} value={scenario.id}>
                     {scenario.title}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Release (optional)"
+                fullWidth
+                value={values.releaseId}
+                onChange={(e) => setValues((prev) => ({ ...prev, releaseId: e.target.value }))}
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {releases.map((r) => (
+                  <MenuItem key={r.id} value={r.id}>
+                    {r.name} ({r.version}) — {r.product.name}
                   </MenuItem>
                 ))}
               </TextField>

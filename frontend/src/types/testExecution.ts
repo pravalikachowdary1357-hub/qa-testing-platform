@@ -1,4 +1,5 @@
 import type { ApiEnvironmentType } from './environment';
+import type { ApiReleaseRef } from './release';
 
 // Human-readable labels rendered by StatusChip.
 export type TestExecutionStatus = 'Pending' | 'Pass' | 'Fail' | 'Blocked';
@@ -45,6 +46,8 @@ export interface ApiTestExecution {
   notes: string | null;
   executedBy: string;
   executedAt: string;
+  releaseId: string | null;
+  release: ApiReleaseRef | null;
   createdAt: string;
   updatedAt: string;
   testCase: ApiTestExecutionCaseRef;
@@ -58,6 +61,7 @@ export interface CreateTestExecutionPayload {
   // null and undefined both mean "no test data"; PATCH also uses null to
   // explicitly clear an existing link.
   testDataId?: string | null;
+  releaseId?: string;
   status?: ApiTestExecutionStatus;
   actualResult?: string;
   notes?: string;

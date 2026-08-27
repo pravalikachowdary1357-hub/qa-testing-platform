@@ -5,6 +5,8 @@ import { PrismaModule } from './prisma.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { ProductsModule } from './products/products.module';
 import { ProductDocumentsModule } from './product-documents/product-documents.module';
+import { ProductComponentsModule } from './product-components/product-components.module';
+import { ProductTeamMembersModule } from './product-team-members/product-team-members.module';
 import { RequirementsModule } from './requirements/requirements.module';
 import { TestPlansModule } from './test-plans/test-plans.module';
 import { TestScenariosModule } from './test-scenarios/test-scenarios.module';
@@ -39,6 +41,8 @@ import { AppSettingsModule } from './app-settings/app-settings.module';
     OrganizationsModule,
     ProductsModule,
     ProductDocumentsModule,
+    ProductComponentsModule,
+    ProductTeamMembersModule,
     RequirementsModule,
     TestPlansModule,
     TestScenariosModule,

@@ -42,6 +42,7 @@ import {
 } from '../api/testScenarios';
 import { fetchProducts } from '../api/products';
 import { fetchRequirements } from '../api/requirements';
+import { fetchReleases } from '../api/release';
 import { ApiError } from '../api/client';
 import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
@@ -57,6 +58,7 @@ import type {
 } from '../types/testScenario';
 import type { ApiProduct } from '../types/product';
 import type { ApiRequirement } from '../types/requirement';
+import type { ApiRelease } from '../types/release';
 
 const TYPE_LABELS: Record<ApiTestScenarioType, TestScenarioType> = {
   FUNCTIONAL: 'Functional',
@@ -97,6 +99,7 @@ export function TestScenariosPage() {
   const [scenarios, setScenarios] = useState<ApiTestScenario[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [requirements, setRequirements] = useState<ApiRequirement[]>([]);
+  const [releases, setReleases] = useState<ApiRelease[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -159,6 +162,14 @@ export function TestScenariosPage() {
       })
       .catch(() => {
         // Only feeds the optional requirement picker in the form.
+      });
+
+    fetchReleases()
+      .then((data) => {
+        if (!cancelled) setReleases(data);
+      })
+      .catch(() => {
+        // Only feeds the optional Release picker in the create/edit form.
       });
 
     return () => {
@@ -483,12 +494,14 @@ export function TestScenariosPage() {
         mode={formMode ?? 'create'}
         products={products}
         requirements={requirements}
+        releases={releases}
         currentProductId={currentProduct?.id}
         initialValues={
           formMode === 'edit' && editingScenario
             ? {
                 productId: editingScenario.productId,
                 requirementId: editingScenario.requirementId ?? '',
+                releaseId: editingScenario.releaseId ?? '',
                 title: editingScenario.title,
                 description: editingScenario.description,
                 type: editingScenario.type,

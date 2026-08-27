@@ -6,10 +6,12 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  Link,
   Stack,
   Typography,
 } from '@mui/material';
 import { StatusChip } from '../common/StatusChip';
+import { ProductDetailDialog } from '../product/ProductDetailDialog';
 import { fetchDefect } from '../../api/defects';
 import { ApiError } from '../../api/client';
 import type {
@@ -49,6 +51,7 @@ interface DefectDetailDialogProps {
 export function DefectDetailDialog({ defectId, onClose }: DefectDetailDialogProps) {
   const [defect, setDefect] = useState<ApiDefect | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [viewingProductId, setViewingProductId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!defectId) {
@@ -95,9 +98,16 @@ export function DefectDetailDialog({ defectId, onClose }: DefectDetailDialogProp
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Box>
               <Typography variant="h6">{defect.title}</Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Link
+                component="button"
+                type="button"
+                variant="body2"
+                color="text.secondary"
+                underline="hover"
+                onClick={() => setViewingProductId(defect.productId)}
+              >
                 {defect.product.name}
-              </Typography>
+              </Link>
             </Box>
 
             <Stack direction="row" spacing={1}>
@@ -114,6 +124,17 @@ export function DefectDetailDialog({ defectId, onClose }: DefectDetailDialogProp
                 {defect.description}
               </Typography>
             </Box>
+
+            {defect.release && (
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Release
+                </Typography>
+                <Typography variant="body2">
+                  {defect.release.name} ({defect.release.version})
+                </Typography>
+              </Box>
+            )}
 
             <Stack direction="row" spacing={4}>
               <Box>
@@ -194,6 +215,8 @@ export function DefectDetailDialog({ defectId, onClose }: DefectDetailDialogProp
           </Stack>
         )}
       </DialogContent>
+
+      <ProductDetailDialog productId={viewingProductId} onClose={() => setViewingProductId(null)} />
     </Dialog>
   );
 }

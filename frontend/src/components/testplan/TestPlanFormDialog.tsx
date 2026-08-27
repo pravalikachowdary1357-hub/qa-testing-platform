@@ -18,6 +18,7 @@ import type {
 } from '../../types/testPlan';
 import type { ApiProduct } from '../../types/product';
 import type { ApiRequirement } from '../../types/requirement';
+import type { ApiRelease } from '../../types/release';
 
 const STATUS_OPTIONS: { value: ApiTestPlanStatus; label: string }[] = [
   { value: 'DRAFT', label: 'Draft' },
@@ -37,6 +38,7 @@ const PRIORITY_OPTIONS: { value: ApiTestPlanPriority; label: string }[] = [
 
 interface TestPlanFormValues {
   productId: string;
+  releaseId: string;
   name: string;
   description: string;
   status: ApiTestPlanStatus;
@@ -50,6 +52,7 @@ interface TestPlanFormValues {
 function emptyValues(defaultProductId: string): TestPlanFormValues {
   return {
     productId: defaultProductId,
+    releaseId: '',
     name: '',
     description: '',
     status: 'DRAFT',
@@ -65,6 +68,7 @@ interface TestPlanFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   products: ApiProduct[];
+  releases: ApiRelease[];
   requirements: ApiRequirement[];
   currentProductId?: string;
   initialValues?: TestPlanFormValues;
@@ -76,6 +80,7 @@ export function TestPlanFormDialog({
   open,
   mode,
   products,
+  releases,
   requirements,
   currentProductId,
   initialValues,
@@ -108,6 +113,11 @@ export function TestPlanFormDialog({
 
   const noProductsAvailable = mode === 'create' && products.length === 0;
 
+  const releasesForProduct = useMemo(
+    () => releases.filter((release) => release.productId === values.productId),
+    [releases, values.productId],
+  );
+
   const requirementsForProduct = useMemo(
     () => requirements.filter((requirement) => requirement.productId === values.productId),
     [requirements, values.productId],
@@ -117,6 +127,11 @@ export function TestPlanFormDialog({
     setValues((prev) => ({
       ...prev,
       productId: newProductId,
+      releaseId: releases.some(
+        (r) => r.id === prev.releaseId && r.productId === newProductId,
+      )
+        ? prev.releaseId
+        : '',
       requirementIds: prev.requirementIds.filter((id) =>
         requirements.some((r) => r.id === id && r.productId === newProductId),
       ),
@@ -153,6 +168,7 @@ export function TestPlanFormDialog({
     try {
       await onSubmit({
         productId: values.productId,
+        releaseId: values.releaseId || undefined,
         name: trimmedName,
         description: trimmedDescription,
         status: values.status,
@@ -194,6 +210,25 @@ export function TestPlanFormDialog({
                 {products.map((product) => (
                   <MenuItem key={product.id} value={product.id}>
                     {product.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Release (optional)"
+                fullWidth
+                value={values.releaseId}
+                helperText={
+                  releasesForProduct.length === 0 ? 'No releases exist for this product yet.' : ' '
+                }
+                onChange={(e) => setValues((prev) => ({ ...prev, releaseId: e.target.value }))}
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {releasesForProduct.map((release) => (
+                  <MenuItem key={release.id} value={release.id}>
+                    {release.name} ({release.version})
                   </MenuItem>
                 ))}
               </TextField>

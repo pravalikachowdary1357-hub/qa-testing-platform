@@ -11,6 +11,10 @@ export class CreateTestScenarioDto {
 
   @IsOptional()
   @IsUUID()
+  releaseId?: string;
+
+  @IsOptional()
+  @IsUUID()
   requirementId?: string;
 
   @IsString()

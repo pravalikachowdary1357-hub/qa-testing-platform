@@ -34,6 +34,16 @@ export interface ReleaseEnvironmentRef {
   name: string;
 }
 
+// Shared shape for the `release` reference embedded on lifecycle records
+// (Requirement, TestPlan, TestScenario, TestCase, TestExecution, Defect,
+// UatCycle, Automation, ApiTestRequest, PerformanceTest, SecurityTest) --
+// mirrors the backend's RELEASE_REF_SELECT (id/name/version) on all of them.
+export interface ApiReleaseRef {
+  id: string;
+  name: string;
+  version: string;
+}
+
 export interface QualityGateResult {
   key: string;
   label: string;

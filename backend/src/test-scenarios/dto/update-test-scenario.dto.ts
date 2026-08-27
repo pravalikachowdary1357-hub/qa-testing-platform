@@ -10,6 +10,10 @@ export class UpdateTestScenarioDto {
   @IsUUID()
   productId?: string;
 
+  @IsOptional()
+  @IsUUID()
+  releaseId?: string;
+
   // null explicitly clears the requirement link; undefined/absent leaves it untouched.
   @IsOptional()
   @IsUUID()

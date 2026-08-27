@@ -19,6 +19,7 @@ import type { ApiTestCase } from '../../types/testCase';
 import type { ApiTestScenario } from '../../types/testScenario';
 import type { ApiEnvironment } from '../../types/environment';
 import type { ApiTestDataListItem } from '../../types/testData';
+import type { ApiRelease } from '../../types/release';
 
 const STATUS_OPTIONS: { value: ApiTestExecutionStatus; label: string }[] = [
   { value: 'PENDING', label: 'Pending' },
@@ -33,6 +34,7 @@ interface TestExecutionFormValues {
   testCaseId: string;
   environmentId: string;
   testDataId: string;
+  releaseId: string;
   status: ApiTestExecutionStatus;
   actualResult: string;
   notes: string;
@@ -44,6 +46,7 @@ function emptyValues(defaultTestCaseId: string): TestExecutionFormValues {
     testCaseId: defaultTestCaseId,
     environmentId: '',
     testDataId: NO_TEST_DATA,
+    releaseId: '',
     status: 'PENDING',
     actualResult: '',
     notes: '',
@@ -58,6 +61,7 @@ interface TestExecutionFormDialogProps {
   testScenarios: ApiTestScenario[];
   environments: ApiEnvironment[];
   testDataList: ApiTestDataListItem[];
+  releases: ApiRelease[];
   initialValues?: TestExecutionFormValues;
   onClose: () => void;
   onSubmit: (data: CreateTestExecutionPayload) => Promise<void>;
@@ -70,6 +74,7 @@ export function TestExecutionFormDialog({
   testScenarios,
   environments,
   testDataList,
+  releases,
   initialValues,
   onClose,
   onSubmit,
@@ -151,6 +156,7 @@ export function TestExecutionFormDialog({
         testCaseId: values.testCaseId,
         environmentId: values.environmentId,
         testDataId: values.testDataId || null,
+        releaseId: values.releaseId || undefined,
         status: values.status,
         actualResult: values.actualResult.trim() || undefined,
         notes: values.notes.trim() || undefined,
@@ -236,6 +242,23 @@ export function TestExecutionFormDialog({
                 {testDataForCase.map((item) => (
                   <MenuItem key={item.id} value={item.id}>
                     {item.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                label="Release (optional)"
+                fullWidth
+                value={values.releaseId}
+                onChange={(e) => setValues((prev) => ({ ...prev, releaseId: e.target.value }))}
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {releases.map((r) => (
+                  <MenuItem key={r.id} value={r.id}>
+                    {r.name} ({r.version}) — {r.product.name}
                   </MenuItem>
                 ))}
               </TextField>

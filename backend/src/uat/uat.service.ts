@@ -11,9 +11,11 @@ import { CreateUatExecutionDto } from './dto/create-uat-execution.dto';
 import { UpdateUatExecutionDto } from './dto/update-uat-execution.dto';
 
 const PRODUCT_REF = { select: { id: true, name: true } };
+const RELEASE_REF = { select: { id: true, name: true, version: true } };
 
 const CYCLE_LIST_SELECT_EXTRA = {
   product: PRODUCT_REF,
+  release: RELEASE_REF,
   testCases: {
     select: {
       id: true,
@@ -28,6 +30,7 @@ const CYCLE_LIST_SELECT_EXTRA = {
 
 const CYCLE_DETAIL_INCLUDE = {
   product: PRODUCT_REF,
+  release: RELEASE_REF,
   testCases: {
     orderBy: { createdAt: 'asc' as const },
     include: {
@@ -120,7 +123,12 @@ export class UatService {
   async create(dto: CreateUatCycleDto) {
     try {
       const cycle = await this.prisma.uatCycle.create({
-        data: { productId: dto.productId, name: dto.name, description: dto.description },
+        data: {
+          productId: dto.productId,
+          releaseId: dto.releaseId,
+          name: dto.name,
+          description: dto.description,
+        },
         include: CYCLE_LIST_SELECT_EXTRA,
       });
       return summarize(cycle);
@@ -143,6 +151,7 @@ export class UatService {
         where: { id },
         data: {
           productId: dto.productId,
+          releaseId: dto.releaseId,
           name: dto.name,
           description: dto.description,
           status: dto.status,

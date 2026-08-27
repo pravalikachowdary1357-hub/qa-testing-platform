@@ -7,6 +7,10 @@ export class CreateSecurityTestDto {
 
   @IsOptional()
   @IsUUID()
+  releaseId?: string;
+
+  @IsOptional()
+  @IsUUID()
   environmentId?: string;
 
   @IsOptional()

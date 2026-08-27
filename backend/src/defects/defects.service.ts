@@ -8,8 +8,11 @@ import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { validateRow } from '../common/import/validate-row.util';
 import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
 
+const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
+
 const DEFECT_INCLUDE = {
   product: { select: { id: true, name: true } },
+  release: RELEASE_REF_SELECT,
   environment: { select: { id: true, name: true, type: true } },
   testCase: { select: { id: true, title: true } },
   testExecution: { select: { id: true, status: true, executedAt: true } },
@@ -55,6 +58,7 @@ export class DefectsService {
       return await this.prisma.defect.create({
         data: {
           productId: dto.productId,
+          releaseId: dto.releaseId,
           environmentId: dto.environmentId,
           testCaseId: dto.testCaseId,
           testExecutionId: dto.testExecutionId,
@@ -199,6 +203,7 @@ export class DefectsService {
         where: { id },
         data: {
           productId: dto.productId,
+          releaseId: dto.releaseId,
           environmentId: dto.environmentId,
           testCaseId: dto.testCaseId,
           testExecutionId: dto.testExecutionId,

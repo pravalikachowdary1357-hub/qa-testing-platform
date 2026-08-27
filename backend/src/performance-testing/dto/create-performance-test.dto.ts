@@ -18,6 +18,10 @@ export class CreatePerformanceTestDto {
 
   @IsOptional()
   @IsUUID()
+  releaseId?: string;
+
+  @IsOptional()
+  @IsUUID()
   environmentId?: string;
 
   @IsString()

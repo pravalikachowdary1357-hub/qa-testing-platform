@@ -1,3 +1,5 @@
+import type { ApiReleaseRef } from './release';
+
 export type UatCycleStatus = 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'APPROVED' | 'REJECTED';
 export type UatCycleStatusLabel = 'Planned' | 'In Progress' | 'Completed' | 'Approved' | 'Rejected';
 
@@ -108,6 +110,7 @@ export interface UatTestCase {
 export interface UatCycleListItem {
   id: string;
   productId: string;
+  releaseId: string | null;
   name: string;
   description: string | null;
   status: UatCycleStatus;
@@ -117,6 +120,7 @@ export interface UatCycleListItem {
   createdAt: string;
   updatedAt: string;
   product: UatProductRef;
+  release: ApiReleaseRef | null;
   testCaseCount: number;
   summary: UatSummary;
 }
@@ -127,12 +131,14 @@ export interface UatCycle extends UatCycleListItem {
 
 export interface CreateUatCyclePayload {
   productId: string;
+  releaseId?: string;
   name: string;
   description?: string;
 }
 
 export interface UpdateUatCyclePayload {
   productId?: string;
+  releaseId?: string;
   name?: string;
   description?: string;
   status?: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED';

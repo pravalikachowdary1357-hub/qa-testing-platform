@@ -25,6 +25,7 @@ export function uploadProductDocument(
   formData.append('productId', payload.productId);
   formData.append('documentType', payload.documentType);
   if (payload.description) formData.append('description', payload.description);
+  if (payload.relatedVersion) formData.append('relatedVersion', payload.relatedVersion);
   if (payload.status) formData.append('status', payload.status);
 
   return apiUpload<ApiProductDocument>('/product-documents', formData);
@@ -37,6 +38,7 @@ export function replaceProductDocumentFile(
   const formData = new FormData();
   formData.append('file', payload.file);
   if (payload.description !== undefined) formData.append('description', payload.description);
+  if (payload.relatedVersion !== undefined) formData.append('relatedVersion', payload.relatedVersion);
   if (payload.status) formData.append('status', payload.status);
 
   return apiUpload<ApiProductDocument>(`/product-documents/${documentId}/replace`, formData);

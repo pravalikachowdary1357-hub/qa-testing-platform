@@ -1,3 +1,5 @@
+import type { ApiReleaseRef } from './release';
+
 // Raw Prisma enum values as returned by the backend.
 export type SecurityTestType =
   | 'SAST'
@@ -112,6 +114,7 @@ export interface SecurityTestListItem {
   productId: string;
   environmentId: string | null;
   testCaseId: string | null;
+  releaseId: string | null;
   name: string;
   description: string | null;
   target: string;
@@ -125,6 +128,7 @@ export interface SecurityTestListItem {
   product: SecurityTestProductRef;
   environment: SecurityTestEnvironmentRef | null;
   testCase: SecurityTestTestCaseRef | null;
+  release: ApiReleaseRef | null;
   _count: { findings: number };
 }
 
@@ -136,6 +140,7 @@ export interface CreateSecurityTestPayload {
   productId: string;
   environmentId?: string;
   testCaseId?: string;
+  releaseId?: string;
   name: string;
   description?: string;
   target: string;

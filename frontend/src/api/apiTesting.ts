@@ -32,6 +32,7 @@ function baseFields(wire: ApiTestRequestBaseWire): ApiTestRequestBaseWire {
     id: wire.id,
     productId: wire.productId,
     environmentId: wire.environmentId,
+    releaseId: wire.releaseId,
     name: wire.name,
     method: wire.method,
     url: wire.url,
@@ -44,6 +45,7 @@ function baseFields(wire: ApiTestRequestBaseWire): ApiTestRequestBaseWire {
     updatedAt: wire.updatedAt,
     product: wire.product,
     environment: wire.environment,
+    release: wire.release,
   };
 }
 

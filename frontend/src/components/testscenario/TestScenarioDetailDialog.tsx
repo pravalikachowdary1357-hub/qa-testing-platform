@@ -6,10 +6,12 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  Link,
   Stack,
   Typography,
 } from '@mui/material';
 import { StatusChip } from '../common/StatusChip';
+import { ProductDetailDialog } from '../product/ProductDetailDialog';
 import { fetchTestScenario } from '../../api/testScenarios';
 import { ApiError } from '../../api/client';
 import type {
@@ -53,6 +55,7 @@ export function TestScenarioDetailDialog({
 }: TestScenarioDetailDialogProps) {
   const [scenario, setScenario] = useState<ApiTestScenario | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [viewingProductId, setViewingProductId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!testScenarioId) {
@@ -100,7 +103,16 @@ export function TestScenarioDetailDialog({
             <Box>
               <Typography variant="h6">{scenario.title}</Typography>
               <Typography variant="body2" color="text.secondary">
-                {scenario.product.name}
+                <Link
+                  component="button"
+                  type="button"
+                  variant="body2"
+                  color="text.secondary"
+                  underline="hover"
+                  onClick={() => setViewingProductId(scenario.productId)}
+                >
+                  {scenario.product.name}
+                </Link>
                 {scenario.requirement ? ` · Covers: ${scenario.requirement.title}` : ''}
               </Typography>
             </Box>
@@ -126,6 +138,17 @@ export function TestScenarioDetailDialog({
               </Typography>
             </Box>
 
+            {scenario.release && (
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Release
+                </Typography>
+                <Typography variant="body2">
+                  {scenario.release.name} ({scenario.release.version})
+                </Typography>
+              </Box>
+            )}
+
             <Stack direction="row" spacing={4}>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
@@ -147,6 +170,8 @@ export function TestScenarioDetailDialog({
           </Stack>
         )}
       </DialogContent>
+
+      <ProductDetailDialog productId={viewingProductId} onClose={() => setViewingProductId(null)} />
     </Dialog>
   );
 }

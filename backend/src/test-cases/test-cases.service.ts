@@ -13,8 +13,10 @@ import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { validateRow } from '../common/import/validate-row.util';
 import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
 
+const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
 const TEST_CASE_INCLUDE = {
   testScenario: { select: { id: true, title: true } },
+  release: RELEASE_REF_SELECT,
   steps: { orderBy: { stepNumber: 'asc' as const } },
 };
 
@@ -47,13 +49,14 @@ export class TestCasesService {
   }
 
   async create(dto: CreateTestCaseDto) {
-    const { testScenarioId, title, description, preconditions, expectedResult, priority, status, steps } =
+    const { testScenarioId, releaseId, title, description, preconditions, expectedResult, priority, status, steps } =
       dto;
 
     try {
       return await this.prisma.testCase.create({
         data: {
           testScenarioId,
+          releaseId,
           title,
           description,
           preconditions,
@@ -85,7 +88,7 @@ export class TestCasesService {
       throw new NotFoundException(`Test case ${id} not found`);
     }
 
-    const { testScenarioId, title, description, preconditions, expectedResult, priority, status, steps } =
+    const { testScenarioId, releaseId, title, description, preconditions, expectedResult, priority, status, steps } =
       dto;
 
     try {
@@ -93,6 +96,7 @@ export class TestCasesService {
         where: { id },
         data: {
           testScenarioId,
+          releaseId,
           title,
           description,
           preconditions,

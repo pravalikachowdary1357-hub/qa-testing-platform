@@ -17,6 +17,7 @@ import type {
   CreateDefectPayload,
 } from '../../types/defect';
 import type { ApiProduct } from '../../types/product';
+import type { ApiRelease } from '../../types/release';
 import type { ApiEnvironment } from '../../types/environment';
 import type { ApiTestCase } from '../../types/testCase';
 import type { ApiTestScenario } from '../../types/testScenario';
@@ -48,6 +49,7 @@ const NONE = '' as const;
 
 interface DefectFormValues {
   productId: string;
+  releaseId: string;
   environmentId: string;
   testCaseId: string;
   testExecutionId: string;
@@ -73,6 +75,7 @@ interface FieldErrors {
 function emptyValues(defaultProductId: string): DefectFormValues {
   return {
     productId: defaultProductId,
+    releaseId: NONE,
     environmentId: NONE,
     testCaseId: NONE,
     testExecutionId: NONE,
@@ -92,6 +95,7 @@ interface DefectFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   products: ApiProduct[];
+  releases: ApiRelease[];
   environments: ApiEnvironment[];
   testCases: ApiTestCase[];
   testScenarios: ApiTestScenario[];
@@ -106,6 +110,7 @@ export function DefectFormDialog({
   open,
   mode,
   products,
+  releases,
   environments,
   testCases,
   testScenarios,
@@ -146,6 +151,11 @@ export function DefectFormDialog({
     [environments, values.productId],
   );
 
+  const releasesForProduct = useMemo(
+    () => releases.filter((release) => release.productId === values.productId),
+    [releases, values.productId],
+  );
+
   const testCasesForProduct = useMemo(
     () => testCases.filter((tc) => scenarioProductMap.get(tc.testScenarioId) === values.productId),
     [testCases, scenarioProductMap, values.productId],
@@ -172,6 +182,11 @@ export function DefectFormDialog({
     setValues((prev) => ({
       ...prev,
       productId: newProductId,
+      releaseId: releases.some(
+        (r) => r.id === prev.releaseId && r.productId === newProductId,
+      )
+        ? prev.releaseId
+        : NONE,
       environmentId: environments.some(
         (env) => env.id === prev.environmentId && env.productId === newProductId,
       )
@@ -228,6 +243,7 @@ export function DefectFormDialog({
     try {
       await onSubmit({
         productId: values.productId,
+        releaseId: values.releaseId || undefined,
         environmentId: values.environmentId || null,
         testCaseId: values.testCaseId || null,
         testExecutionId: values.testExecutionId || null,
@@ -273,6 +289,26 @@ export function DefectFormDialog({
                 {products.map((product) => (
                   <MenuItem key={product.id} value={product.id}>
                     {product.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                label="Release (optional)"
+                fullWidth
+                value={values.releaseId}
+                helperText={
+                  releasesForProduct.length === 0 ? 'No releases exist for this product yet.' : ' '
+                }
+                onChange={(e) => setValues((prev) => ({ ...prev, releaseId: e.target.value }))}
+              >
+                <MenuItem value={NONE}>
+                  <em>None</em>
+                </MenuItem>
+                {releasesForProduct.map((release) => (
+                  <MenuItem key={release.id} value={release.id}>
+                    {release.name} ({release.version})
                   </MenuItem>
                 ))}
               </TextField>

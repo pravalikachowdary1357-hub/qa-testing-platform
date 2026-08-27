@@ -45,6 +45,7 @@ import {
 } from '../api/performanceTesting';
 import { fetchProducts } from '../api/products';
 import { fetchEnvironments } from '../api/environments';
+import { fetchReleases } from '../api/release';
 import { ApiError } from '../api/client';
 import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
@@ -56,6 +57,7 @@ import type {
 } from '../types/performanceTesting';
 import type { ApiProduct } from '../types/product';
 import type { ApiEnvironment } from '../types/environment';
+import type { ApiRelease } from '../types/release';
 
 type SortOption = 'newest' | 'name';
 
@@ -68,6 +70,7 @@ export function PerformanceTestingPage() {
   const [tests, setTests] = useState<PerformanceTestListItem[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [environments, setEnvironments] = useState<ApiEnvironment[]>([]);
+  const [releases, setReleases] = useState<ApiRelease[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -128,6 +131,14 @@ export function PerformanceTestingPage() {
       })
       .catch(() => {
         // Only feeds the create/edit dropdown.
+      });
+
+    fetchReleases()
+      .then((data) => {
+        if (!cancelled) setReleases(data);
+      })
+      .catch(() => {
+        // Only feeds the optional Release picker in the create/edit form.
       });
 
     return () => {
@@ -386,6 +397,7 @@ export function PerformanceTestingPage() {
         mode={formMode ?? 'create'}
         products={products}
         environments={environments}
+        releases={releases}
         currentProductId={currentProduct?.id}
         initialValues={formMode === 'edit' ? (editingFormValues ?? undefined) : undefined}
         onClose={() => {

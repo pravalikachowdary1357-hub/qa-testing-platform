@@ -13,6 +13,8 @@ import { validateRow } from '../common/import/validate-row.util';
 import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
 
 const PRODUCT_REF_SELECT = { select: { id: true, name: true } };
+const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
+const REQUIREMENT_INCLUDE = { product: PRODUCT_REF_SELECT, release: RELEASE_REF_SELECT };
 
 @Injectable()
 export class RequirementsService {
@@ -24,7 +26,7 @@ export class RequirementsService {
   findAll(productId?: string) {
     return this.prisma.requirement.findMany({
       where: productId ? { productId } : {},
-      include: { product: PRODUCT_REF_SELECT },
+      include: REQUIREMENT_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -32,7 +34,7 @@ export class RequirementsService {
   async findOne(id: string) {
     const requirement = await this.prisma.requirement.findUnique({
       where: { id },
-      include: { product: PRODUCT_REF_SELECT },
+      include: REQUIREMENT_INCLUDE,
     });
 
     if (!requirement) {
@@ -46,7 +48,7 @@ export class RequirementsService {
     try {
       return await this.prisma.requirement.create({
         data: dto,
-        include: { product: PRODUCT_REF_SELECT },
+        include: REQUIREMENT_INCLUDE,
       });
     } catch (error) {
       if (
@@ -64,7 +66,7 @@ export class RequirementsService {
       return await this.prisma.requirement.update({
         where: { id },
         data: dto,
-        include: { product: PRODUCT_REF_SELECT },
+        include: REQUIREMENT_INCLUDE,
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {

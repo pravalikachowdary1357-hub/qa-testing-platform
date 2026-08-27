@@ -22,6 +22,7 @@ import type {
 } from '../../types/performanceTesting';
 import type { ApiProduct } from '../../types/product';
 import type { ApiEnvironment } from '../../types/environment';
+import type { ApiRelease } from '../../types/release';
 
 const METHOD_OPTIONS: PerfHttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 
@@ -51,6 +52,7 @@ function rowsToRecord(rows: HeaderRow[]): Record<string, string> | undefined {
 export interface PerformanceTestFormValues {
   productId: string;
   environmentId: string;
+  releaseId: string;
   name: string;
   description: string;
   targetUrl: string;
@@ -70,6 +72,7 @@ function emptyValues(defaultProductId: string): PerformanceTestFormValues {
   return {
     productId: defaultProductId,
     environmentId: '',
+    releaseId: '',
     name: '',
     description: '',
     targetUrl: '',
@@ -90,6 +93,7 @@ export function performanceTestToFormValues(test: PerformanceTest): PerformanceT
   return {
     productId: test.productId,
     environmentId: test.environmentId ?? '',
+    releaseId: test.releaseId ?? '',
     name: test.name,
     description: test.description ?? '',
     targetUrl: test.targetUrl,
@@ -167,6 +171,7 @@ interface PerformanceTestFormDialogProps {
   mode: 'create' | 'edit';
   products: ApiProduct[];
   environments: ApiEnvironment[];
+  releases: ApiRelease[];
   currentProductId?: string;
   initialValues?: PerformanceTestFormValues;
   onClose: () => void;
@@ -178,6 +183,7 @@ export function PerformanceTestFormDialog({
   mode,
   products,
   environments,
+  releases,
   currentProductId,
   initialValues,
   onClose,
@@ -214,6 +220,11 @@ export function PerformanceTestFormDialog({
     [environments, values.productId],
   );
 
+  const releasesForProduct = useMemo(
+    () => releases.filter((release) => release.productId === values.productId),
+    [releases, values.productId],
+  );
+
   const handleProductChange = (newProductId: string) => {
     setValues((prev) => ({
       ...prev,
@@ -222,6 +233,11 @@ export function PerformanceTestFormDialog({
         (env) => env.id === prev.environmentId && env.productId === newProductId,
       )
         ? prev.environmentId
+        : '',
+      releaseId: releases.some(
+        (r) => r.id === prev.releaseId && r.productId === newProductId,
+      )
+        ? prev.releaseId
         : '',
     }));
   };
@@ -259,6 +275,7 @@ export function PerformanceTestFormDialog({
       await onSubmit({
         productId: values.productId,
         environmentId: values.environmentId || undefined,
+        releaseId: values.releaseId || undefined,
         name: trimmedName,
         description: values.description.trim() || undefined,
         targetUrl: trimmedUrl,
@@ -333,6 +350,26 @@ export function PerformanceTestFormDialog({
                 {environmentsForProduct.map((environment) => (
                   <MenuItem key={environment.id} value={environment.id}>
                     {environment.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                label="Release (optional)"
+                fullWidth
+                value={values.releaseId}
+                helperText={
+                  releasesForProduct.length === 0 ? 'No releases exist for this product yet.' : ' '
+                }
+                onChange={(e) => setValues((prev) => ({ ...prev, releaseId: e.target.value }))}
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {releasesForProduct.map((release) => (
+                  <MenuItem key={release.id} value={release.id}>
+                    {release.name} ({release.version})
                   </MenuItem>
                 ))}
               </TextField>

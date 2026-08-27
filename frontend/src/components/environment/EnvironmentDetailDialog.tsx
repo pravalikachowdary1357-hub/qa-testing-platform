@@ -11,6 +11,7 @@ import {
   Typography,
 } from '@mui/material';
 import { StatusChip } from '../common/StatusChip';
+import { ProductDetailDialog } from '../product/ProductDetailDialog';
 import { fetchEnvironment } from '../../api/environments';
 import { ApiError } from '../../api/client';
 import type { ApiEnvironment, EnvironmentStatus, EnvironmentType } from '../../types/environment';
@@ -37,6 +38,7 @@ interface EnvironmentDetailDialogProps {
 export function EnvironmentDetailDialog({ environmentId, onClose }: EnvironmentDetailDialogProps) {
   const [environment, setEnvironment] = useState<ApiEnvironment | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [viewingProductId, setViewingProductId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!environmentId) {
@@ -83,9 +85,16 @@ export function EnvironmentDetailDialog({ environmentId, onClose }: EnvironmentD
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Box>
               <Typography variant="h6">{environment.name}</Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Link
+                component="button"
+                type="button"
+                variant="body2"
+                color="text.secondary"
+                underline="hover"
+                onClick={() => setViewingProductId(environment.productId)}
+              >
                 {environment.product.name}
-              </Typography>
+              </Link>
             </Box>
 
             <Stack direction="row" spacing={1}>
@@ -136,6 +145,8 @@ export function EnvironmentDetailDialog({ environmentId, onClose }: EnvironmentD
           </Stack>
         )}
       </DialogContent>
+
+      <ProductDetailDialog productId={viewingProductId} onClose={() => setViewingProductId(null)} />
     </Dialog>
   );
 }

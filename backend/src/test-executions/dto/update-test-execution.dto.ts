@@ -10,6 +10,10 @@ export class UpdateTestExecutionDto {
   @IsUUID()
   environmentId?: string;
 
+  @IsOptional()
+  @IsUUID()
+  releaseId?: string;
+
   // null explicitly clears the test data link; undefined/absent leaves it untouched.
   @IsOptional()
   @IsUUID()

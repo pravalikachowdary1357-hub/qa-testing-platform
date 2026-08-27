@@ -12,6 +12,10 @@ export class UpdateSecurityTestDto {
 
   @IsOptional()
   @IsUUID()
+  releaseId?: string;
+
+  @IsOptional()
+  @IsUUID()
   environmentId?: string;
 
   @IsOptional()

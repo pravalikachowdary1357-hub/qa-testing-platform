@@ -9,6 +9,10 @@ export class CreateAutomationDto {
   @IsUUID()
   environmentId?: string;
 
+  @IsOptional()
+  @IsUUID()
+  releaseId?: string;
+
   @IsString()
   @IsNotEmpty()
   name: string;

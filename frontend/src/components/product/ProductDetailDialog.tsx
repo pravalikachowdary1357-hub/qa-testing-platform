@@ -1,21 +1,28 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Alert,
   Box,
+  Button,
   CircularProgress,
   Dialog,
   DialogContent,
   DialogTitle,
   Divider,
+  Link,
   Stack,
   Tab,
   Tabs,
   Typography,
 } from '@mui/material';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { StatusChip } from '../common/StatusChip';
 import { ProductDocumentsTab } from '../productdocument/ProductDocumentsTab';
+import { ProductComponentsTab } from './ProductComponentsTab';
+import { ProductTeamTab } from './ProductTeamTab';
 import { fetchProduct } from '../../api/products';
 import { ApiError } from '../../api/client';
+import { useProductContext } from '../../context/ProductContext';
 import type { ApiProduct, ProductStatus, ReleaseReadiness } from '../../types/product';
 
 const STATUS_LABELS: Record<string, ProductStatus> = {
@@ -39,6 +46,8 @@ export function ProductDetailDialog({ productId, onClose }: ProductDetailDialogP
   const [product, setProduct] = useState<ApiProduct | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
+  const { setCurrentProduct } = useProductContext();
+  const navigate = useNavigate();
 
   useEffect(() => {
     setActiveTab(0);
@@ -73,9 +82,16 @@ export function ProductDetailDialog({ productId, onClose }: ProductDetailDialogP
     };
   }, [productId]);
 
+  const goToModule = (path: string) => {
+    if (!product) return;
+    setCurrentProduct(product);
+    onClose();
+    navigate(path);
+  };
+
   return (
     <Dialog open={Boolean(productId)} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle sx={{ pb: 0 }}>Product Details</DialogTitle>
+      <DialogTitle sx={{ pb: 0 }}>Product Workspace</DialogTitle>
 
       {product && (
         <Tabs
@@ -84,6 +100,8 @@ export function ProductDetailDialog({ productId, onClose }: ProductDetailDialogP
           sx={{ px: 3, borderBottom: 1, borderColor: 'divider' }}
         >
           <Tab label="Overview" />
+          <Tab label="Components" />
+          <Tab label="Team" />
           <Tab label="Files/Documents" />
         </Tabs>
       )}
@@ -97,7 +115,11 @@ export function ProductDetailDialog({ productId, onClose }: ProductDetailDialogP
 
         {error && <Alert severity="error">{error}</Alert>}
 
-        {product && activeTab === 1 && <ProductDocumentsTab productId={product.id} />}
+        {product && activeTab === 1 && <ProductComponentsTab productId={product.id} />}
+
+        {product && activeTab === 2 && <ProductTeamTab productId={product.id} />}
+
+        {product && activeTab === 3 && <ProductDocumentsTab productId={product.id} />}
 
         {product && activeTab === 0 && (
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -113,6 +135,18 @@ export function ProductDetailDialog({ productId, onClose }: ProductDetailDialogP
               <StatusChip status={READINESS_LABELS[product.releaseReadiness]} />
             </Stack>
 
+            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }} useFlexGap>
+              <Button size="small" variant="outlined" onClick={() => goToModule('/requirements')}>
+                View Requirements
+              </Button>
+              <Button size="small" variant="outlined" onClick={() => goToModule('/environments')}>
+                View Environments
+              </Button>
+              <Button size="small" variant="outlined" onClick={() => goToModule('/release-quality')}>
+                View Releases
+              </Button>
+            </Stack>
+
             <Box>
               <Typography variant="subtitle2" color="text.secondary">
                 Description
@@ -121,6 +155,68 @@ export function ProductDetailDialog({ productId, onClose }: ProductDetailDialogP
                 {product.description}
               </Typography>
             </Box>
+
+            <Stack direction="row" spacing={4} sx={{ flexWrap: 'wrap' }} useFlexGap>
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Application URL
+                </Typography>
+                {product.applicationUrl ? (
+                  <Link
+                    href={product.applicationUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="body2"
+                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                  >
+                    {product.applicationUrl}
+                    <OpenInNewIcon sx={{ fontSize: 14 }} />
+                  </Link>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    —
+                  </Typography>
+                )}
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Repository URL
+                </Typography>
+                {product.repositoryUrl ? (
+                  <Link
+                    href={product.repositoryUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="body2"
+                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                  >
+                    {product.repositoryUrl}
+                    <OpenInNewIcon sx={{ fontSize: 14 }} />
+                  </Link>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    —
+                  </Typography>
+                )}
+              </Box>
+            </Stack>
+
+            <Stack direction="row" spacing={4}>
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Product Owner
+                </Typography>
+                <Typography variant="body2">
+                  {product.productOwner ? `${product.productOwner.name} (${product.productOwner.email})` : '—'}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Current Version
+                </Typography>
+                <Typography variant="body2">{product.currentVersion || '—'}</Typography>
+              </Box>
+            </Stack>
 
             <Stack direction="row" spacing={4}>
               <Box>

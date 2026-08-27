@@ -13,6 +13,7 @@ import {
 import type { CreateSecurityTestPayload, SecurityTest, SecurityTestType } from '../../types/securityTesting';
 import { TEST_TYPE_LABELS } from '../../types/securityTesting';
 import type { ApiProduct } from '../../types/product';
+import type { ApiRelease } from '../../types/release';
 import type { ApiEnvironment } from '../../types/environment';
 import type { ApiTestCase } from '../../types/testCase';
 import type { ApiTestScenario } from '../../types/testScenario';
@@ -32,6 +33,7 @@ export interface SecurityTestFormValues {
   productId: string;
   environmentId: string;
   testCaseId: string;
+  releaseId: string;
   name: string;
   description: string;
   target: string;
@@ -44,6 +46,7 @@ function emptyValues(defaultProductId: string): SecurityTestFormValues {
     productId: defaultProductId,
     environmentId: '',
     testCaseId: '',
+    releaseId: '',
     name: '',
     description: '',
     target: '',
@@ -57,6 +60,7 @@ export function securityTestToFormValues(test: SecurityTest): SecurityTestFormVa
     productId: test.productId,
     environmentId: test.environmentId ?? '',
     testCaseId: test.testCaseId ?? '',
+    releaseId: test.releaseId ?? '',
     name: test.name,
     description: test.description ?? '',
     target: test.target,
@@ -72,6 +76,7 @@ interface SecurityTestFormDialogProps {
   environments: ApiEnvironment[];
   testCases: ApiTestCase[];
   testScenarios: ApiTestScenario[];
+  releases: ApiRelease[];
   currentProductId?: string;
   initialValues?: SecurityTestFormValues;
   onClose: () => void;
@@ -85,6 +90,7 @@ export function SecurityTestFormDialog({
   environments,
   testCases,
   testScenarios,
+  releases,
   currentProductId,
   initialValues,
   onClose,
@@ -128,6 +134,10 @@ export function SecurityTestFormDialog({
     () => testCases.filter((tc) => scenarioProductMap.get(tc.testScenarioId) === values.productId),
     [testCases, scenarioProductMap, values.productId],
   );
+  const releasesForProduct = useMemo(
+    () => releases.filter((release) => release.productId === values.productId),
+    [releases, values.productId],
+  );
 
   const handleProductChange = (newProductId: string) => {
     setValues((prev) => ({
@@ -142,6 +152,11 @@ export function SecurityTestFormDialog({
         (tc) => tc.id === prev.testCaseId && scenarioProductMap.get(tc.testScenarioId) === newProductId,
       )
         ? prev.testCaseId
+        : '',
+      releaseId: releases.some(
+        (r) => r.id === prev.releaseId && r.productId === newProductId,
+      )
+        ? prev.releaseId
         : '',
     }));
   };
@@ -170,6 +185,7 @@ export function SecurityTestFormDialog({
         productId: values.productId,
         environmentId: values.environmentId || undefined,
         testCaseId: values.testCaseId || undefined,
+        releaseId: values.releaseId || undefined,
         name: trimmedName,
         description: values.description.trim() || undefined,
         target: trimmedTarget,
@@ -208,6 +224,26 @@ export function SecurityTestFormDialog({
                 {products.map((product) => (
                   <MenuItem key={product.id} value={product.id}>
                     {product.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                label="Release (optional)"
+                fullWidth
+                value={values.releaseId}
+                helperText={
+                  releasesForProduct.length === 0 ? 'No releases exist for this product yet.' : ' '
+                }
+                onChange={(e) => setValues((prev) => ({ ...prev, releaseId: e.target.value }))}
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {releasesForProduct.map((release) => (
+                  <MenuItem key={release.id} value={release.id}>
+                    {release.name} ({release.version})
                   </MenuItem>
                 ))}
               </TextField>

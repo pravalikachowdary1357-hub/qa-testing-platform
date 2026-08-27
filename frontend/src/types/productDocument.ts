@@ -23,6 +23,7 @@ export interface ApiProductDocument {
   fileSize: number;
   version: number;
   description: string | null;
+  relatedVersion: string | null;
   status: ApiProductDocumentStatus;
   uploadedBy: string;
   createdAt: string;
@@ -37,6 +38,7 @@ export interface ApiProductDocumentVersionEntry {
   mimeType: string;
   fileSize: number;
   description: string | null;
+  relatedVersion: string | null;
   status: ApiProductDocumentStatus;
   uploadedBy: string;
   uploadedAt: string;
@@ -46,12 +48,14 @@ export interface UploadProductDocumentPayload {
   productId: string;
   documentType: ApiProductDocumentType;
   description?: string;
+  relatedVersion?: string;
   status?: ApiProductDocumentStatus;
   file: File;
 }
 
 export interface ReplaceProductDocumentPayload {
   description?: string;
+  relatedVersion?: string;
   status?: ApiProductDocumentStatus;
   file: File;
 }
@@ -59,5 +63,6 @@ export interface ReplaceProductDocumentPayload {
 export interface UpdateProductDocumentPayload {
   documentType?: ApiProductDocumentType;
   description?: string;
+  relatedVersion?: string;
   status?: ApiProductDocumentStatus;
 }

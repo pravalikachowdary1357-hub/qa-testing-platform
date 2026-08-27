@@ -7,10 +7,12 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  Link,
   Stack,
   Typography,
 } from '@mui/material';
 import { StatusChip } from '../common/StatusChip';
+import { ProductDetailDialog } from '../product/ProductDetailDialog';
 import { fetchTestPlan } from '../../api/testPlans';
 import { ApiError } from '../../api/client';
 import type { ApiTestPlan, TestPlanPriority, TestPlanStatus } from '../../types/testPlan';
@@ -39,6 +41,7 @@ interface TestPlanDetailDialogProps {
 export function TestPlanDetailDialog({ testPlanId, onClose }: TestPlanDetailDialogProps) {
   const [testPlan, setTestPlan] = useState<ApiTestPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [viewingProductId, setViewingProductId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!testPlanId) {
@@ -86,7 +89,17 @@ export function TestPlanDetailDialog({ testPlanId, onClose }: TestPlanDetailDial
             <Box>
               <Typography variant="h6">{testPlan.name}</Typography>
               <Typography variant="body2" color="text.secondary">
-                {testPlan.product.name} &middot; Owner: {testPlan.owner}
+                <Link
+                  component="button"
+                  type="button"
+                  variant="body2"
+                  color="text.secondary"
+                  underline="hover"
+                  onClick={() => setViewingProductId(testPlan.productId)}
+                >
+                  {testPlan.product.name}
+                </Link>{' '}
+                &middot; Owner: {testPlan.owner}
               </Typography>
             </Box>
 
@@ -103,6 +116,17 @@ export function TestPlanDetailDialog({ testPlanId, onClose }: TestPlanDetailDial
                 {testPlan.description}
               </Typography>
             </Box>
+
+            {testPlan.release && (
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Release
+                </Typography>
+                <Typography variant="body2">
+                  {testPlan.release.name} ({testPlan.release.version})
+                </Typography>
+              </Box>
+            )}
 
             <Stack direction="row" spacing={4}>
               <Box>
@@ -161,6 +185,8 @@ export function TestPlanDetailDialog({ testPlanId, onClose }: TestPlanDetailDial
           </Stack>
         )}
       </DialogContent>
+
+      <ProductDetailDialog productId={viewingProductId} onClose={() => setViewingProductId(null)} />
     </Dialog>
   );
 }

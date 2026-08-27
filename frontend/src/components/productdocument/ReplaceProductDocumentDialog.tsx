@@ -32,7 +32,12 @@ const STATUS_OPTIONS = Object.entries(DOCUMENT_STATUS_LABELS) as [
 interface ReplaceProductDocumentDialogProps {
   document: ApiProductDocument | null;
   onClose: () => void;
-  onSubmit: (values: { file: File; description: string; status: ApiProductDocumentStatus }) => Promise<void>;
+  onSubmit: (values: {
+    file: File;
+    description: string;
+    relatedVersion: string;
+    status: ApiProductDocumentStatus;
+  }) => Promise<void>;
 }
 
 export function ReplaceProductDocumentDialog({
@@ -43,6 +48,7 @@ export function ReplaceProductDocumentDialog({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [description, setDescription] = useState('');
+  const [relatedVersion, setRelatedVersion] = useState('');
   const [status, setStatus] = useState<ApiProductDocumentStatus>('DRAFT');
   const [fileError, setFileError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -52,6 +58,7 @@ export function ReplaceProductDocumentDialog({
     if (document) {
       setFile(null);
       setDescription(document.description ?? '');
+      setRelatedVersion(document.relatedVersion ?? '');
       setStatus(document.status);
       setFileError(null);
       setSubmitError(null);
@@ -88,7 +95,12 @@ export function ReplaceProductDocumentDialog({
     setSubmitError(null);
 
     try {
-      await onSubmit({ file, description: description.trim(), status });
+      await onSubmit({
+        file,
+        description: description.trim(),
+        relatedVersion: relatedVersion.trim(),
+        status,
+      });
       onClose();
     } catch (err: unknown) {
       setSubmitError(err instanceof Error ? err.message : 'Failed to replace the document.');
@@ -156,6 +168,15 @@ export function ReplaceProductDocumentDialog({
             value={description}
             disabled={uploading}
             onChange={(e) => setDescription(e.target.value)}
+          />
+
+          <TextField
+            label="Related Version (optional)"
+            fullWidth
+            placeholder="e.g. v2.5.1"
+            value={relatedVersion}
+            disabled={uploading}
+            onChange={(e) => setRelatedVersion(e.target.value)}
           />
 
           <TextField

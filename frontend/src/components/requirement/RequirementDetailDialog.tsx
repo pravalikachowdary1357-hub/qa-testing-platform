@@ -6,10 +6,12 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  Link,
   Stack,
   Typography,
 } from '@mui/material';
 import { StatusChip } from '../common/StatusChip';
+import { ProductDetailDialog } from '../product/ProductDetailDialog';
 import { fetchRequirement } from '../../api/requirements';
 import { ApiError } from '../../api/client';
 import type {
@@ -52,6 +54,7 @@ export function RequirementDetailDialog({
 }: RequirementDetailDialogProps) {
   const [requirement, setRequirement] = useState<ApiRequirement | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [viewingProductId, setViewingProductId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!requirementId) {
@@ -98,9 +101,16 @@ export function RequirementDetailDialog({
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Box>
               <Typography variant="h6">{requirement.title}</Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Link
+                component="button"
+                type="button"
+                variant="body2"
+                color="text.secondary"
+                underline="hover"
+                onClick={() => setViewingProductId(requirement.productId)}
+              >
                 {requirement.product.name}
-              </Typography>
+              </Link>
             </Box>
 
             <Stack direction="row" spacing={1}>
@@ -117,6 +127,17 @@ export function RequirementDetailDialog({
                 {requirement.description}
               </Typography>
             </Box>
+
+            {requirement.release && (
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Release
+                </Typography>
+                <Typography variant="body2">
+                  {requirement.release.name} ({requirement.release.version})
+                </Typography>
+              </Box>
+            )}
 
             <Stack direction="row" spacing={4}>
               <Box>
@@ -139,6 +160,8 @@ export function RequirementDetailDialog({
           </Stack>
         )}
       </DialogContent>
+
+      <ProductDetailDialog productId={viewingProductId} onClose={() => setViewingProductId(null)} />
     </Dialog>
   );
 }

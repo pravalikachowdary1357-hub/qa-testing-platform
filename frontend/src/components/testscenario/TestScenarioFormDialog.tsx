@@ -18,6 +18,7 @@ import type {
 } from '../../types/testScenario';
 import type { ApiProduct } from '../../types/product';
 import type { ApiRequirement } from '../../types/requirement';
+import type { ApiRelease } from '../../types/release';
 
 const TYPE_OPTIONS: { value: ApiTestScenarioType; label: string }[] = [
   { value: 'FUNCTIONAL', label: 'Functional' },
@@ -47,6 +48,7 @@ const NO_REQUIREMENT = '' as const;
 interface TestScenarioFormValues {
   productId: string;
   requirementId: string;
+  releaseId: string;
   title: string;
   description: string;
   type: ApiTestScenarioType;
@@ -58,6 +60,7 @@ function emptyValues(defaultProductId: string): TestScenarioFormValues {
   return {
     productId: defaultProductId,
     requirementId: NO_REQUIREMENT,
+    releaseId: '',
     title: '',
     description: '',
     type: 'FUNCTIONAL',
@@ -71,6 +74,7 @@ interface TestScenarioFormDialogProps {
   mode: 'create' | 'edit';
   products: ApiProduct[];
   requirements: ApiRequirement[];
+  releases: ApiRelease[];
   currentProductId?: string;
   initialValues?: TestScenarioFormValues;
   onClose: () => void;
@@ -82,6 +86,7 @@ export function TestScenarioFormDialog({
   mode,
   products,
   requirements,
+  releases,
   currentProductId,
   initialValues,
   onClose,
@@ -114,6 +119,11 @@ export function TestScenarioFormDialog({
     [requirements, values.productId],
   );
 
+  const releasesForProduct = useMemo(
+    () => releases.filter((release) => release.productId === values.productId),
+    [releases, values.productId],
+  );
+
   const handleProductChange = (newProductId: string) => {
     setValues((prev) => ({
       ...prev,
@@ -123,6 +133,9 @@ export function TestScenarioFormDialog({
       )
         ? prev.requirementId
         : NO_REQUIREMENT,
+      releaseId: releases.some((r) => r.id === prev.releaseId && r.productId === newProductId)
+        ? prev.releaseId
+        : '',
     }));
   };
 
@@ -148,6 +161,7 @@ export function TestScenarioFormDialog({
       await onSubmit({
         productId: values.productId,
         requirementId: values.requirementId || null,
+        releaseId: values.releaseId || undefined,
         title: trimmedTitle,
         description: trimmedDescription,
         type: values.type,
@@ -207,6 +221,25 @@ export function TestScenarioFormDialog({
                 {requirementsForProduct.map((requirement) => (
                   <MenuItem key={requirement.id} value={requirement.id}>
                     {requirement.title}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Release (optional)"
+                fullWidth
+                value={values.releaseId}
+                helperText={
+                  releasesForProduct.length === 0 ? 'No releases exist for this product yet.' : ' '
+                }
+                onChange={(e) => setValues((prev) => ({ ...prev, releaseId: e.target.value }))}
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {releasesForProduct.map((release) => (
+                  <MenuItem key={release.id} value={release.id}>
+                    {release.name} ({release.version})
                   </MenuItem>
                 ))}
               </TextField>

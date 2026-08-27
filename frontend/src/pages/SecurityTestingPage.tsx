@@ -47,6 +47,7 @@ import { fetchProducts } from '../api/products';
 import { fetchEnvironments } from '../api/environments';
 import { fetchTestCases } from '../api/testCases';
 import { fetchTestScenarios } from '../api/testScenarios';
+import { fetchReleases } from '../api/release';
 import { ApiError } from '../api/client';
 import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
@@ -68,6 +69,7 @@ import type { ApiProduct } from '../types/product';
 import type { ApiEnvironment } from '../types/environment';
 import type { ApiTestCase } from '../types/testCase';
 import type { ApiTestScenario } from '../types/testScenario';
+import type { ApiRelease } from '../types/release';
 
 type SortOption = 'newest' | 'name';
 
@@ -113,6 +115,7 @@ export function SecurityTestingPage() {
   const [environments, setEnvironments] = useState<ApiEnvironment[]>([]);
   const [testCases, setTestCases] = useState<ApiTestCase[]>([]);
   const [testScenarios, setTestScenarios] = useState<ApiTestScenario[]>([]);
+  const [releases, setReleases] = useState<ApiRelease[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -188,6 +191,11 @@ export function SecurityTestingPage() {
     fetchTestScenarios()
       .then((data) => {
         if (!cancelled) setTestScenarios(data);
+      })
+      .catch(() => {});
+    fetchReleases()
+      .then((data) => {
+        if (!cancelled) setReleases(data);
       })
       .catch(() => {});
 
@@ -474,6 +482,7 @@ export function SecurityTestingPage() {
         environments={environments}
         testCases={testCases}
         testScenarios={testScenarios}
+        releases={releases}
         currentProductId={currentProduct?.id}
         initialValues={formMode === 'edit' ? (editingFormValues ?? undefined) : undefined}
         onClose={() => {

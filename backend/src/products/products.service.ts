@@ -14,6 +14,11 @@ import { validateRow } from '../common/import/validate-row.util';
 import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
 
 const ORGANIZATION_REF_SELECT = { select: { id: true, name: true } };
+const PRODUCT_OWNER_SELECT = { select: { id: true, name: true, email: true } };
+const PRODUCT_INCLUDE = {
+  organization: ORGANIZATION_REF_SELECT,
+  productOwner: PRODUCT_OWNER_SELECT,
+};
 
 @Injectable()
 export class ProductsService {
@@ -24,7 +29,7 @@ export class ProductsService {
 
   findAll() {
     return this.prisma.product.findMany({
-      include: { organization: ORGANIZATION_REF_SELECT },
+      include: PRODUCT_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -32,7 +37,7 @@ export class ProductsService {
   async findOne(id: string) {
     const product = await this.prisma.product.findUnique({
       where: { id },
-      include: { organization: true },
+      include: PRODUCT_INCLUDE,
     });
 
     if (!product) {
@@ -42,11 +47,12 @@ export class ProductsService {
     return product;
   }
 
-  async create(dto: CreateProductDto) {
+  async create(dto: CreateProductDto, actor?: AuthenticatedUser) {
+    let created;
     try {
-      return await this.prisma.product.create({
+      created = await this.prisma.product.create({
         data: dto,
-        include: { organization: ORGANIZATION_REF_SELECT },
+        include: PRODUCT_INCLUDE,
       });
     } catch (error) {
       if (
@@ -59,14 +65,26 @@ export class ProductsService {
       }
       throw error;
     }
+
+    if (actor) {
+      await this.auditLog.record({
+        actorUserId: actor.id,
+        action: 'create',
+        entityType: 'Product',
+        entityId: created.id,
+        summary: `Created product "${created.name}"`,
+      });
+    }
+    return created;
   }
 
-  async update(id: string, dto: UpdateProductDto) {
+  async update(id: string, dto: UpdateProductDto, actor?: AuthenticatedUser) {
+    let updated;
     try {
-      return await this.prisma.product.update({
+      updated = await this.prisma.product.update({
         where: { id },
         data: dto,
-        include: { organization: ORGANIZATION_REF_SELECT },
+        include: PRODUCT_INCLUDE,
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -81,6 +99,17 @@ export class ProductsService {
       }
       throw error;
     }
+
+    if (actor) {
+      await this.auditLog.record({
+        actorUserId: actor.id,
+        action: 'update',
+        entityType: 'Product',
+        entityId: updated.id,
+        summary: `Updated product "${updated.name}"`,
+      });
+    }
+    return updated;
   }
 
   async bulkImport(
@@ -157,7 +186,7 @@ export class ProductsService {
     return trimmed ? Number(trimmed) : undefined;
   }
 
-  async remove(id: string) {
+  async remove(id: string, actor?: AuthenticatedUser) {
     const product = await this.prisma.product.findUnique({
       where: { id },
       include: {
@@ -172,6 +201,8 @@ export class ProductsService {
             securityTests: true,
             uatCycles: true,
             releases: true,
+            environments: true,
+            documents: true,
           },
         },
       },
@@ -209,6 +240,12 @@ export class ProductsService {
     if (product._count.releases > 0) {
       blockers.push(`${product._count.releases} release(s)`);
     }
+    if (product._count.environments > 0) {
+      blockers.push(`${product._count.environments} environment(s)`);
+    }
+    if (product._count.documents > 0) {
+      blockers.push(`${product._count.documents} document(s)`);
+    }
     if (blockers.length > 0) {
       throw new ConflictException(
         `This product cannot be deleted because it has ${blockers.join(' and ')}.`,
@@ -227,6 +264,16 @@ export class ProductsService {
         );
       }
       throw error;
+    }
+
+    if (actor) {
+      await this.auditLog.record({
+        actorUserId: actor.id,
+        action: 'delete',
+        entityType: 'Product',
+        entityId: id,
+        summary: `Deleted product "${product.name}"`,
+      });
     }
   }
 }

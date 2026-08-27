@@ -8,8 +8,10 @@ import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { validateRow } from '../common/import/validate-row.util';
 import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
 
+const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
 const TEST_PLAN_INCLUDE = {
   product: { select: { id: true, name: true } },
+  release: RELEASE_REF_SELECT,
   requirements: { select: { id: true, title: true, status: true } },
 };
 
@@ -59,6 +61,7 @@ export class TestPlansService {
       return await this.prisma.testPlan.create({
         data: {
           productId: dto.productId,
+          releaseId: dto.releaseId,
           name: dto.name,
           description: dto.description,
           status: dto.status,
@@ -164,6 +167,7 @@ export class TestPlansService {
         where: { id },
         data: {
           productId: dto.productId,
+          releaseId: dto.releaseId,
           name: dto.name,
           description: dto.description,
           status: dto.status,

@@ -41,6 +41,7 @@ import {
   updateDefect,
 } from '../api/defects';
 import { fetchProducts } from '../api/products';
+import { fetchReleases } from '../api/release';
 import { fetchEnvironments } from '../api/environments';
 import { fetchTestCases } from '../api/testCases';
 import { fetchTestScenarios } from '../api/testScenarios';
@@ -59,6 +60,7 @@ import type {
   DefectStatus,
 } from '../types/defect';
 import type { ApiProduct } from '../types/product';
+import type { ApiRelease } from '../types/release';
 import type { ApiEnvironment } from '../types/environment';
 import type { ApiTestCase } from '../types/testCase';
 import type { ApiTestScenario } from '../types/testScenario';
@@ -109,6 +111,7 @@ export function DefectsPage() {
   const { currentProduct } = useProductContext();
   const [defects, setDefects] = useState<ApiDefect[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
+  const [releases, setReleases] = useState<ApiRelease[]>([]);
   const [environments, setEnvironments] = useState<ApiEnvironment[]>([]);
   const [testCases, setTestCases] = useState<ApiTestCase[]>([]);
   const [testScenarios, setTestScenarios] = useState<ApiTestScenario[]>([]);
@@ -163,6 +166,12 @@ export function DefectsPage() {
     fetchProducts()
       .then((data) => {
         if (!cancelled) setProducts(data);
+      })
+      .catch(() => {});
+
+    fetchReleases()
+      .then((data) => {
+        if (!cancelled) setReleases(data);
       })
       .catch(() => {});
 
@@ -471,6 +480,7 @@ export function DefectsPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         products={products}
+        releases={releases}
         environments={environments}
         testCases={testCases}
         testScenarios={testScenarios}
@@ -480,6 +490,7 @@ export function DefectsPage() {
           formMode === 'edit' && editingDefect
             ? {
                 productId: editingDefect.productId,
+                releaseId: editingDefect.releaseId ?? '',
                 environmentId: editingDefect.environmentId ?? '',
                 testCaseId: editingDefect.testCaseId ?? '',
                 testExecutionId: editingDefect.testExecutionId ?? '',

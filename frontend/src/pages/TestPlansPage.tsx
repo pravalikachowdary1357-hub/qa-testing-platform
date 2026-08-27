@@ -42,6 +42,7 @@ import {
 } from '../api/testPlans';
 import { fetchProducts } from '../api/products';
 import { fetchRequirements } from '../api/requirements';
+import { fetchReleases } from '../api/release';
 import { ApiError } from '../api/client';
 import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
@@ -55,6 +56,7 @@ import type {
 } from '../types/testPlan';
 import type { ApiProduct } from '../types/product';
 import type { ApiRequirement } from '../types/requirement';
+import type { ApiRelease } from '../types/release';
 
 const STATUS_LABELS: Record<ApiTestPlanStatus, TestPlanStatus> = {
   DRAFT: 'Draft',
@@ -95,6 +97,7 @@ export function TestPlansPage() {
   const { currentProduct } = useProductContext();
   const [testPlans, setTestPlans] = useState<ApiTestPlan[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
+  const [releases, setReleases] = useState<ApiRelease[]>([]);
   const [requirements, setRequirements] = useState<ApiRequirement[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -159,6 +162,14 @@ export function TestPlansPage() {
       })
       .catch(() => {
         // Same reasoning as products: only feeds the requirement picker.
+      });
+
+    fetchReleases()
+      .then((data) => {
+        if (!cancelled) setReleases(data);
+      })
+      .catch(() => {
+        // Only feeds the optional Release picker in the create/edit form.
       });
 
     return () => {
@@ -450,12 +461,14 @@ export function TestPlansPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         products={products}
+        releases={releases}
         requirements={requirements}
         currentProductId={currentProduct?.id}
         initialValues={
           formMode === 'edit' && editingTestPlan
             ? {
                 productId: editingTestPlan.productId,
+                releaseId: editingTestPlan.releaseId ?? '',
                 name: editingTestPlan.name,
                 description: editingTestPlan.description,
                 status: editingTestPlan.status,

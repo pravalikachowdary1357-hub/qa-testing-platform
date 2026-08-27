@@ -1,3 +1,5 @@
+import type { ApiReleaseRef } from './release';
+
 // HTTP methods read fine as-is in the UI, mirroring ApiTesting's convention.
 export type PerfHttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -62,6 +64,7 @@ export interface PerformanceTestListItem {
   id: string;
   productId: string;
   environmentId: string | null;
+  releaseId: string | null;
   name: string;
   description: string | null;
   targetUrl: string;
@@ -81,6 +84,7 @@ export interface PerformanceTestListItem {
   updatedAt: string;
   product: PerformanceTestProductRef;
   environment: PerformanceTestEnvironmentRef | null;
+  release: ApiReleaseRef | null;
   lastRun: PerformanceTestRunSummary | null;
 }
 
@@ -91,6 +95,7 @@ export interface PerformanceTest extends PerformanceTestListItem {
 export interface CreatePerformanceTestPayload {
   productId: string;
   environmentId?: string;
+  releaseId?: string;
   name: string;
   description?: string;
   targetUrl: string;

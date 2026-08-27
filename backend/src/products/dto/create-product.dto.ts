@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  IsUrl,
   Max,
   Min,
 } from 'class-validator';
@@ -36,6 +37,22 @@ export class CreateProductDto {
   @IsString()
   @IsNotEmpty()
   release: string;
+
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  applicationUrl?: string;
+
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  repositoryUrl?: string;
+
+  @IsOptional()
+  @IsUUID()
+  productOwnerId?: string;
+
+  @IsOptional()
+  @IsString()
+  currentVersion?: string;
 
   @IsInt()
   @Min(0)

@@ -18,6 +18,10 @@ export class UpdateApiTestRequestDto {
 
   @IsOptional()
   @IsUUID()
+  releaseId?: string;
+
+  @IsOptional()
+  @IsUUID()
   environmentId?: string;
 
   @IsOptional()

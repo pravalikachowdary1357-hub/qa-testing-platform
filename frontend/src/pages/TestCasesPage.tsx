@@ -41,6 +41,7 @@ import {
   updateTestCase,
 } from '../api/testCases';
 import { fetchTestScenarios } from '../api/testScenarios';
+import { fetchReleases } from '../api/release';
 import { ApiError } from '../api/client';
 import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
@@ -53,6 +54,7 @@ import type {
   TestCaseStatus,
 } from '../types/testCase';
 import type { ApiTestScenario } from '../types/testScenario';
+import type { ApiRelease } from '../types/release';
 
 const PRIORITY_LABELS: Record<ApiTestCasePriority, TestCasePriority> = {
   CRITICAL: 'Critical',
@@ -83,6 +85,7 @@ export function TestCasesPage() {
   const { currentProduct } = useProductContext();
   const [testCases, setTestCases] = useState<ApiTestCase[] | null>(null);
   const [testScenarios, setTestScenarios] = useState<ApiTestScenario[]>([]);
+  const [releases, setReleases] = useState<ApiRelease[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -137,6 +140,14 @@ export function TestCasesPage() {
       })
       .catch(() => {
         // Only feeds the create/edit dropdown and the filter bar.
+      });
+
+    fetchReleases()
+      .then((data) => {
+        if (!cancelled) setReleases(data);
+      })
+      .catch(() => {
+        // Only feeds the create/edit dropdown's optional Release field.
       });
 
     return () => {
@@ -434,6 +445,7 @@ export function TestCasesPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         testScenarios={testScenarios}
+        releases={releases}
         initialValues={
           formMode === 'edit' && editingTestCase
             ? {
@@ -444,6 +456,7 @@ export function TestCasesPage() {
                 expectedResult: editingTestCase.expectedResult,
                 priority: editingTestCase.priority,
                 status: editingTestCase.status,
+                releaseId: editingTestCase.releaseId ?? '',
                 steps: editingTestCase.steps
                   .slice()
                   .sort((a, b) => a.stepNumber - b.stepNumber)

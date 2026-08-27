@@ -5,15 +5,19 @@ import { CreateAutomationDto } from './dto/create-automation.dto';
 import { UpdateAutomationDto } from './dto/update-automation.dto';
 import { CreateAutomationRunDto } from './dto/create-automation-run.dto';
 
+const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
+
 const AUTOMATION_INCLUDE = {
   testCase: { select: { id: true, title: true } },
   environment: { select: { id: true, name: true } },
+  release: RELEASE_REF_SELECT,
   _count: { select: { runs: true } },
 };
 
 const AUTOMATION_DETAIL_INCLUDE = {
   testCase: { select: { id: true, title: true } },
   environment: { select: { id: true, name: true } },
+  release: RELEASE_REF_SELECT,
   runs: { orderBy: { startedAt: 'desc' as const } },
 };
 
@@ -50,6 +54,7 @@ export class AutomationService {
         data: {
           testCaseId: dto.testCaseId,
           environmentId: dto.environmentId,
+          releaseId: dto.releaseId,
           name: dto.name,
           type: dto.type,
           framework: dto.framework,
@@ -86,6 +91,7 @@ export class AutomationService {
         data: {
           testCaseId: dto.testCaseId,
           environmentId: dto.environmentId,
+          releaseId: dto.releaseId,
           name: dto.name,
           type: dto.type,
           framework: dto.framework,

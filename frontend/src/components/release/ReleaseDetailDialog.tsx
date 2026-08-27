@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Alert,
   Box,
@@ -5,6 +6,7 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  Link,
   Paper,
   Stack,
   Typography,
@@ -13,6 +15,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { StatusChip } from '../common/StatusChip';
+import { ProductDetailDialog } from '../product/ProductDetailDialog';
 import { READINESS_LABELS, RELEASE_STATUS_LABELS } from '../../types/release';
 import type { ApiRelease, QualityGateResult } from '../../types/release';
 
@@ -74,6 +77,8 @@ interface ReleaseDetailDialogProps {
 }
 
 export function ReleaseDetailDialog({ release, onClose }: ReleaseDetailDialogProps) {
+  const [viewingProductId, setViewingProductId] = useState<string | null>(null);
+
   return (
     <Dialog open={Boolean(release)} onClose={onClose} fullWidth maxWidth="md">
       <DialogTitle>Release Quality Details</DialogTitle>
@@ -85,7 +90,16 @@ export function ReleaseDetailDialog({ release, onClose }: ReleaseDetailDialogPro
                 {release.name} <Typography component="span" color="text.secondary">({release.version})</Typography>
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {release.product.name}
+                <Link
+                  component="button"
+                  type="button"
+                  variant="body2"
+                  color="text.secondary"
+                  underline="hover"
+                  onClick={() => setViewingProductId(release.productId)}
+                >
+                  {release.product.name}
+                </Link>
                 {release.environment ? ` · ${release.environment.name}` : ''}
                 {release.releaseDate ? ` · Release date ${new Date(release.releaseDate).toLocaleDateString()}` : ''}
               </Typography>
@@ -288,6 +302,8 @@ export function ReleaseDetailDialog({ release, onClose }: ReleaseDetailDialogPro
           </Stack>
         )}
       </DialogContent>
+
+      <ProductDetailDialog productId={viewingProductId} onClose={() => setViewingProductId(null)} />
     </Dialog>
   );
 }

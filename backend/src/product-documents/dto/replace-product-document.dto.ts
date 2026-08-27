@@ -9,6 +9,10 @@ export class ReplaceProductDocumentDto {
   description?: string;
 
   @IsOptional()
+  @IsString()
+  relatedVersion?: string;
+
+  @IsOptional()
   @IsEnum(ProductDocumentStatus)
   status?: ProductDocumentStatus;
 }

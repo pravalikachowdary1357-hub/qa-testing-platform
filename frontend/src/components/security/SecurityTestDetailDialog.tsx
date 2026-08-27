@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  Link,
   MenuItem,
   Paper,
   Stack,
@@ -28,6 +29,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { StatusChip } from '../common/StatusChip';
+import { ProductDetailDialog } from '../product/ProductDetailDialog';
 import {
   SecurityFindingFormDialog,
   findingToFormValues,
@@ -63,6 +65,7 @@ export function SecurityTestDetailDialog({
 }: SecurityTestDetailDialogProps) {
   const [test, setTest] = useState<SecurityTest | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [viewingProductId, setViewingProductId] = useState<string | null>(null);
 
   const [executing, setExecuting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -192,7 +195,16 @@ export function SecurityTestDetailDialog({
             <Box>
               <Typography variant="h6">{test.name}</Typography>
               <Typography variant="body2" color="text.secondary">
-                {test.product.name}
+                <Link
+                  component="button"
+                  type="button"
+                  variant="body2"
+                  color="text.secondary"
+                  underline="hover"
+                  onClick={() => setViewingProductId(test.productId)}
+                >
+                  {test.product.name}
+                </Link>
                 {test.environment ? ` · ${test.environment.name}` : ''}
                 {test.testCase ? ` · ${test.testCase.title}` : ''}
               </Typography>
@@ -219,6 +231,17 @@ export function SecurityTestDetailDialog({
                 <Typography variant="body2">{TEST_TYPE_LABELS[test.testType]}</Typography>
               </Box>
             </Stack>
+
+            {test.release && (
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Release
+                </Typography>
+                <Typography variant="body2">
+                  {test.release.name} ({test.release.version})
+                </Typography>
+              </Box>
+            )}
 
             {test.configuration && (
               <Box>
@@ -402,6 +425,8 @@ export function SecurityTestDetailDialog({
         onClose={() => setDeletingFinding(null)}
         onConfirm={handleDeleteFinding}
       />
+
+      <ProductDetailDialog productId={viewingProductId} onClose={() => setViewingProductId(null)} />
     </Dialog>
   );
 }

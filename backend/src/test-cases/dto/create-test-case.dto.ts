@@ -16,6 +16,10 @@ export class CreateTestCaseDto {
   @IsUUID()
   testScenarioId: string;
 
+  @IsOptional()
+  @IsUUID()
+  releaseId?: string;
+
   @IsString()
   @IsNotEmpty()
   title: string;

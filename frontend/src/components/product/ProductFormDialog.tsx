@@ -16,6 +16,19 @@ import type {
   CreateProductPayload,
 } from '../../types/product';
 import type { ApiOrganization } from '../../types/organization';
+import type { ApiUser } from '../../types/settings';
+
+const NO_OWNER = '' as const;
+
+function isValidOptionalUrl(value: string): boolean {
+  if (value.trim() === '') return true;
+  try {
+    new URL(value.trim());
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 const STATUS_OPTIONS: { value: ApiProductStatus; label: string }[] = [
   { value: 'ACTIVE', label: 'Active' },
@@ -36,6 +49,10 @@ interface ProductFormValues {
   status: ApiProductStatus;
   environment: string;
   release: string;
+  applicationUrl: string;
+  repositoryUrl: string;
+  productOwnerId: string;
+  currentVersion: string;
   testCoverage: string;
   passRate: string;
   openDefects: string;
@@ -50,6 +67,10 @@ function emptyValues(defaultOrganizationId: string): ProductFormValues {
     status: 'ACTIVE',
     environment: '',
     release: '',
+    applicationUrl: '',
+    repositoryUrl: '',
+    productOwnerId: NO_OWNER,
+    currentVersion: '',
     testCoverage: '',
     passRate: '',
     openDefects: '0',
@@ -67,6 +88,7 @@ interface ProductFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   organizations: ApiOrganization[];
+  users: ApiUser[];
   initialValues?: ProductFormValues;
   onClose: () => void;
   onSubmit: (data: CreateProductPayload) => Promise<void>;
@@ -76,6 +98,7 @@ export function ProductFormDialog({
   open,
   mode,
   organizations,
+  users,
   initialValues,
   onClose,
   onSubmit,
@@ -85,6 +108,8 @@ export function ProductFormDialog({
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [environmentError, setEnvironmentError] = useState<string | null>(null);
   const [releaseError, setReleaseError] = useState<string | null>(null);
+  const [applicationUrlError, setApplicationUrlError] = useState<string | null>(null);
+  const [repositoryUrlError, setRepositoryUrlError] = useState<string | null>(null);
   const [testCoverageError, setTestCoverageError] = useState<string | null>(null);
   const [passRateError, setPassRateError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -97,6 +122,8 @@ export function ProductFormDialog({
       setDescriptionError(null);
       setEnvironmentError(null);
       setReleaseError(null);
+      setApplicationUrlError(null);
+      setRepositoryUrlError(null);
       setTestCoverageError(null);
       setPassRateError(null);
       setSubmitError(null);
@@ -129,6 +156,14 @@ export function ProductFormDialog({
       setReleaseError('Release is required.');
       hasError = true;
     }
+    if (!isValidOptionalUrl(values.applicationUrl)) {
+      setApplicationUrlError('Enter a valid URL (e.g. https://app.example.com).');
+      hasError = true;
+    }
+    if (!isValidOptionalUrl(values.repositoryUrl)) {
+      setRepositoryUrlError('Enter a valid URL (e.g. https://github.com/org/repo).');
+      hasError = true;
+    }
     if (!isValidPercentage(values.testCoverage)) {
       setTestCoverageError('Enter a whole number between 0 and 100.');
       hasError = true;
@@ -150,6 +185,10 @@ export function ProductFormDialog({
         status: values.status,
         environment: trimmedEnvironment,
         release: trimmedRelease,
+        applicationUrl: values.applicationUrl.trim() || undefined,
+        repositoryUrl: values.repositoryUrl.trim() || undefined,
+        productOwnerId: values.productOwnerId || undefined,
+        currentVersion: values.currentVersion.trim() || undefined,
         testCoverage: Number(values.testCoverage),
         passRate: Number(values.passRate),
         openDefects: values.openDefects.trim() === '' ? 0 : Number(values.openDefects),
@@ -245,6 +284,61 @@ export function ProductFormDialog({
                     setValues((prev) => ({ ...prev, release: e.target.value }));
                     if (releaseError) setReleaseError(null);
                   }}
+                />
+              </Stack>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  label="Application URL"
+                  fullWidth
+                  placeholder="https://app.example.com"
+                  value={values.applicationUrl}
+                  error={Boolean(applicationUrlError)}
+                  helperText={applicationUrlError ?? ' '}
+                  onChange={(e) => {
+                    setValues((prev) => ({ ...prev, applicationUrl: e.target.value }));
+                    if (applicationUrlError) setApplicationUrlError(null);
+                  }}
+                />
+                <TextField
+                  label="Repository URL"
+                  fullWidth
+                  placeholder="https://github.com/org/repo"
+                  value={values.repositoryUrl}
+                  error={Boolean(repositoryUrlError)}
+                  helperText={repositoryUrlError ?? ' '}
+                  onChange={(e) => {
+                    setValues((prev) => ({ ...prev, repositoryUrl: e.target.value }));
+                    if (repositoryUrlError) setRepositoryUrlError(null);
+                  }}
+                />
+              </Stack>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  select
+                  label="Product Owner"
+                  fullWidth
+                  value={values.productOwnerId}
+                  onChange={(e) =>
+                    setValues((prev) => ({ ...prev, productOwnerId: e.target.value }))
+                  }
+                >
+                  <MenuItem value={NO_OWNER}>
+                    <em>No owner assigned</em>
+                  </MenuItem>
+                  {users.map((user) => (
+                    <MenuItem key={user.id} value={user.id}>
+                      {user.name} ({user.email})
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  label="Current Version"
+                  fullWidth
+                  placeholder="e.g. 2.4.0"
+                  value={values.currentVersion}
+                  onChange={(e) =>
+                    setValues((prev) => ({ ...prev, currentVersion: e.target.value }))
+                  }
                 />
               </Stack>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>

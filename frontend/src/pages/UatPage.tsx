@@ -43,6 +43,7 @@ import {
   updateUatCycle,
 } from '../api/uat';
 import { fetchProducts } from '../api/products';
+import { fetchReleases } from '../api/release';
 import { fetchEnvironments } from '../api/environments';
 import { fetchDefects } from '../api/defects';
 import { fetchRequirements } from '../api/requirements';
@@ -57,6 +58,7 @@ import type {
   UatCycleStatus,
 } from '../types/uat';
 import type { ApiProduct } from '../types/product';
+import type { ApiRelease } from '../types/release';
 import type { ApiEnvironment } from '../types/environment';
 import type { ApiDefect } from '../types/defect';
 import type { ApiRequirement } from '../types/requirement';
@@ -90,6 +92,7 @@ export function UatPage() {
   const { currentProduct } = useProductContext();
   const [cycles, setCycles] = useState<UatCycleListItem[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
+  const [releases, setReleases] = useState<ApiRelease[]>([]);
   const [environments, setEnvironments] = useState<ApiEnvironment[]>([]);
   const [defects, setDefects] = useState<ApiDefect[]>([]);
   const [requirements, setRequirements] = useState<ApiRequirement[]>([]);
@@ -143,6 +146,11 @@ export function UatPage() {
     fetchProducts()
       .then((data) => {
         if (!cancelled) setProducts(data);
+      })
+      .catch(() => {});
+    fetchReleases()
+      .then((data) => {
+        if (!cancelled) setReleases(data);
       })
       .catch(() => {});
     fetchEnvironments()
@@ -443,6 +451,7 @@ export function UatPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         products={products}
+        releases={releases}
         currentProductId={currentProduct?.id}
         initialValues={formMode === 'edit' ? (editingFormValues ?? undefined) : undefined}
         onClose={() => {

@@ -1,5 +1,13 @@
 import { apiFetch, apiUpload } from './client';
-import type { ApiProduct, CreateProductPayload, UpdateProductPayload } from '../types/product';
+import type {
+  ApiProduct,
+  ApiProductComponent,
+  ApiProductTeamMember,
+  CreateProductComponentPayload,
+  CreateProductPayload,
+  CreateProductTeamMemberPayload,
+  UpdateProductPayload,
+} from '../types/product';
 import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 
 export function fetchProducts(): Promise<ApiProduct[]> {
@@ -32,4 +40,38 @@ export function importProducts(file: File): Promise<ImportResultSummary> {
   const formData = new FormData();
   formData.append('file', file);
   return apiUpload<ImportResultSummary>('/products/import', formData);
+}
+
+export function fetchProductComponents(productId: string): Promise<ApiProductComponent[]> {
+  return apiFetch<ApiProductComponent[]>(`/product-components?productId=${productId}`);
+}
+
+export function createProductComponent(
+  data: CreateProductComponentPayload,
+): Promise<ApiProductComponent> {
+  return apiFetch<ApiProductComponent>('/product-components', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteProductComponent(id: string): Promise<void> {
+  return apiFetch<void>(`/product-components/${id}`, { method: 'DELETE' });
+}
+
+export function fetchProductTeamMembers(productId: string): Promise<ApiProductTeamMember[]> {
+  return apiFetch<ApiProductTeamMember[]>(`/product-team-members?productId=${productId}`);
+}
+
+export function createProductTeamMember(
+  data: CreateProductTeamMemberPayload,
+): Promise<ApiProductTeamMember> {
+  return apiFetch<ApiProductTeamMember>('/product-team-members', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteProductTeamMember(id: string): Promise<void> {
+  return apiFetch<void>(`/product-team-members/${id}`, { method: 'DELETE' });
 }

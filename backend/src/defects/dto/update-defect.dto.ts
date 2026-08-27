@@ -6,6 +6,10 @@ export class UpdateDefectDto {
   @IsUUID()
   productId?: string;
 
+  @IsOptional()
+  @IsUUID()
+  releaseId?: string;
+
   // null explicitly clears the environment link; undefined/absent leaves it untouched.
   @IsOptional()
   @IsUUID()

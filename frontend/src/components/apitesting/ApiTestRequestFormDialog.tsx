@@ -23,6 +23,7 @@ import type {
 } from '../../types/apiTesting';
 import type { ApiProduct } from '../../types/product';
 import type { ApiEnvironment } from '../../types/environment';
+import type { ApiRelease } from '../../types/release';
 
 const METHOD_OPTIONS: ApiHttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 
@@ -59,6 +60,7 @@ function rowsToRecord(rows: KeyValueRow[]): Record<string, string> | undefined {
 export interface ApiTestRequestFormValues {
   productId: string;
   environmentId: string;
+  releaseId: string;
   name: string;
   method: ApiHttpMethod;
   url: string;
@@ -78,6 +80,7 @@ function emptyValues(defaultProductId: string): ApiTestRequestFormValues {
   return {
     productId: defaultProductId,
     environmentId: '',
+    releaseId: '',
     name: '',
     method: 'GET',
     url: '',
@@ -102,6 +105,7 @@ export function apiTestRequestToFormValues(request: ApiTestRequest): ApiTestRequ
   return {
     productId: request.productId,
     environmentId: request.environmentId ?? '',
+    releaseId: request.releaseId ?? '',
     name: request.name,
     method: request.method,
     url: request.url,
@@ -196,6 +200,7 @@ interface ApiTestRequestFormDialogProps {
   mode: 'create' | 'edit';
   products: ApiProduct[];
   environments: ApiEnvironment[];
+  releases: ApiRelease[];
   currentProductId?: string;
   initialValues?: ApiTestRequestFormValues;
   onClose: () => void;
@@ -207,6 +212,7 @@ export function ApiTestRequestFormDialog({
   mode,
   products,
   environments,
+  releases,
   currentProductId,
   initialValues,
   onClose,
@@ -249,6 +255,11 @@ export function ApiTestRequestFormDialog({
     [environments, values.productId],
   );
 
+  const releasesForProduct = useMemo(
+    () => releases.filter((release) => release.productId === values.productId),
+    [releases, values.productId],
+  );
+
   const handleProductChange = (newProductId: string) => {
     setValues((prev) => ({
       ...prev,
@@ -257,6 +268,11 @@ export function ApiTestRequestFormDialog({
         (env) => env.id === prev.environmentId && env.productId === newProductId,
       )
         ? prev.environmentId
+        : '',
+      releaseId: releases.some(
+        (r) => r.id === prev.releaseId && r.productId === newProductId,
+      )
+        ? prev.releaseId
         : '',
     }));
   };
@@ -326,6 +342,7 @@ export function ApiTestRequestFormDialog({
       await onSubmit({
         productId: values.productId,
         environmentId: values.environmentId || undefined,
+        releaseId: values.releaseId || undefined,
         name: trimmedName,
         method: values.method,
         url: trimmedUrl,
@@ -392,6 +409,26 @@ export function ApiTestRequestFormDialog({
                 {environmentsForProduct.map((environment) => (
                   <MenuItem key={environment.id} value={environment.id}>
                     {environment.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                label="Release (optional)"
+                fullWidth
+                value={values.releaseId}
+                helperText={
+                  releasesForProduct.length === 0 ? 'No releases exist for this product yet.' : ' '
+                }
+                onChange={(e) => setValues((prev) => ({ ...prev, releaseId: e.target.value }))}
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {releasesForProduct.map((release) => (
+                  <MenuItem key={release.id} value={release.id}>
+                    {release.name} ({release.version})
                   </MenuItem>
                 ))}
               </TextField>

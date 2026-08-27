@@ -41,6 +41,7 @@ interface UploadProductDocumentDialogProps {
     file: File;
     documentType: ApiProductDocumentType;
     description: string;
+    relatedVersion: string;
     status: ApiProductDocumentStatus;
   }) => Promise<void>;
 }
@@ -54,6 +55,7 @@ export function UploadProductDocumentDialog({
   const [file, setFile] = useState<File | null>(null);
   const [documentType, setDocumentType] = useState<ApiProductDocumentType>('PRODUCT_REQUIREMENTS_BRD');
   const [description, setDescription] = useState('');
+  const [relatedVersion, setRelatedVersion] = useState('');
   const [status, setStatus] = useState<ApiProductDocumentStatus>('DRAFT');
   const [fileError, setFileError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -64,6 +66,7 @@ export function UploadProductDocumentDialog({
       setFile(null);
       setDocumentType('PRODUCT_REQUIREMENTS_BRD');
       setDescription('');
+      setRelatedVersion('');
       setStatus('DRAFT');
       setFileError(null);
       setSubmitError(null);
@@ -100,7 +103,13 @@ export function UploadProductDocumentDialog({
     setSubmitError(null);
 
     try {
-      await onSubmit({ file, documentType, description: description.trim(), status });
+      await onSubmit({
+        file,
+        documentType,
+        description: description.trim(),
+        relatedVersion: relatedVersion.trim(),
+        status,
+      });
       onClose();
     } catch (err: unknown) {
       setSubmitError(err instanceof Error ? err.message : 'Failed to upload the document.');
@@ -180,6 +189,15 @@ export function UploadProductDocumentDialog({
             value={description}
             disabled={uploading}
             onChange={(e) => setDescription(e.target.value)}
+          />
+
+          <TextField
+            label="Related Version (optional)"
+            fullWidth
+            placeholder="e.g. v2.5.1"
+            value={relatedVersion}
+            disabled={uploading}
+            onChange={(e) => setRelatedVersion(e.target.value)}
           />
 
           <TextField

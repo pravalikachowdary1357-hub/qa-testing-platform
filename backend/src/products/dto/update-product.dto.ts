@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  IsUrl,
   Max,
   Min,
 } from 'class-validator';
@@ -41,6 +42,22 @@ export class UpdateProductDto {
   @IsString()
   @IsNotEmpty()
   release?: string;
+
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  applicationUrl?: string;
+
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  repositoryUrl?: string;
+
+  @IsOptional()
+  @IsUUID()
+  productOwnerId?: string;
+
+  @IsOptional()
+  @IsString()
+  currentVersion?: string;
 
   @IsOptional()
   @IsInt()

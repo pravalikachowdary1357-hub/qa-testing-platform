@@ -7,10 +7,12 @@ import { UpdatePerformanceTestDto } from './dto/update-performance-test.dto';
 
 const PRODUCT_REF = { select: { id: true, name: true } };
 const ENVIRONMENT_REF = { select: { id: true, name: true, baseUrl: true } };
+const RELEASE_REF = { select: { id: true, name: true, version: true } };
 
 const RELATION_INCLUDE = {
   product: PRODUCT_REF,
   environment: ENVIRONMENT_REF,
+  release: RELEASE_REF,
 };
 
 const LIST_INCLUDE = {
@@ -103,6 +105,7 @@ export class PerformanceTestingService {
       return await this.prisma.performanceTest.create({
         data: {
           productId: dto.productId,
+          releaseId: dto.releaseId,
           environmentId: dto.environmentId,
           name: dto.name,
           description: dto.description,
@@ -152,6 +155,7 @@ export class PerformanceTestingService {
         where: { id },
         data: {
           productId: dto.productId,
+          releaseId: dto.releaseId,
           environmentId: dto.environmentId,
           name: dto.name,
           description: dto.description,

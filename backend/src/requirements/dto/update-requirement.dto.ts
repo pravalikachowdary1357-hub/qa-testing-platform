@@ -11,6 +11,10 @@ export class UpdateRequirementDto {
   productId?: string;
 
   @IsOptional()
+  @IsUUID()
+  releaseId?: string;
+
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
   title?: string;

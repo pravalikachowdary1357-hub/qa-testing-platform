@@ -1,3 +1,5 @@
+import type { ApiReleaseRef } from './release';
+
 // Human-readable labels rendered by StatusChip.
 export type TestScenarioType = 'Functional' | 'Regression' | 'Integration' | 'Smoke' | 'Edge Case';
 export type TestScenarioPriority = 'Critical' | 'High' | 'Medium' | 'Low';
@@ -27,6 +29,7 @@ export interface ApiTestScenario {
   id: string;
   productId: string;
   requirementId: string | null;
+  releaseId: string | null;
   title: string;
   description: string;
   type: ApiTestScenarioType;
@@ -36,6 +39,7 @@ export interface ApiTestScenario {
   updatedAt: string;
   product: ApiTestScenarioProductRef;
   requirement: ApiTestScenarioRequirementRef | null;
+  release: ApiReleaseRef | null;
 }
 
 export interface CreateTestScenarioPayload {
@@ -43,6 +47,7 @@ export interface CreateTestScenarioPayload {
   // null and undefined both mean "no requirement"; PATCH also uses null to
   // explicitly clear an existing link.
   requirementId?: string | null;
+  releaseId?: string;
   title: string;
   description: string;
   type?: ApiTestScenarioType;

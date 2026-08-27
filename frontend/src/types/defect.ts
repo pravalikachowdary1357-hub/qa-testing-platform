@@ -1,5 +1,6 @@
 import type { ApiEnvironmentType } from './environment';
 import type { ApiTestExecutionStatus } from './testExecution';
+import type { ApiReleaseRef } from './release';
 
 // Human-readable labels rendered by StatusChip.
 export type DefectSeverity = 'Critical' | 'Major' | 'Minor' | 'Trivial';
@@ -36,6 +37,7 @@ export interface ApiDefectTestExecutionRef {
 export interface ApiDefect {
   id: string;
   productId: string;
+  releaseId: string | null;
   environmentId: string | null;
   testCaseId: string | null;
   testExecutionId: string | null;
@@ -51,6 +53,7 @@ export interface ApiDefect {
   createdAt: string;
   updatedAt: string;
   product: ApiDefectProductRef;
+  release: ApiReleaseRef | null;
   environment: ApiDefectEnvironmentRef | null;
   testCase: ApiDefectTestCaseRef | null;
   testExecution: ApiDefectTestExecutionRef | null;
@@ -58,6 +61,7 @@ export interface ApiDefect {
 
 export interface CreateDefectPayload {
   productId: string;
+  releaseId?: string;
   // null and undefined both mean "no link"; PATCH also uses null to
   // explicitly clear an existing link.
   environmentId?: string | null;

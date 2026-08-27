@@ -1,3 +1,5 @@
+import type { ApiReleaseRef } from '../types/release';
+
 // Human-readable labels rendered by StatusChip.
 export type AutomationType = 'UI' | 'API' | 'Unit' | 'Integration' | 'Performance';
 export type AutomationFramework =
@@ -48,6 +50,7 @@ export interface ApiAutomationListItem {
   id: string;
   testCaseId: string;
   environmentId: string | null;
+  releaseId: string | null;
   name: string;
   type: ApiAutomationType;
   framework: ApiAutomationFramework;
@@ -61,6 +64,7 @@ export interface ApiAutomationListItem {
   updatedAt: string;
   testCase: ApiAutomationCaseRef;
   environment: ApiAutomationEnvironmentRef | null;
+  release: ApiReleaseRef | null;
   runCount: number;
 }
 
@@ -71,6 +75,7 @@ export interface ApiAutomation extends ApiAutomationListItem {
 export interface CreateAutomationPayload {
   testCaseId: string;
   environmentId?: string;
+  releaseId?: string;
   name: string;
   type?: ApiAutomationType;
   framework?: ApiAutomationFramework;

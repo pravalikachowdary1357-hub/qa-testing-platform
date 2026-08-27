@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Button,
@@ -13,21 +13,30 @@ import {
 import type { CreateUatCyclePayload, UatCycleListItem, UatCycleStatus } from '../../types/uat';
 import { CYCLE_STATUS_LABELS, EDITABLE_CYCLE_STATUSES } from '../../types/uat';
 import type { ApiProduct } from '../../types/product';
+import type { ApiRelease } from '../../types/release';
 
 export interface UatCycleFormValues {
   productId: string;
+  releaseId: string;
   name: string;
   description: string;
   status: UatCycleStatus;
 }
 
 function emptyValues(defaultProductId: string): UatCycleFormValues {
-  return { productId: defaultProductId, name: '', description: '', status: 'PLANNED' };
+  return {
+    productId: defaultProductId,
+    releaseId: '',
+    name: '',
+    description: '',
+    status: 'PLANNED',
+  };
 }
 
 export function uatCycleToFormValues(cycle: UatCycleListItem): UatCycleFormValues {
   return {
     productId: cycle.productId,
+    releaseId: cycle.releaseId ?? '',
     name: cycle.name,
     description: cycle.description ?? '',
     status: cycle.status,
@@ -38,6 +47,7 @@ interface UatCycleFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   products: ApiProduct[];
+  releases: ApiRelease[];
   currentProductId?: string;
   initialValues?: UatCycleFormValues;
   onClose: () => void;
@@ -48,6 +58,7 @@ export function UatCycleFormDialog({
   open,
   mode,
   products,
+  releases,
   currentProductId,
   initialValues,
   onClose,
@@ -77,6 +88,21 @@ export function UatCycleFormDialog({
   // dedicated Sign-Off action is the only way to reach/change those values.
   const statusIsEditable = EDITABLE_CYCLE_STATUSES.includes(values.status);
 
+  const releasesForProduct = useMemo(
+    () => releases.filter((release) => release.productId === values.productId),
+    [releases, values.productId],
+  );
+
+  const handleProductChange = (newProductId: string) => {
+    setValues((prev) => ({
+      ...prev,
+      productId: newProductId,
+      releaseId: releases.some((r) => r.id === prev.releaseId && r.productId === newProductId)
+        ? prev.releaseId
+        : '',
+    }));
+  };
+
   const handleSubmit = async () => {
     const trimmedName = values.name.trim();
     if (!trimmedName) {
@@ -90,6 +116,7 @@ export function UatCycleFormDialog({
     try {
       await onSubmit({
         productId: values.productId,
+        releaseId: values.releaseId || undefined,
         name: trimmedName,
         description: values.description.trim() || undefined,
         status: mode === 'edit' && statusIsEditable ? values.status : undefined,
@@ -121,11 +148,31 @@ export function UatCycleFormDialog({
                 required
                 fullWidth
                 value={values.productId}
-                onChange={(e) => setValues((prev) => ({ ...prev, productId: e.target.value }))}
+                onChange={(e) => handleProductChange(e.target.value)}
               >
                 {products.map((product) => (
                   <MenuItem key={product.id} value={product.id}>
                     {product.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                label="Release (optional)"
+                fullWidth
+                value={values.releaseId}
+                helperText={
+                  releasesForProduct.length === 0 ? 'No releases exist for this product yet.' : ' '
+                }
+                onChange={(e) => setValues((prev) => ({ ...prev, releaseId: e.target.value }))}
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {releasesForProduct.map((release) => (
+                  <MenuItem key={release.id} value={release.id}>
+                    {release.name} ({release.version})
                   </MenuItem>
                 ))}
               </TextField>

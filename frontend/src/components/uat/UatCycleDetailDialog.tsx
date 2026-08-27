@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  Link,
   Paper,
   Stack,
   Table,
@@ -24,6 +25,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { StatusChip } from '../common/StatusChip';
+import { ProductDetailDialog } from '../product/ProductDetailDialog';
 import {
   UatTestCaseFormDialog,
   uatTestCaseToFormValues,
@@ -68,6 +70,7 @@ export function UatCycleDetailDialog({
 }: UatCycleDetailDialogProps) {
   const [cycle, setCycle] = useState<UatCycle | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [viewingProductId, setViewingProductId] = useState<string | null>(null);
 
   const [testCaseFormMode, setTestCaseFormMode] = useState<'create' | 'edit' | null>(null);
   const [editingTestCase, setEditingTestCase] = useState<UatTestCase | null>(null);
@@ -155,15 +158,33 @@ export function UatCycleDetailDialog({
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Box>
               <Typography variant="h6">{cycle.name}</Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Link
+                component="button"
+                type="button"
+                variant="body2"
+                color="text.secondary"
+                underline="hover"
+                onClick={() => setViewingProductId(cycle.productId)}
+              >
                 {cycle.product.name}
-              </Typography>
+              </Link>
               {cycle.description && (
                 <Typography variant="body2" sx={{ mt: 1 }}>
                   {cycle.description}
                 </Typography>
               )}
             </Box>
+
+            {cycle.release && (
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Release
+                </Typography>
+                <Typography variant="body2">
+                  {cycle.release.name} ({cycle.release.version})
+                </Typography>
+              </Box>
+            )}
 
             <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
               <Typography variant="subtitle2" color="text.secondary">
@@ -318,6 +339,8 @@ export function UatCycleDetailDialog({
           onMutate={refresh}
         />
       )}
+
+      <ProductDetailDialog productId={viewingProductId} onClose={() => setViewingProductId(null)} />
     </Dialog>
   );
 }

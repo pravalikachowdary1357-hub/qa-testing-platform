@@ -13,11 +13,13 @@ import { CreateSecurityFindingDto } from './dto/create-security-finding.dto';
 import { UpdateSecurityFindingDto } from './dto/update-security-finding.dto';
 
 const PRODUCT_REF = { select: { id: true, name: true } };
+const RELEASE_REF = { select: { id: true, name: true, version: true } };
 const ENVIRONMENT_REF = { select: { id: true, name: true } };
 const TEST_CASE_REF = { select: { id: true, title: true } };
 
 const RELATION_INCLUDE = {
   product: PRODUCT_REF,
+  release: RELEASE_REF,
   environment: ENVIRONMENT_REF,
   testCase: TEST_CASE_REF,
 };
@@ -99,6 +101,7 @@ export class SecurityTestingService {
       return await this.prisma.securityTest.create({
         data: {
           productId: dto.productId,
+          releaseId: dto.releaseId,
           environmentId: dto.environmentId,
           testCaseId: dto.testCaseId,
           name: dto.name,
@@ -136,6 +139,7 @@ export class SecurityTestingService {
         where: { id },
         data: {
           productId: dto.productId,
+          releaseId: dto.releaseId,
           environmentId: dto.environmentId,
           testCaseId: dto.testCaseId,
           name: dto.name,

@@ -1,4 +1,5 @@
 import type { ApiRequirementStatus } from './requirement';
+import type { ApiReleaseRef } from './release';
 
 // Human-readable labels rendered by StatusChip.
 export type TestPlanStatus =
@@ -34,6 +35,7 @@ export interface ApiTestPlanRequirementRef {
 export interface ApiTestPlan {
   id: string;
   productId: string;
+  releaseId: string | null;
   name: string;
   description: string;
   status: ApiTestPlanStatus;
@@ -44,11 +46,13 @@ export interface ApiTestPlan {
   createdAt: string;
   updatedAt: string;
   product: ApiTestPlanProductRef;
+  release: ApiReleaseRef | null;
   requirements: ApiTestPlanRequirementRef[];
 }
 
 export interface CreateTestPlanPayload {
   productId: string;
+  releaseId?: string;
   name: string;
   description: string;
   status?: ApiTestPlanStatus;

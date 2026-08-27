@@ -13,6 +13,10 @@ export class CreateTestPlanDto {
   @IsUUID()
   productId: string;
 
+  @IsOptional()
+  @IsUUID()
+  releaseId?: string;
+
   @IsString()
   @IsNotEmpty()
   name: string;

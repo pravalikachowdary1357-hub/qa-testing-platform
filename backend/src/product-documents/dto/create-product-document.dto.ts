@@ -18,6 +18,10 @@ export class CreateProductDocumentDto {
   description?: string;
 
   @IsOptional()
+  @IsString()
+  relatedVersion?: string;
+
+  @IsOptional()
   @IsEnum(ProductDocumentStatus)
   status?: ProductDocumentStatus;
 }

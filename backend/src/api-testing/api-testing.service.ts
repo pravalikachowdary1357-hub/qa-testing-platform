@@ -7,9 +7,11 @@ import { UpdateApiTestRequestDto } from './dto/update-api-test-request.dto';
 
 const PRODUCT_REF = { select: { id: true, name: true } };
 const ENVIRONMENT_REF = { select: { id: true, name: true, baseUrl: true } };
+const RELEASE_REF = { select: { id: true, name: true, version: true } };
 
 const RELATION_INCLUDE = {
   product: PRODUCT_REF,
+  release: RELEASE_REF,
   environment: ENVIRONMENT_REF,
 };
 
@@ -19,6 +21,7 @@ const RELATION_INCLUDE = {
 const LIST_SELECT = {
   id: true,
   productId: true,
+  releaseId: true,
   environmentId: true,
   name: true,
   method: true,
@@ -31,6 +34,7 @@ const LIST_SELECT = {
   createdAt: true,
   updatedAt: true,
   product: PRODUCT_REF,
+  release: RELEASE_REF,
   environment: ENVIRONMENT_REF,
   executions: {
     take: 1,
@@ -88,6 +92,7 @@ export class ApiTestingService {
       return await this.prisma.apiTestRequest.create({
         data: {
           productId: dto.productId,
+          releaseId: dto.releaseId,
           environmentId: dto.environmentId,
           name: dto.name,
           method: dto.method,
@@ -136,6 +141,7 @@ export class ApiTestingService {
         where: { id },
         data: {
           productId: dto.productId,
+          releaseId: dto.releaseId,
           environmentId: dto.environmentId,
           name: dto.name,
           method: dto.method,

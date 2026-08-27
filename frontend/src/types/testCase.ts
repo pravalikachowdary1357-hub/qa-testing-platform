@@ -1,3 +1,5 @@
+import type { ApiReleaseRef } from './release';
+
 // Human-readable labels rendered by StatusChip.
 export type TestCasePriority = 'Critical' | 'High' | 'Medium' | 'Low';
 export type TestCaseStatus = 'Draft' | 'Ready' | 'Approved' | 'Deprecated';
@@ -27,6 +29,8 @@ export interface ApiTestCase {
   expectedResult: string;
   priority: ApiTestCasePriority;
   status: ApiTestCaseStatus;
+  releaseId: string | null;
+  release: ApiReleaseRef | null;
   createdAt: string;
   updatedAt: string;
   testScenario: ApiTestCaseScenarioRef;
@@ -46,6 +50,7 @@ export interface CreateTestCasePayload {
   expectedResult: string;
   priority?: ApiTestCasePriority;
   status?: ApiTestCaseStatus;
+  releaseId?: string;
   steps: TestCaseStepInput[];
 }
 

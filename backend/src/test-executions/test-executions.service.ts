@@ -4,6 +4,8 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { CreateTestExecutionDto } from './dto/create-test-execution.dto';
 import { UpdateTestExecutionDto } from './dto/update-test-execution.dto';
 
+const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
+
 const TEST_EXECUTION_INCLUDE = {
   testCase: {
     select: {
@@ -21,6 +23,7 @@ const TEST_EXECUTION_INCLUDE = {
   },
   environment: { select: { id: true, name: true, type: true } },
   testData: { select: { id: true, name: true } },
+  release: RELEASE_REF_SELECT,
 };
 
 @Injectable()
@@ -56,6 +59,7 @@ export class TestExecutionsService {
         data: {
           testCaseId: dto.testCaseId,
           environmentId: dto.environmentId,
+          releaseId: dto.releaseId,
           testDataId: dto.testDataId,
           status: dto.status,
           actualResult: dto.actualResult,
@@ -93,6 +97,7 @@ export class TestExecutionsService {
         data: {
           testCaseId: dto.testCaseId,
           environmentId: dto.environmentId,
+          releaseId: dto.releaseId,
           testDataId: dto.testDataId,
           status: dto.status,
           actualResult: dto.actualResult,

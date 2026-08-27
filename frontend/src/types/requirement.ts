@@ -1,3 +1,5 @@
+import type { ApiReleaseRef } from './release';
+
 // Human-readable labels rendered by StatusChip.
 export type RequirementType = 'Functional' | 'Non-Functional' | 'Business' | 'Technical';
 export type RequirementPriority = 'Critical' | 'High' | 'Medium' | 'Low';
@@ -21,6 +23,7 @@ export interface ApiRequirementProductRef {
 export interface ApiRequirement {
   id: string;
   productId: string;
+  releaseId: string | null;
   title: string;
   description: string;
   type: ApiRequirementType;
@@ -29,10 +32,12 @@ export interface ApiRequirement {
   createdAt: string;
   updatedAt: string;
   product: ApiRequirementProductRef;
+  release: ApiReleaseRef | null;
 }
 
 export interface CreateRequirementPayload {
   productId: string;
+  releaseId?: string;
   title: string;
   description: string;
   type?: ApiRequirementType;

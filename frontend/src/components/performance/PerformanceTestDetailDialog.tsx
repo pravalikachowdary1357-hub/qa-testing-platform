@@ -7,6 +7,7 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  Link,
   Paper,
   Stack,
   Table,
@@ -20,6 +21,7 @@ import {
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
 import { StatusChip } from '../common/StatusChip';
+import { ProductDetailDialog } from '../product/ProductDetailDialog';
 import { MetricTrendChart } from './MetricTrendChart';
 import { fetchPerformanceTest, runPerformanceTest, stopPerformanceTest } from '../../api/performanceTesting';
 import { ApiError } from '../../api/client';
@@ -61,6 +63,7 @@ export function PerformanceTestDetailDialog({
 }: PerformanceTestDetailDialogProps) {
   const [test, setTest] = useState<PerformanceTest | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [viewingProductId, setViewingProductId] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   const [stopping, setStopping] = useState(false);
@@ -191,7 +194,16 @@ export function PerformanceTestDetailDialog({
             <Box>
               <Typography variant="h6">{test.name}</Typography>
               <Typography variant="body2" color="text.secondary">
-                {test.product.name}
+                <Link
+                  component="button"
+                  type="button"
+                  variant="body2"
+                  color="text.secondary"
+                  underline="hover"
+                  onClick={() => setViewingProductId(test.productId)}
+                >
+                  {test.product.name}
+                </Link>
                 {test.environment ? ` · ${test.environment.name}` : ''}
               </Typography>
               {test.description && (
@@ -200,6 +212,17 @@ export function PerformanceTestDetailDialog({
                 </Typography>
               )}
             </Box>
+
+            {test.release && (
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Release
+                </Typography>
+                <Typography variant="body2">
+                  {test.release.name} ({test.release.version})
+                </Typography>
+              </Box>
+            )}
 
             <Box>
               <Typography variant="subtitle2" color="text.secondary">
@@ -386,6 +409,8 @@ export function PerformanceTestDetailDialog({
           </Stack>
         )}
       </DialogContent>
+
+      <ProductDetailDialog productId={viewingProductId} onClose={() => setViewingProductId(null)} />
     </Dialog>
   );
 }
