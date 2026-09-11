@@ -56,6 +56,14 @@ export class ProductsController {
     return this.productsService.findOne(id);
   }
 
+  // Unguarded for the same reason as the GET above: this is what the
+  // Dashboard renders once it's scoped to a product, and the Dashboard
+  // itself carries no permission gate today.
+  @Get(':id/dashboard-summary')
+  getDashboardSummary(@Param('id') id: string) {
+    return this.productsService.getDashboardSummary(id);
+  }
+
   @Post()
   @RequirePermission('products:write')
   create(@Body() dto: CreateProductDto, @CurrentUser() actor: AuthenticatedUser) {

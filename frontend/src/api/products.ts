@@ -2,6 +2,7 @@ import { apiFetch, apiUpload } from './client';
 import type {
   ApiProduct,
   ApiProductComponent,
+  ApiProductDashboardSummary,
   ApiProductTeamMember,
   CreateProductComponentPayload,
   CreateProductPayload,
@@ -16,6 +17,12 @@ export function fetchProducts(): Promise<ApiProduct[]> {
 
 export function fetchProduct(id: string): Promise<ApiProduct> {
   return apiFetch<ApiProduct>(`/products/${id}`);
+}
+
+export function fetchProductDashboardSummary(
+  id: string,
+): Promise<ApiProductDashboardSummary> {
+  return apiFetch<ApiProductDashboardSummary>(`/products/${id}/dashboard-summary`);
 }
 
 export function createProduct(data: CreateProductPayload): Promise<ApiProduct> {

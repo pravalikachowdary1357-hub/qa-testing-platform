@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
   Alert,
   Box,
@@ -13,7 +14,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material';
-import Inventory2Icon from '@mui/icons-material/Inventory2';
+import AssignmentIcon from '@mui/icons-material/Assignment';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import PlayCircleIcon from '@mui/icons-material/PlayCircle';
@@ -25,14 +26,17 @@ import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import DonutLargeIcon from '@mui/icons-material/DonutLarge';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import VerifiedIcon from '@mui/icons-material/Verified';
+import type SvgIcon from '@mui/material/SvgIcon';
 import { PageHeader } from '../components/common/PageHeader';
 import { SummaryCard } from '../components/common/SummaryCard';
 import { StatusChip } from '../components/common/StatusChip';
 import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
-import { mockDashboardSummary } from '../data/mockDashboard';
 import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
+import { fetchProductDashboardSummary } from '../api/products';
+import { ApiError } from '../api/client';
 import type {
+  ApiProductDashboardSummary,
   ApiProductStatus,
   ApiReleaseReadiness,
   ProductStatus,
@@ -51,39 +55,83 @@ const READINESS_LABELS: Record<ApiReleaseReadiness, ReleaseReadiness> = {
   NOT_READY: 'Not Ready',
 };
 
-const kpis = [
-  { title: 'Products', value: mockDashboardSummary.totalProducts, icon: Inventory2Icon },
-  { title: 'Active Test Plans', value: mockDashboardSummary.activeTestPlans, icon: EventNoteIcon },
-  {
-    title: 'Test Cases',
-    value: mockDashboardSummary.testCases.toLocaleString(),
-    icon: FactCheckIcon,
-  },
-  {
-    title: 'Tests Executed',
-    value: mockDashboardSummary.testsExecuted.toLocaleString(),
-    icon: PlayCircleIcon,
-  },
-  { title: 'Pass Rate', value: `${mockDashboardSummary.passRate}%`, icon: TaskAltIcon },
-  { title: 'Failed Tests', value: mockDashboardSummary.failedTests, icon: HighlightOffIcon },
-  { title: 'Blocked Tests', value: mockDashboardSummary.blockedTests, icon: BlockIcon },
-  { title: 'Open Defects', value: mockDashboardSummary.openDefects, icon: BugReportIcon },
-  {
-    title: 'Critical Defects',
-    value: mockDashboardSummary.criticalDefects,
-    icon: ReportProblemIcon,
-  },
-  { title: 'Test Coverage', value: `${mockDashboardSummary.testCoverage}%`, icon: DonutLargeIcon },
-  {
-    title: 'Automation Coverage',
-    value: `${mockDashboardSummary.automationCoverage}%`,
-    icon: SmartToyIcon,
-  },
-  { title: 'Release Readiness', value: mockDashboardSummary.releaseReadiness, icon: VerifiedIcon },
-];
+interface Kpi {
+  title: string;
+  value: string | number;
+  icon: typeof SvgIcon;
+}
 
 export function DashboardPage() {
-  const { products, loading, error } = useProductContext();
+  const { currentProduct, loading: productLoading, error: productError } = useProductContext();
+  const [summary, setSummary] = useState<ApiProductDashboardSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!currentProduct) {
+      setSummary(null);
+      setSummaryError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setSummary(null);
+    setSummaryLoading(true);
+    setSummaryError(null);
+
+    fetchProductDashboardSummary(currentProduct.id)
+      .then((data) => {
+        if (!cancelled) setSummary(data);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setSummaryError(
+          err instanceof ApiError
+            ? `Failed to load dashboard data (HTTP ${err.status}).`
+            : 'Failed to load dashboard data. Is the backend running?',
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setSummaryLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentProduct?.id]);
+
+  const loading = productLoading || summaryLoading;
+  const error = productError ?? summaryError;
+
+  const kpis: Kpi[] =
+    currentProduct && summary
+      ? [
+          { title: 'Requirements', value: summary.requirements, icon: AssignmentIcon },
+          { title: 'Active Test Plans', value: summary.activeTestPlans, icon: EventNoteIcon },
+          { title: 'Test Cases', value: summary.testCases.toLocaleString(), icon: FactCheckIcon },
+          {
+            title: 'Tests Executed',
+            value: summary.testsExecuted.toLocaleString(),
+            icon: PlayCircleIcon,
+          },
+          { title: 'Pass Rate', value: `${currentProduct.passRate}%`, icon: TaskAltIcon },
+          { title: 'Failed Tests', value: summary.failedTests, icon: HighlightOffIcon },
+          { title: 'Blocked Tests', value: summary.blockedTests, icon: BlockIcon },
+          { title: 'Open Defects', value: currentProduct.openDefects, icon: BugReportIcon },
+          { title: 'Critical Defects', value: summary.criticalDefects, icon: ReportProblemIcon },
+          { title: 'Test Coverage', value: `${currentProduct.testCoverage}%`, icon: DonutLargeIcon },
+          {
+            title: 'Automation Coverage',
+            value: `${summary.automationCoveragePercent}%`,
+            icon: SmartToyIcon,
+          },
+          {
+            title: 'Release Readiness',
+            value: READINESS_LABELS[currentProduct.releaseReadiness],
+            icon: VerifiedIcon,
+          },
+        ]
+      : [];
 
   const handleExportKpis = () => {
     exportToCsvWithAudit('Dashboard', 'dashboard-kpis.csv', kpis, [
@@ -93,7 +141,8 @@ export function DashboardPage() {
   };
 
   const handleExportProductOverview = () => {
-    exportToCsvWithAudit('Dashboard', 'dashboard-product-overview.csv', products, [
+    if (!currentProduct) return;
+    exportToCsvWithAudit('Dashboard', 'dashboard-product-overview.csv', [currentProduct], [
       { header: 'Product', value: (p) => p.name },
       { header: 'Status', value: (p) => STATUS_LABELS[p.status] },
       { header: 'Test Coverage', value: (p) => `${p.testCoverage}%` },
@@ -107,72 +156,86 @@ export function DashboardPage() {
     <>
       <PageHeader
         title="Dashboard"
-        subtitle="Organization-wide testing overview across all products"
+        subtitle={
+          currentProduct
+            ? `Testing overview for ${currentProduct.name}`
+            : 'Select a product to see its testing overview'
+        }
         actions={
           <Stack direction="row" spacing={1}>
-            <ImportExportToolbar onExport={handleExportKpis} exportLabel="Export KPIs" />
+            <ImportExportToolbar
+              onExport={handleExportKpis}
+              exportDisabled={loading || !currentProduct || kpis.length === 0}
+              exportLabel="Export KPIs"
+            />
             <ImportExportToolbar
               onExport={handleExportProductOverview}
-              exportDisabled={loading || products.length === 0}
+              exportDisabled={loading || !currentProduct}
               exportLabel="Export Product Overview"
             />
           </Stack>
         }
       />
 
-      <Grid container spacing={2} sx={{ mb: 4 }}>
-        {kpis.map((kpi) => (
-          <Grid key={kpi.title} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-            <SummaryCard title={kpi.title} value={kpi.value} icon={kpi.icon} />
-          </Grid>
-        ))}
-      </Grid>
-
-      <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-        Product Overview
-      </Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
       {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
           <CircularProgress />
         </Box>
       )}
-      {!loading && products.length === 0 && !error && (
+
+      {!loading && !error && !currentProduct && (
         <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
-          <Typography color="text.secondary">No products found.</Typography>
+          <Typography color="text.secondary">
+            No product selected. Choose a product from the switcher above to see its testing
+            overview.
+          </Typography>
         </Paper>
       )}
-      {!loading && products.length > 0 && (
-        <TableContainer component={Paper} variant="outlined">
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Product</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="right">Test Coverage</TableCell>
-                <TableCell align="right">Pass Rate</TableCell>
-                <TableCell align="right">Open Defects</TableCell>
-                <TableCell>Release Readiness</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {products.map((product) => (
-                <TableRow key={product.id} hover>
-                  <TableCell>{product.name}</TableCell>
+
+      {!loading && !error && currentProduct && (
+        <>
+          <Grid container spacing={2} sx={{ mb: 4 }}>
+            {kpis.map((kpi) => (
+              <Grid key={kpi.title} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+                <SummaryCard title={kpi.title} value={kpi.value} icon={kpi.icon} />
+              </Grid>
+            ))}
+          </Grid>
+
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+            Product Overview
+          </Typography>
+          <TableContainer component={Paper} variant="outlined">
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Product</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell align="right">Test Coverage</TableCell>
+                  <TableCell align="right">Pass Rate</TableCell>
+                  <TableCell align="right">Open Defects</TableCell>
+                  <TableCell>Release Readiness</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                <TableRow hover>
+                  <TableCell>{currentProduct.name}</TableCell>
                   <TableCell>
-                    <StatusChip status={STATUS_LABELS[product.status]} />
+                    <StatusChip status={STATUS_LABELS[currentProduct.status]} />
                   </TableCell>
-                  <TableCell align="right">{product.testCoverage}%</TableCell>
-                  <TableCell align="right">{product.passRate}%</TableCell>
-                  <TableCell align="right">{product.openDefects}</TableCell>
+                  <TableCell align="right">{currentProduct.testCoverage}%</TableCell>
+                  <TableCell align="right">{currentProduct.passRate}%</TableCell>
+                  <TableCell align="right">{currentProduct.openDefects}</TableCell>
                   <TableCell>
-                    <StatusChip status={READINESS_LABELS[product.releaseReadiness]} />
+                    <StatusChip status={READINESS_LABELS[currentProduct.releaseReadiness]} />
                   </TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </>
       )}
     </>
   );

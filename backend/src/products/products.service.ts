@@ -112,6 +112,61 @@ export class ProductsService {
     return updated;
   }
 
+  // Powers the Dashboard once it's scoped to a single product: everything
+  // here is a live count derived from real rows (never a manually-entered
+  // field), which is exactly what's missing from Product's own
+  // testCoverage/passRate/openDefects/releaseReadiness -- those stay
+  // sourced straight from the product record wherever they're shown
+  // (including this dashboard) so the same product never shows two
+  // different numbers for the same metric.
+  async getDashboardSummary(id: string) {
+    await this.findOne(id);
+
+    const [
+      requirements,
+      activeTestPlans,
+      testCases,
+      testsExecuted,
+      failedTests,
+      blockedTests,
+      criticalDefects,
+      testCasesWithAutomation,
+    ] = await Promise.all([
+      this.prisma.requirement.count({ where: { productId: id } }),
+      this.prisma.testPlan.count({ where: { productId: id, status: 'ACTIVE' } }),
+      this.prisma.testCase.count({ where: { testScenario: { productId: id } } }),
+      this.prisma.testExecution.count({
+        where: { testCase: { testScenario: { productId: id } }, status: { not: 'PENDING' } },
+      }),
+      this.prisma.testExecution.count({
+        where: { testCase: { testScenario: { productId: id } }, status: 'FAIL' },
+      }),
+      this.prisma.testExecution.count({
+        where: { testCase: { testScenario: { productId: id } }, status: 'BLOCKED' },
+      }),
+      this.prisma.defect.count({
+        where: { productId: id, severity: 'CRITICAL', status: { notIn: ['RESOLVED', 'CLOSED'] } },
+      }),
+      this.prisma.testCase.count({
+        where: { testScenario: { productId: id }, automations: { some: {} } },
+      }),
+    ]);
+
+    const automationCoveragePercent =
+      testCases === 0 ? 0 : Math.round((testCasesWithAutomation / testCases) * 100);
+
+    return {
+      requirements,
+      activeTestPlans,
+      testCases,
+      testsExecuted,
+      failedTests,
+      blockedTests,
+      criticalDefects,
+      automationCoveragePercent,
+    };
+  }
+
   async bulkImport(
     rows: Record<string, string>[],
     actor: AuthenticatedUser,

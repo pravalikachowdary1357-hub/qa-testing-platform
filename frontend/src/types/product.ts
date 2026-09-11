@@ -92,3 +92,14 @@ export interface CreateProductTeamMemberPayload {
   userId: string;
   responsibility?: string;
 }
+
+export interface ApiProductDashboardSummary {
+  requirements: number;
+  activeTestPlans: number;
+  testCases: number;
+  testsExecuted: number;
+  failedTests: number;
+  blockedTests: number;
+  criticalDefects: number;
+  automationCoveragePercent: number;
+}
