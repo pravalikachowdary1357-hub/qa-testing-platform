@@ -106,16 +106,24 @@ export function OrganizationsPage() {
     };
   }, []);
 
+  const highlightedOrgId = currentProduct?.organizationId ?? null;
+
   const filteredOrganizations = useMemo(() => {
     if (!organizations) return [];
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return organizations;
-    return organizations.filter((organization) =>
-      organization.name.toLowerCase().includes(query),
-    );
-  }, [organizations, searchQuery]);
+    const matching = query
+      ? organizations.filter((organization) => organization.name.toLowerCase().includes(query))
+      : organizations;
 
-  const highlightedOrgId = currentProduct?.organizationId ?? null;
+    if (!highlightedOrgId) return matching;
+
+    // Pin the organization that owns the currently selected product to the
+    // top row, ahead of every other org, instead of leaving it wherever it
+    // falls in the backend's natural (creation-order) list.
+    const pinned = matching.filter((organization) => organization.id === highlightedOrgId);
+    const rest = matching.filter((organization) => organization.id !== highlightedOrgId);
+    return [...pinned, ...rest];
+  }, [organizations, searchQuery, highlightedOrgId]);
 
   useEffect(() => {
     highlightedRowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
