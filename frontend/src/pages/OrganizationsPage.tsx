@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   IconButton,
   InputAdornment,
@@ -41,6 +42,7 @@ import {
 } from '../api/organizations';
 import { ApiError } from '../api/client';
 import { exportToCsvWithAudit } from '../utils/csvExport';
+import { useProductContext } from '../context/ProductContext';
 import type {
   ApiOrganization,
   ApiOrganizationStatus,
@@ -54,9 +56,11 @@ const STATUS_LABELS: Record<ApiOrganizationStatus, OrganizationStatus> = {
 };
 
 export function OrganizationsPage() {
+  const { currentProduct } = useProductContext();
   const [organizations, setOrganizations] = useState<ApiOrganization[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const highlightedRowRef = useRef<HTMLTableRowElement | null>(null);
 
   const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
   const [editingOrganization, setEditingOrganization] = useState<ApiOrganization | null>(null);
@@ -110,6 +114,12 @@ export function OrganizationsPage() {
       organization.name.toLowerCase().includes(query),
     );
   }, [organizations, searchQuery]);
+
+  const highlightedOrgId = currentProduct?.organizationId ?? null;
+
+  useEffect(() => {
+    highlightedRowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlightedOrgId, filteredOrganizations]);
 
   const isLoading = organizations === null && !error;
 
@@ -241,9 +251,24 @@ export function OrganizationsPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredOrganizations.map((organization) => (
-                <TableRow key={organization.id} hover>
-                  <TableCell>{organization.name}</TableCell>
+              {filteredOrganizations.map((organization) => {
+                const isHighlighted = organization.id === highlightedOrgId;
+                return (
+                <TableRow
+                  key={organization.id}
+                  hover
+                  ref={isHighlighted ? highlightedRowRef : undefined}
+                  selected={isHighlighted}
+                  sx={isHighlighted ? { bgcolor: 'action.selected' } : undefined}
+                >
+                  <TableCell>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                      <span>{organization.name}</span>
+                      {isHighlighted && (
+                        <Chip label="Selected product's organization" size="small" color="primary" />
+                      )}
+                    </Stack>
+                  </TableCell>
                   <TableCell sx={{ maxWidth: 320 }}>
                     <Typography variant="body2" color="text.secondary" noWrap>
                       {organization.description || '—'}
@@ -286,7 +311,8 @@ export function OrganizationsPage() {
                     </Tooltip>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
