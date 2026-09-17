@@ -1,3 +1,6 @@
+import type { ApiDefectSeverity } from './defect';
+import type { ApiRequirementRisk } from './requirement';
+
 export type ProductStatus = 'Active' | 'On Hold' | 'Deprecated';
 
 export type ReleaseReadiness = 'Ready' | 'Conditional' | 'Not Ready';
@@ -103,6 +106,21 @@ export interface CreateProductTeamMemberPayload {
   responsibility?: string;
 }
 
+export interface ApiDefectSeverityCount {
+  severity: ApiDefectSeverity;
+  count: number;
+}
+
+export interface ApiRequirementRiskCount {
+  riskLevel: ApiRequirementRisk;
+  count: number;
+}
+
+export interface ApiDashboardTrendPoint {
+  weekStart: string;
+  count: number;
+}
+
 export interface ApiProductDashboardSummary {
   requirements: number;
   activeTestPlans: number;
@@ -112,4 +130,18 @@ export interface ApiProductDashboardSummary {
   blockedTests: number;
   criticalDefects: number;
   automationCoveragePercent: number;
+  // Calculated from real test execution / defect / requirement rows via
+  // ReleaseQualityService's shared quality engine -- unlike Product's own
+  // testCoverage/passRate/openDefects/releaseReadiness columns, these are
+  // never manually entered.
+  passRatePercent: number;
+  testCoveragePercent: number;
+  openDefectsCount: number;
+  releaseReadiness: ApiReleaseReadiness;
+  defectSeverityDistribution: ApiDefectSeverityCount[];
+  requirementRiskDistribution: ApiRequirementRiskCount[];
+  trends: {
+    testExecutionsPerWeek: ApiDashboardTrendPoint[];
+    defectsOpenedPerWeek: ApiDashboardTrendPoint[];
+  };
 }

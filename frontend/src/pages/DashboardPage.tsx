@@ -13,6 +13,7 @@ import {
   TableHead,
   TableRow,
   Typography,
+  useTheme,
 } from '@mui/material';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import EventNoteIcon from '@mui/icons-material/EventNote';
@@ -30,8 +31,8 @@ import type SvgIcon from '@mui/material/SvgIcon';
 import { PageHeader } from '../components/common/PageHeader';
 import { SummaryCard } from '../components/common/SummaryCard';
 import { StatusChip } from '../components/common/StatusChip';
-import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
-import { exportToCsvWithAudit } from '../utils/csvExport';
+import { BreakdownBar, colorForStatusLabel } from '../components/reports/BreakdownBar';
+import { MetricTrendChart } from '../components/performance/MetricTrendChart';
 import { useProductContext } from '../context/ProductContext';
 import { fetchProductDashboardSummary } from '../api/products';
 import { ApiError } from '../api/client';
@@ -42,6 +43,8 @@ import type {
   ProductStatus,
   ReleaseReadiness,
 } from '../types/product';
+import type { ApiDefectSeverity } from '../types/defect';
+import type { ApiRequirementRisk } from '../types/requirement';
 
 const STATUS_LABELS: Record<ApiProductStatus, ProductStatus> = {
   ACTIVE: 'Active',
@@ -55,6 +58,20 @@ const READINESS_LABELS: Record<ApiReleaseReadiness, ReleaseReadiness> = {
   NOT_READY: 'Not Ready',
 };
 
+const SEVERITY_LABELS: Record<ApiDefectSeverity, string> = {
+  CRITICAL: 'Critical',
+  MAJOR: 'Major',
+  MINOR: 'Minor',
+  TRIVIAL: 'Trivial',
+};
+
+const RISK_LABELS: Record<ApiRequirementRisk, string> = {
+  LOW: 'Low',
+  MEDIUM: 'Medium',
+  HIGH: 'High',
+  CRITICAL: 'Critical',
+};
+
 interface Kpi {
   title: string;
   value: string | number;
@@ -62,6 +79,7 @@ interface Kpi {
 }
 
 export function DashboardPage() {
+  const theme = useTheme();
   const { currentProduct, loading: productLoading, error: productError } = useProductContext();
   const [summary, setSummary] = useState<ApiProductDashboardSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -114,12 +132,12 @@ export function DashboardPage() {
             value: summary.testsExecuted.toLocaleString(),
             icon: PlayCircleIcon,
           },
-          { title: 'Pass Rate', value: `${currentProduct.passRate}%`, icon: TaskAltIcon },
+          { title: 'Pass Rate', value: `${summary.passRatePercent}%`, icon: TaskAltIcon },
           { title: 'Failed Tests', value: summary.failedTests, icon: HighlightOffIcon },
           { title: 'Blocked Tests', value: summary.blockedTests, icon: BlockIcon },
-          { title: 'Open Defects', value: currentProduct.openDefects, icon: BugReportIcon },
+          { title: 'Open Defects', value: summary.openDefectsCount, icon: BugReportIcon },
           { title: 'Critical Defects', value: summary.criticalDefects, icon: ReportProblemIcon },
-          { title: 'Test Coverage', value: `${currentProduct.testCoverage}%`, icon: DonutLargeIcon },
+          { title: 'Test Coverage', value: `${summary.testCoveragePercent}%`, icon: DonutLargeIcon },
           {
             title: 'Automation Coverage',
             value: `${summary.automationCoveragePercent}%`,
@@ -127,30 +145,16 @@ export function DashboardPage() {
           },
           {
             title: 'Release Readiness',
-            value: READINESS_LABELS[currentProduct.releaseReadiness],
+            value: READINESS_LABELS[summary.releaseReadiness],
             icon: VerifiedIcon,
           },
         ]
       : [];
 
-  const handleExportKpis = () => {
-    exportToCsvWithAudit('Dashboard', 'dashboard-kpis.csv', kpis, [
-      { header: 'Metric', value: (kpi) => kpi.title },
-      { header: 'Value', value: (kpi) => kpi.value },
-    ]);
-  };
-
-  const handleExportProductOverview = () => {
-    if (!currentProduct) return;
-    exportToCsvWithAudit('Dashboard', 'dashboard-product-overview.csv', [currentProduct], [
-      { header: 'Product', value: (p) => p.name },
-      { header: 'Status', value: (p) => STATUS_LABELS[p.status] },
-      { header: 'Test Coverage', value: (p) => `${p.testCoverage}%` },
-      { header: 'Pass Rate', value: (p) => `${p.passRate}%` },
-      { header: 'Open Defects', value: (p) => p.openDefects },
-      { header: 'Release Readiness', value: (p) => READINESS_LABELS[p.releaseReadiness] },
-    ]);
-  };
+  const defectSeverityDistribution = summary?.defectSeverityDistribution ?? [];
+  const requirementRiskDistribution = summary?.requirementRiskDistribution ?? [];
+  const testExecutionTrend = summary?.trends.testExecutionsPerWeek ?? [];
+  const defectsOpenedTrend = summary?.trends.defectsOpenedPerWeek ?? [];
 
   return (
     <>
@@ -160,20 +164,6 @@ export function DashboardPage() {
           currentProduct
             ? `Testing overview for ${currentProduct.name}`
             : 'Select a product to see its testing overview'
-        }
-        actions={
-          <Stack direction="row" spacing={1}>
-            <ImportExportToolbar
-              onExport={handleExportKpis}
-              exportDisabled={loading || !currentProduct || kpis.length === 0}
-              exportLabel="Export KPIs"
-            />
-            <ImportExportToolbar
-              onExport={handleExportProductOverview}
-              exportDisabled={loading || !currentProduct}
-              exportLabel="Export Product Overview"
-            />
-          </Stack>
         }
       />
 
@@ -207,7 +197,7 @@ export function DashboardPage() {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
             Product Overview
           </Typography>
-          <TableContainer component={Paper} variant="outlined">
+          <TableContainer component={Paper} variant="outlined" sx={{ mb: 4 }}>
             <Table size="small">
               <TableHead>
                 <TableRow>
@@ -225,16 +215,69 @@ export function DashboardPage() {
                   <TableCell>
                     <StatusChip status={STATUS_LABELS[currentProduct.status]} />
                   </TableCell>
-                  <TableCell align="right">{currentProduct.testCoverage}%</TableCell>
-                  <TableCell align="right">{currentProduct.passRate}%</TableCell>
-                  <TableCell align="right">{currentProduct.openDefects}</TableCell>
+                  <TableCell align="right">{summary?.testCoveragePercent ?? 0}%</TableCell>
+                  <TableCell align="right">{summary?.passRatePercent ?? 0}%</TableCell>
+                  <TableCell align="right">{summary?.openDefectsCount ?? 0}</TableCell>
                   <TableCell>
-                    <StatusChip status={READINESS_LABELS[currentProduct.releaseReadiness]} />
+                    {summary && <StatusChip status={READINESS_LABELS[summary.releaseReadiness]} />}
                   </TableCell>
                 </TableRow>
               </TableBody>
             </Table>
           </TableContainer>
+
+          <Grid container spacing={2} sx={{ mb: 4 }}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+                  Open Defects by Severity
+                </Typography>
+                <BreakdownBar
+                  segments={defectSeverityDistribution.map((entry) => ({
+                    key: entry.severity,
+                    label: SEVERITY_LABELS[entry.severity],
+                    value: entry.count,
+                    color: colorForStatusLabel(SEVERITY_LABELS[entry.severity], theme),
+                  }))}
+                  emptyLabel="No open defects."
+                />
+              </Paper>
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+                  Requirements by Risk
+                </Typography>
+                <BreakdownBar
+                  segments={requirementRiskDistribution.map((entry) => ({
+                    key: entry.riskLevel,
+                    label: RISK_LABELS[entry.riskLevel],
+                    value: entry.count,
+                    color: colorForStatusLabel(RISK_LABELS[entry.riskLevel], theme),
+                  }))}
+                  emptyLabel="No requirements yet."
+                />
+              </Paper>
+            </Grid>
+          </Grid>
+
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+            8-Week Trends
+          </Typography>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+            <MetricTrendChart
+              title="Test Executions per Week"
+              color="#2a78d6"
+              points={testExecutionTrend.map((point) => ({ timestamp: point.weekStart, value: point.count }))}
+              formatValue={(value) => value.toLocaleString()}
+            />
+            <MetricTrendChart
+              title="Defects Opened per Week"
+              color="#e34948"
+              points={defectsOpenedTrend.map((point) => ({ timestamp: point.weekStart, value: point.count }))}
+              formatValue={(value) => value.toLocaleString()}
+            />
+          </Stack>
         </>
       )}
     </>

@@ -320,6 +320,14 @@ export class ReleaseQualityService {
     return { ...release, quality };
   }
 
+  // Public entry point for callers that want the same live quality
+  // computation without a Release row to attach it to (e.g. the product
+  // Dashboard) -- reuses the exact engine below instead of recomputing any
+  // of it a second time.
+  async getProductQuality(productId: string) {
+    return this.computeQuality(productId);
+  }
+
   private async computeQuality(productId: string) {
     const [
       testCases,

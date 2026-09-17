@@ -9,12 +9,41 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { AuditLogService } from '../audit-log/audit-log.service';
+import { ReleaseQualityService } from '../release-quality/release-quality.service';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { validateRow } from '../common/import/validate-row.util';
 import type {
   ImportResult,
   ImportRowError,
 } from '../common/import/import-result.interface';
+
+const DASHBOARD_TREND_WEEKS = 8;
+
+// Buckets a set of timestamps into `weeks` trailing calendar weeks (oldest
+// first), so the Dashboard can plot a simple trend without a dedicated
+// history/snapshot table -- each point is a real count derived from existing
+// timestamped rows, not a stored/precomputed series.
+function bucketByWeek(
+  dates: Date[],
+  weeks: number,
+): { weekStart: string; count: number }[] {
+  const now = new Date();
+  const buckets: { weekStart: string; count: number }[] = [];
+  for (let i = weeks - 1; i >= 0; i--) {
+    const weekStart = new Date(now);
+    weekStart.setHours(0, 0, 0, 0);
+    weekStart.setDate(weekStart.getDate() - i * 7);
+    buckets.push({ weekStart: weekStart.toISOString(), count: 0 });
+  }
+  for (const date of dates) {
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / 86_400_000);
+    const weekIndex = weeks - 1 - Math.floor(diffDays / 7);
+    if (weekIndex >= 0 && weekIndex < weeks) {
+      buckets[weekIndex].count += 1;
+    }
+  }
+  return buckets;
+}
 
 const ORGANIZATION_REF_SELECT = { select: { id: true, name: true } };
 const PROJECT_REF_SELECT = { select: { id: true, name: true } };
@@ -30,6 +59,7 @@ export class ProductsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditLog: AuditLogService,
+    private readonly releaseQuality: ReleaseQualityService,
   ) {}
 
   findAll() {
@@ -126,15 +156,20 @@ export class ProductsService {
     return updated;
   }
 
-  // Powers the Dashboard once it's scoped to a single product: everything
-  // here is a live count derived from real rows (never a manually-entered
-  // field), which is exactly what's missing from Product's own
-  // testCoverage/passRate/openDefects/releaseReadiness -- those stay
-  // sourced straight from the product record wherever they're shown
-  // (including this dashboard) so the same product never shows two
-  // different numbers for the same metric.
+  // Powers the Dashboard once it's scoped to a single product. Every value
+  // here is either a live count/aggregation over real rows, or (for pass
+  // rate/test coverage/open defects/release readiness) reuses
+  // ReleaseQualityService's existing product-scoped quality engine instead
+  // of Product's own manually-entered testCoverage/passRate/openDefects/
+  // releaseReadiness columns -- those four columns remain editable
+  // elsewhere (the Product form, CSV import/export) for now, but the
+  // Dashboard itself never shows a hand-entered number as if it were
+  // calculated.
   async getDashboardSummary(id: string) {
     await this.findOne(id);
+
+    const eightWeeksAgo = new Date();
+    eightWeeksAgo.setDate(eightWeeksAgo.getDate() - DASHBOARD_TREND_WEEKS * 7);
 
     const [
       requirements,
@@ -143,8 +178,12 @@ export class ProductsService {
       testsExecuted,
       failedTests,
       blockedTests,
-      criticalDefects,
       testCasesWithAutomation,
+      quality,
+      defectSeverityGroups,
+      requirementRiskGroups,
+      recentExecutions,
+      recentDefects,
     ] = await Promise.all([
       this.prisma.requirement.count({ where: { productId: id } }),
       this.prisma.testPlan.count({
@@ -171,15 +210,30 @@ export class ProductsService {
           status: 'BLOCKED',
         },
       }),
-      this.prisma.defect.count({
-        where: {
-          productId: id,
-          severity: 'CRITICAL',
-          status: { notIn: ['RESOLVED', 'CLOSED'] },
-        },
-      }),
       this.prisma.testCase.count({
         where: { testScenario: { productId: id }, automations: { some: {} } },
+      }),
+      this.releaseQuality.getProductQuality(id),
+      this.prisma.defect.groupBy({
+        by: ['severity'],
+        where: { productId: id, status: { notIn: ['RESOLVED', 'CLOSED'] } },
+        _count: { _all: true },
+      }),
+      this.prisma.requirement.groupBy({
+        by: ['riskLevel'],
+        where: { productId: id },
+        _count: { _all: true },
+      }),
+      this.prisma.testExecution.findMany({
+        where: {
+          testCase: { testScenario: { productId: id } },
+          executedAt: { gte: eightWeeksAgo },
+        },
+        select: { executedAt: true },
+      }),
+      this.prisma.defect.findMany({
+        where: { productId: id, createdAt: { gte: eightWeeksAgo } },
+        select: { createdAt: true },
       }),
     ]);
 
@@ -195,8 +249,30 @@ export class ProductsService {
       testsExecuted,
       failedTests,
       blockedTests,
-      criticalDefects,
+      criticalDefects: quality.defects.criticalOpenCount,
       automationCoveragePercent,
+      passRatePercent: quality.testExecutionSummary.passRatePercent,
+      testCoveragePercent: quality.testExecutionSummary.testCoveragePercent,
+      openDefectsCount: quality.defects.openCount,
+      releaseReadiness: quality.readiness,
+      defectSeverityDistribution: defectSeverityGroups.map((group) => ({
+        severity: group.severity,
+        count: group._count._all,
+      })),
+      requirementRiskDistribution: requirementRiskGroups.map((group) => ({
+        riskLevel: group.riskLevel,
+        count: group._count._all,
+      })),
+      trends: {
+        testExecutionsPerWeek: bucketByWeek(
+          recentExecutions.map((execution) => execution.executedAt),
+          DASHBOARD_TREND_WEEKS,
+        ),
+        defectsOpenedPerWeek: bucketByWeek(
+          recentDefects.map((defect) => defect.createdAt),
+          DASHBOARD_TREND_WEEKS,
+        ),
+      },
     };
   }
 
