@@ -4,6 +4,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Dialog,
   DialogContent,
@@ -16,10 +17,29 @@ import {
   Typography,
 } from '@mui/material';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import EventNoteIcon from '@mui/icons-material/EventNote';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import FactCheckIcon from '@mui/icons-material/FactCheck';
+import StorageIcon from '@mui/icons-material/Storage';
+import DnsIcon from '@mui/icons-material/Dns';
+import PlayCircleIcon from '@mui/icons-material/PlayCircle';
+import BugReportIcon from '@mui/icons-material/BugReport';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+import ApiIcon from '@mui/icons-material/Api';
+import SpeedIcon from '@mui/icons-material/Speed';
+import SecurityIcon from '@mui/icons-material/Security';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import VerifiedIcon from '@mui/icons-material/Verified';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import type SvgIcon from '@mui/material/SvgIcon';
 import { StatusChip } from '../common/StatusChip';
 import { ProductDocumentsTab } from '../productdocument/ProductDocumentsTab';
 import { ProductComponentsTab } from './ProductComponentsTab';
 import { ProductTeamTab } from './ProductTeamTab';
+import { ProductSprintsTab } from './ProductSprintsTab';
+import { ProductBuildsTab } from './ProductBuildsTab';
 import { fetchProduct } from '../../api/products';
 import { ApiError } from '../../api/client';
 import { useProductContext } from '../../context/ProductContext';
@@ -36,6 +56,27 @@ const READINESS_LABELS: Record<string, ReleaseReadiness> = {
   CONDITIONAL: 'Conditional',
   NOT_READY: 'Not Ready',
 };
+
+// Same icon per module as the sidebar (routeConfig.tsx), so a link here is
+// instantly recognizable as "the same place" once the user navigates there.
+const QUICK_LINKS: { label: string; path: string; icon: typeof SvgIcon }[] = [
+  { label: 'Requirements', path: '/requirements', icon: AssignmentIcon },
+  { label: 'Test Planning', path: '/test-planning', icon: EventNoteIcon },
+  { label: 'Test Scenarios', path: '/test-scenarios', icon: AccountTreeIcon },
+  { label: 'Test Cases', path: '/test-cases', icon: FactCheckIcon },
+  { label: 'Test Data', path: '/test-data', icon: StorageIcon },
+  { label: 'Environments', path: '/environments', icon: DnsIcon },
+  { label: 'Test Execution', path: '/test-execution', icon: PlayCircleIcon },
+  { label: 'Defects', path: '/defects', icon: BugReportIcon },
+  { label: 'Automation', path: '/automation', icon: SmartToyIcon },
+  { label: 'API Testing', path: '/api-testing', icon: ApiIcon },
+  { label: 'Performance Testing', path: '/performance-testing', icon: SpeedIcon },
+  { label: 'Security Testing', path: '/security-testing', icon: SecurityIcon },
+  { label: 'UAT', path: '/uat', icon: HowToRegIcon },
+  { label: 'Traceability', path: '/traceability', icon: TimelineIcon },
+  { label: 'Releases', path: '/release-quality', icon: VerifiedIcon },
+  { label: 'Reports', path: '/reports', icon: AssessmentIcon },
+];
 
 interface ProductDetailDialogProps {
   productId: string | null;
@@ -103,6 +144,8 @@ export function ProductDetailDialog({ productId, onClose }: ProductDetailDialogP
           <Tab label="Components" />
           <Tab label="Team" />
           <Tab label="Files/Documents" />
+          <Tab label="Sprints" />
+          <Tab label="Builds" />
         </Tabs>
       )}
 
@@ -121,12 +164,22 @@ export function ProductDetailDialog({ productId, onClose }: ProductDetailDialogP
 
         {product && activeTab === 3 && <ProductDocumentsTab productId={product.id} />}
 
+        {product && activeTab === 4 && <ProductSprintsTab productId={product.id} />}
+
+        {product && activeTab === 5 && <ProductBuildsTab productId={product.id} />}
+
         {product && activeTab === 0 && (
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Box>
-              <Typography variant="h6">{product.name}</Typography>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                <Typography variant="h6">{product.name}</Typography>
+                {product.productKey && (
+                  <Chip label={product.productKey} size="small" variant="outlined" />
+                )}
+              </Stack>
               <Typography variant="body2" color="text.secondary">
                 {product.organization.name}
+                {product.project ? ` · ${product.project.name}` : ' · No project assigned'}
               </Typography>
             </Box>
 
@@ -135,17 +188,24 @@ export function ProductDetailDialog({ productId, onClose }: ProductDetailDialogP
               <StatusChip status={READINESS_LABELS[product.releaseReadiness]} />
             </Stack>
 
-            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }} useFlexGap>
-              <Button size="small" variant="outlined" onClick={() => goToModule('/requirements')}>
-                View Requirements
-              </Button>
-              <Button size="small" variant="outlined" onClick={() => goToModule('/environments')}>
-                View Environments
-              </Button>
-              <Button size="small" variant="outlined" onClick={() => goToModule('/release-quality')}>
-                View Releases
-              </Button>
-            </Stack>
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                Quick Links
+              </Typography>
+              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }} useFlexGap>
+                {QUICK_LINKS.map(({ label, path, icon: Icon }) => (
+                  <Button
+                    key={path}
+                    size="small"
+                    variant="outlined"
+                    startIcon={<Icon fontSize="small" />}
+                    onClick={() => goToModule(path)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </Stack>
+            </Box>
 
             <Box>
               <Typography variant="subtitle2" color="text.secondary">

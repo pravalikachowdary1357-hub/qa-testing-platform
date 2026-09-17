@@ -10,15 +10,18 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import type { Response } from 'express';
 import { RequirementsService } from './requirements.service';
 import { CreateRequirementDto } from './dto/create-requirement.dto';
 import { UpdateRequirementDto } from './dto/update-requirement.dto';
+import { ReviewRequirementDto } from './dto/review-requirement.dto';
 import { ListRequirementsQueryDto } from './dto/list-requirements-query.dto';
 import { ImportRequirementsQueryDto } from './dto/import-requirements-query.dto';
 import { AuthGuard } from '../auth/auth.guard';
@@ -28,10 +31,16 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { parseCsvBuffer } from '../common/csv/csv.util';
 import { MAX_IMPORT_FILE_SIZE_BYTES } from '../common/import/import.constants';
+import { MAX_REQUIREMENT_ATTACHMENT_SIZE_BYTES } from './requirements.constants';
 
 const IMPORT_INTERCEPTOR = FileInterceptor('file', {
   storage: memoryStorage(),
   limits: { fileSize: MAX_IMPORT_FILE_SIZE_BYTES },
+});
+
+const ATTACHMENT_UPLOAD_INTERCEPTOR = FileInterceptor('file', {
+  storage: memoryStorage(),
+  limits: { fileSize: MAX_REQUIREMENT_ATTACHMENT_SIZE_BYTES },
 });
 
 @Controller('requirements')
@@ -51,23 +60,102 @@ export class RequirementsController {
     return this.requirementsService.findOne(id);
   }
 
+  @Get(':id/activity')
+  @RequirePermission('requirements:read')
+  findActivity(@Param('id') id: string) {
+    return this.requirementsService.findActivity(id);
+  }
+
+  @Get(':id/versions')
+  @RequirePermission('requirements:read')
+  findVersions(@Param('id') id: string) {
+    return this.requirementsService.findVersions(id);
+  }
+
+  @Get(':id/attachments')
+  @RequirePermission('requirements:read')
+  listAttachments(@Param('id') id: string) {
+    return this.requirementsService.listAttachments(id);
+  }
+
+  @Get(':id/attachments/:attachmentId/content')
+  @RequirePermission('requirements:read')
+  async getAttachmentContent(
+    @Param('id') id: string,
+    @Param('attachmentId') attachmentId: string,
+    @Query('download') download: string | undefined,
+    @Res() res: Response,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    const attachment = await this.requirementsService.getAttachmentContent(
+      id,
+      attachmentId,
+      actor,
+    );
+    res.set({
+      'Content-Type': attachment.mimeType,
+      'Content-Length': attachment.fileSize.toString(),
+      'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="${encodeURIComponent(attachment.fileName)}"`,
+    });
+    res.send(attachment.content);
+  }
+
   @Post()
   @RequirePermission('requirements:write')
-  create(@Body() dto: CreateRequirementDto) {
-    return this.requirementsService.create(dto);
+  create(
+    @Body() dto: CreateRequirementDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.requirementsService.create(dto, actor);
   }
 
   @Patch(':id')
   @RequirePermission('requirements:write')
-  update(@Param('id') id: string, @Body() dto: UpdateRequirementDto) {
-    return this.requirementsService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateRequirementDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.requirementsService.update(id, dto, actor);
+  }
+
+  @Post(':id/review')
+  @RequirePermission('requirements:approve')
+  review(
+    @Param('id') id: string,
+    @Body() dto: ReviewRequirementDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.requirementsService.review(id, dto, actor);
+  }
+
+  @Post(':id/attachments')
+  @RequirePermission('requirements:write')
+  @UseInterceptors(ATTACHMENT_UPLOAD_INTERCEPTOR)
+  addAttachment(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.requirementsService.addAttachment(id, file, actor);
+  }
+
+  @Delete(':id/attachments/:attachmentId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermission('requirements:manage')
+  removeAttachment(
+    @Param('id') id: string,
+    @Param('attachmentId') attachmentId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.requirementsService.removeAttachment(id, attachmentId, actor);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission('requirements:manage')
-  remove(@Param('id') id: string) {
-    return this.requirementsService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.requirementsService.remove(id, actor);
   }
 
   @Post('import')

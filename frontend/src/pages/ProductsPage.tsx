@@ -41,6 +41,7 @@ import {
   updateProduct,
 } from '../api/products';
 import { fetchOrganizations } from '../api/organizations';
+import { fetchProjects } from '../api/projects';
 import { fetchUsers } from '../api/users';
 import { ApiError } from '../api/client';
 import { exportToCsvWithAudit } from '../utils/csvExport';
@@ -53,6 +54,7 @@ import type {
   ReleaseReadiness,
 } from '../types/product';
 import type { ApiOrganization } from '../types/organization';
+import type { ApiProject } from '../types/project';
 import type { ApiUser } from '../types/settings';
 
 const STATUS_LABELS: Record<ApiProductStatus, ProductStatus> = {
@@ -74,6 +76,7 @@ const ALL = 'ALL' as const;
 export function ProductsPage() {
   const [products, setProducts] = useState<ApiProduct[] | null>(null);
   const [organizations, setOrganizations] = useState<ApiOrganization[]>([]);
+  const [projects, setProjects] = useState<ApiProject[]>([]);
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,6 +84,7 @@ export function ProductsPage() {
   const [statusFilter, setStatusFilter] = useState<ApiProductStatus | typeof ALL>(ALL);
   const [readinessFilter, setReadinessFilter] = useState<ApiReleaseReadiness | typeof ALL>(ALL);
   const [organizationFilter, setOrganizationFilter] = useState<string | typeof ALL>(ALL);
+  const [projectFilter, setProjectFilter] = useState<string | typeof ALL>(ALL);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
 
   const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
@@ -132,6 +136,15 @@ export function ProductsPage() {
         // available" rather than blocking the products list itself.
       });
 
+    fetchProjects()
+      .then((data) => {
+        if (!cancelled) setProjects(data);
+      })
+      .catch(() => {
+        // Only feeds the "project" picker/column/filter; a failure here
+        // surfaces as "no project assigned" rather than blocking the list.
+      });
+
     fetchUsers()
       .then((data) => {
         if (!cancelled) setUsers(data);
@@ -154,6 +167,7 @@ export function ProductsPage() {
       if (statusFilter !== ALL && product.status !== statusFilter) return false;
       if (readinessFilter !== ALL && product.releaseReadiness !== readinessFilter) return false;
       if (organizationFilter !== ALL && product.organizationId !== organizationFilter) return false;
+      if (projectFilter !== ALL && product.projectId !== projectFilter) return false;
       return true;
     });
 
@@ -176,14 +190,23 @@ export function ProductsPage() {
         break;
     }
     return sorted;
-  }, [products, searchQuery, statusFilter, readinessFilter, organizationFilter, sortBy]);
+  }, [
+    products,
+    searchQuery,
+    statusFilter,
+    readinessFilter,
+    organizationFilter,
+    projectFilter,
+    sortBy,
+  ]);
 
   const isLoading = products === null && !error;
   const hasActiveFilters =
     searchQuery.trim() !== '' ||
     statusFilter !== ALL ||
     readinessFilter !== ALL ||
-    organizationFilter !== ALL;
+    organizationFilter !== ALL ||
+    projectFilter !== ALL;
 
   // Applied to local state immediately from the mutation's own response
   // (already the complete, authoritative record) rather than relying solely
@@ -230,7 +253,9 @@ export function ProductsPage() {
   const handleExport = () => {
     exportToCsvWithAudit('Product', 'products.csv', visibleProducts, [
       { header: 'Name', value: (p) => p.name },
+      { header: 'Product Key', value: (p) => p.productKey ?? '' },
       { header: 'Organization', value: (p) => p.organization.name },
+      { header: 'Project', value: (p) => p.project?.name ?? '' },
       { header: 'Status', value: (p) => STATUS_LABELS[p.status] },
       { header: 'Environment', value: (p) => p.environment },
       { header: 'Release', value: (p) => p.release },
@@ -303,6 +328,21 @@ export function ProductsPage() {
             {organizations.map((organization) => (
               <MenuItem key={organization.id} value={organization.id}>
                 {organization.name}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            size="small"
+            label="Project"
+            value={projectFilter}
+            onChange={(e) => setProjectFilter(e.target.value)}
+            sx={{ width: { xs: '100%', sm: 170 } }}
+          >
+            <MenuItem value={ALL}>All Projects</MenuItem>
+            {projects.map((project) => (
+              <MenuItem key={project.id} value={project.id}>
+                {project.name}
               </MenuItem>
             ))}
           </TextField>
@@ -389,6 +429,7 @@ export function ProductsPage() {
               <TableRow>
                 <TableCell>Name</TableCell>
                 <TableCell>Organization</TableCell>
+                <TableCell>Project</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Environment</TableCell>
                 <TableCell>Release</TableCell>
@@ -408,6 +449,11 @@ export function ProductsPage() {
                   <TableCell>
                     <Typography variant="body2" color="text.secondary">
                       {product.organization.name}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" color="text.secondary">
+                      {product.project?.name ?? '—'}
                     </Typography>
                   </TableCell>
                   <TableCell>
@@ -451,12 +497,15 @@ export function ProductsPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         organizations={organizations}
+        projects={projects}
         users={users}
         initialValues={
           formMode === 'edit' && editingProduct
             ? {
                 organizationId: editingProduct.organizationId,
+                projectId: editingProduct.projectId ?? '',
                 name: editingProduct.name,
+                productKey: editingProduct.productKey ?? '',
                 description: editingProduct.description,
                 status: editingProduct.status,
                 environment: editingProduct.environment,

@@ -19,14 +19,21 @@ export interface ApiProductOwnerRef {
   email: string;
 }
 
+export interface ApiProductProjectRef {
+  id: string;
+  name: string;
+}
+
 export interface ApiProduct {
   id: string;
   organizationId: string;
+  projectId: string | null;
   name: string;
   description: string;
   status: ApiProductStatus;
   environment: string;
   release: string;
+  productKey: string | null;
   applicationUrl: string | null;
   repositoryUrl: string | null;
   productOwnerId: string | null;
@@ -38,16 +45,19 @@ export interface ApiProduct {
   createdAt: string;
   updatedAt: string;
   organization: ApiProductOrganizationRef;
+  project: ApiProductProjectRef | null;
   productOwner: ApiProductOwnerRef | null;
 }
 
 export interface CreateProductPayload {
   organizationId: string;
+  projectId?: string;
   name: string;
   description: string;
   status?: ApiProductStatus;
   environment: string;
   release: string;
+  productKey?: string;
   applicationUrl?: string;
   repositoryUrl?: string;
   productOwnerId?: string;

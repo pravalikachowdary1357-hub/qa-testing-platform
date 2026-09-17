@@ -27,9 +27,9 @@ export class AuditLogService {
     });
   }
 
-  async findAll(entityType: string | undefined) {
+  async findAll(entityType: string | undefined, entityId?: string) {
     const entries = await this.prisma.auditLog.findMany({
-      where: { entityType },
+      where: { entityType, entityId },
       include: { actor: { select: { id: true, name: true, email: true } } },
       orderBy: { createdAt: 'desc' },
       take: 200,

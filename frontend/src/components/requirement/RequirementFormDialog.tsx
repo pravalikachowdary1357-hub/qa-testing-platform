@@ -10,14 +10,19 @@ import {
   Stack,
   TextField,
 } from '@mui/material';
+import { AcceptanceCriteriaEditor } from './AcceptanceCriteriaEditor';
 import type {
   ApiRequirementPriority,
+  ApiRequirementRisk,
   ApiRequirementStatus,
   ApiRequirementType,
   CreateRequirementPayload,
 } from '../../types/requirement';
 import type { ApiProduct } from '../../types/product';
 import type { ApiRelease } from '../../types/release';
+import type { ApiUser } from '../../types/settings';
+
+const NO_OWNER = '' as const;
 
 const TYPE_OPTIONS: { value: ApiRequirementType; label: string }[] = [
   { value: 'FUNCTIONAL', label: 'Functional' },
@@ -33,13 +38,29 @@ const PRIORITY_OPTIONS: { value: ApiRequirementPriority; label: string }[] = [
   { value: 'LOW', label: 'Low' },
 ];
 
+const RISK_OPTIONS: { value: ApiRequirementRisk; label: string }[] = [
+  { value: 'CRITICAL', label: 'Critical' },
+  { value: 'HIGH', label: 'High' },
+  { value: 'MEDIUM', label: 'Medium' },
+  { value: 'LOW', label: 'Low' },
+];
+
+// APPROVED/REJECTED are only reachable via the dedicated review action (see
+// RequirementApprovalTab) -- offering them here would let any editor bypass
+// the approval workflow, which the backend also rejects with a 400.
 const STATUS_OPTIONS: { value: ApiRequirementStatus; label: string }[] = [
   { value: 'DRAFT', label: 'Draft' },
-  { value: 'APPROVED', label: 'Approved' },
-  { value: 'IMPLEMENTED', label: 'Implemented' },
-  { value: 'VERIFIED', label: 'Verified' },
-  { value: 'REJECTED', label: 'Rejected' },
+  { value: 'IN_REVIEW', label: 'In Review' },
 ];
+
+const STATUS_LABELS: Record<ApiRequirementStatus, string> = {
+  DRAFT: 'Draft',
+  IN_REVIEW: 'In Review',
+  APPROVED: 'Approved',
+  IMPLEMENTED: 'Implemented',
+  VERIFIED: 'Verified',
+  REJECTED: 'Rejected',
+};
 
 interface RequirementFormValues {
   productId: string;
@@ -48,7 +69,10 @@ interface RequirementFormValues {
   description: string;
   type: ApiRequirementType;
   priority: ApiRequirementPriority;
+  riskLevel: ApiRequirementRisk;
   status: ApiRequirementStatus;
+  ownerId: string;
+  acceptanceCriteria: string[];
 }
 
 function emptyValues(defaultProductId: string): RequirementFormValues {
@@ -59,7 +83,10 @@ function emptyValues(defaultProductId: string): RequirementFormValues {
     description: '',
     type: 'FUNCTIONAL',
     priority: 'MEDIUM',
+    riskLevel: 'MEDIUM',
     status: 'DRAFT',
+    ownerId: NO_OWNER,
+    acceptanceCriteria: [],
   };
 }
 
@@ -68,6 +95,7 @@ interface RequirementFormDialogProps {
   mode: 'create' | 'edit';
   products: ApiProduct[];
   releases: ApiRelease[];
+  users: ApiUser[];
   currentProductId?: string;
   initialValues?: RequirementFormValues;
   onClose: () => void;
@@ -79,6 +107,7 @@ export function RequirementFormDialog({
   mode,
   products,
   releases,
+  users,
   currentProductId,
   initialValues,
   onClose,
@@ -87,6 +116,7 @@ export function RequirementFormDialog({
   const [values, setValues] = useState<RequirementFormValues>(emptyValues(''));
   const [titleError, setTitleError] = useState<string | null>(null);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
+  const [criteriaErrors, setCriteriaErrors] = useState<(string | null)[]>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -99,6 +129,7 @@ export function RequirementFormDialog({
       setValues(initialValues ?? emptyValues(preferredProductId));
       setTitleError(null);
       setDescriptionError(null);
+      setCriteriaErrors([]);
       setSubmitError(null);
       setSubmitting(false);
     }
@@ -110,6 +141,15 @@ export function RequirementFormDialog({
     () => releases.filter((release) => release.productId === values.productId),
     [releases, values.productId],
   );
+
+  // Editing a requirement that's already moved past Draft/In Review (e.g.
+  // Approved, Implemented) -- keep its current value selectable (read-only
+  // in effect, since nothing else is offered) instead of showing MUI's
+  // "out of range value" warning for a select whose value isn't an option.
+  const statusOptions = useMemo(() => {
+    if (STATUS_OPTIONS.some((o) => o.value === values.status)) return STATUS_OPTIONS;
+    return [...STATUS_OPTIONS, { value: values.status, label: STATUS_LABELS[values.status] }];
+  }, [values.status]);
 
   const handleProductChange = (newProductId: string) => {
     setValues((prev) => ({
@@ -136,6 +176,15 @@ export function RequirementFormDialog({
       setDescriptionError('Requirement description is required.');
       hasError = true;
     }
+
+    const nextCriteriaErrors = values.acceptanceCriteria.map((text) =>
+      text.trim() ? null : 'A criterion cannot be empty.',
+    );
+    if (nextCriteriaErrors.some(Boolean)) {
+      setCriteriaErrors(nextCriteriaErrors);
+      hasError = true;
+    }
+
     if (hasError) return;
 
     setSubmitting(true);
@@ -149,7 +198,10 @@ export function RequirementFormDialog({
         description: trimmedDescription,
         type: values.type,
         priority: values.priority,
+        riskLevel: values.riskLevel,
         status: values.status,
+        ownerId: values.ownerId || undefined,
+        acceptanceCriteria: values.acceptanceCriteria.map((text) => text.trim()).filter(Boolean),
       });
       onClose();
     } catch (err: unknown) {
@@ -186,25 +238,44 @@ export function RequirementFormDialog({
                   </MenuItem>
                 ))}
               </TextField>
-              <TextField
-                select
-                label="Release (optional)"
-                fullWidth
-                value={values.releaseId}
-                helperText={
-                  releasesForProduct.length === 0 ? 'No releases exist for this product yet.' : ' '
-                }
-                onChange={(e) => setValues((prev) => ({ ...prev, releaseId: e.target.value }))}
-              >
-                <MenuItem value="">
-                  <em>None</em>
-                </MenuItem>
-                {releasesForProduct.map((release) => (
-                  <MenuItem key={release.id} value={release.id}>
-                    {release.name} ({release.version})
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  select
+                  label="Release (optional)"
+                  fullWidth
+                  value={values.releaseId}
+                  helperText={
+                    releasesForProduct.length === 0 ? 'No releases exist for this product yet.' : ' '
+                  }
+                  onChange={(e) => setValues((prev) => ({ ...prev, releaseId: e.target.value }))}
+                >
+                  <MenuItem value="">
+                    <em>None</em>
                   </MenuItem>
-                ))}
-              </TextField>
+                  {releasesForProduct.map((release) => (
+                    <MenuItem key={release.id} value={release.id}>
+                      {release.name} ({release.version})
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  select
+                  label="Owner (optional)"
+                  fullWidth
+                  value={values.ownerId}
+                  onChange={(e) => setValues((prev) => ({ ...prev, ownerId: e.target.value }))}
+                >
+                  <MenuItem value={NO_OWNER}>
+                    <em>No owner assigned</em>
+                  </MenuItem>
+                  {users.map((user) => (
+                    <MenuItem key={user.id} value={user.id}>
+                      {user.name} ({user.email})
+                      {user.status === 'INACTIVE' ? ' (Inactive)' : ''}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Stack>
               <TextField
                 label="Title"
                 required
@@ -266,10 +337,32 @@ export function RequirementFormDialog({
                     </MenuItem>
                   ))}
                 </TextField>
+              </Stack>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  select
+                  label="Risk"
+                  fullWidth
+                  helperText="Impact if this requirement fails, distinct from Priority"
+                  value={values.riskLevel}
+                  onChange={(e) =>
+                    setValues((prev) => ({
+                      ...prev,
+                      riskLevel: e.target.value as ApiRequirementRisk,
+                    }))
+                  }
+                >
+                  {RISK_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
                 <TextField
                   select
                   label="Status"
                   fullWidth
+                  helperText={mode === 'edit' ? 'Use the Approval tab to approve or reject.' : ' '}
                   value={values.status}
                   onChange={(e) =>
                     setValues((prev) => ({
@@ -278,13 +371,22 @@ export function RequirementFormDialog({
                     }))
                   }
                 >
-                  {STATUS_OPTIONS.map((option) => (
+                  {statusOptions.map((option) => (
                     <MenuItem key={option.value} value={option.value}>
                       {option.label}
                     </MenuItem>
                   ))}
                 </TextField>
               </Stack>
+
+              <AcceptanceCriteriaEditor
+                criteria={values.acceptanceCriteria}
+                errors={criteriaErrors}
+                onChange={(criteria) => {
+                  setValues((prev) => ({ ...prev, acceptanceCriteria: criteria }));
+                  setCriteriaErrors([]);
+                }}
+              />
             </>
           )}
         </Stack>

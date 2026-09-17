@@ -30,6 +30,23 @@ enum OrganizationStatus {
   INACTIVE
 }
 
+enum ProjectStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum SprintStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+}
+
+enum BuildStatus {
+  PENDING
+  PASSED
+  FAILED
+}
+
 enum RequirementType {
   FUNCTIONAL
   NON_FUNCTIONAL
@@ -46,10 +63,18 @@ enum RequirementPriority {
 
 enum RequirementStatus {
   DRAFT
+  IN_REVIEW
   APPROVED
   IMPLEMENTED
   VERIFIED
   REJECTED
+}
+
+enum RequirementRisk {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }
 
 enum TestPlanStatus {
@@ -311,18 +336,40 @@ model Organization {
   updatedAt   DateTime           @updatedAt @map("updated_at")
 
   products Product[]
+  projects Project[]
 
   @@map("organizations")
+}
+
+// Sits between Organization and Product per the QMICS TestSphere hierarchy.
+// projectId on Product is nullable so every existing product keeps working
+// unassigned -- this is additive, not a forced migration of existing data.
+model Project {
+  id             String        @id @default(uuid())
+  organizationId String        @map("organization_id")
+  name           String
+  description    String?
+  status         ProjectStatus @default(ACTIVE)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  products     Product[]
+
+  @@index([organizationId])
+  @@map("projects")
 }
 
 model Product {
   id               String           @id @default(uuid())
   organizationId   String           @map("organization_id")
+  projectId        String?          @map("project_id")
   name             String
   description      String
   status           ProductStatus    @default(ACTIVE)
   environment      String
   release          String
+  productKey       String?          @map("product_key")
   applicationUrl   String?          @map("application_url")
   repositoryUrl    String?          @map("repository_url")
   productOwnerId   String?          @map("product_owner_id")
@@ -335,6 +382,7 @@ model Product {
   updatedAt        DateTime         @updatedAt @map("updated_at")
 
   organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  project          Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
   productOwner     User?               @relation("ProductOwner", fields: [productOwnerId], references: [id], onDelete: SetNull)
   requirements     Requirement[]
   testPlans        TestPlan[]
@@ -351,7 +399,9 @@ model Product {
   components       ProductComponent[]
   teamMembers      ProductTeamMember[]
 
+  @@unique([organizationId, productKey])
   @@index([organizationId])
+  @@index([projectId])
   @@index([productOwnerId])
   @@map("products")
 }
@@ -435,26 +485,100 @@ model ProductDocumentVersion {
 }
 
 model Requirement {
-  id          String              @id @default(uuid())
-  productId   String              @map("product_id")
-  releaseId   String?             @map("release_id")
-  title       String
-  description String
-  type        RequirementType     @default(FUNCTIONAL)
-  priority    RequirementPriority @default(MEDIUM)
-  status      RequirementStatus   @default(DRAFT)
-  createdAt   DateTime            @default(now()) @map("created_at")
-  updatedAt   DateTime            @updatedAt @map("updated_at")
+  id            String              @id @default(uuid())
+  productId     String              @map("product_id")
+  releaseId     String?             @map("release_id")
+  title         String
+  description   String
+  type          RequirementType     @default(FUNCTIONAL)
+  priority      RequirementPriority @default(MEDIUM)
+  riskLevel     RequirementRisk     @default(MEDIUM) @map("risk_level")
+  status        RequirementStatus   @default(DRAFT)
+  ownerId       String?             @map("owner_id")
+  // "1.0", bumped automatically by RequirementsService whenever a tracked
+  // field changes -- never accepted as client input (see RequirementVersion).
+  version       String              @default("1.0")
+  reviewedById  String?             @map("reviewed_by_id")
+  reviewedAt    DateTime?           @map("reviewed_at")
+  reviewComment String?             @map("review_comment")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
 
-  product       Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
-  release       Release?       @relation(fields: [releaseId], references: [id], onDelete: SetNull)
-  testPlans     TestPlan[]     @relation("TestPlanRequirements")
-  testScenarios TestScenario[]
-  uatTestCases  UatTestCase[]
+  product            Product                          @relation(fields: [productId], references: [id], onDelete: Restrict)
+  release            Release?                         @relation(fields: [releaseId], references: [id], onDelete: SetNull)
+  owner              User?                            @relation("RequirementOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  reviewedBy         User?                            @relation("RequirementReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  testPlans          TestPlan[]                       @relation("TestPlanRequirements")
+  testScenarios      TestScenario[]
+  uatTestCases       UatTestCase[]
+  acceptanceCriteria RequirementAcceptanceCriterion[]
+  attachments        RequirementAttachment[]
+  versions           RequirementVersion[]
 
   @@index([productId])
   @@index([releaseId])
+  @@index([ownerId])
   @@map("requirements")
+}
+
+// A single acceptance-criterion line under a Requirement. Fully replaced
+// (delete-all-and-recreate) whenever the set changes, rather than diffed
+// row-by-row -- the parent RequirementVersion entry records this as one
+// "Acceptance Criteria updated" line, matching how the rest of this app
+// tracks list-shaped fields.
+model RequirementAcceptanceCriterion {
+  id            String   @id @default(uuid())
+  requirementId String   @map("requirement_id")
+  text          String
+  sortOrder     Int      @default(0) @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  requirement Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  @@index([requirementId])
+  @@map("requirement_acceptance_criteria")
+}
+
+// Deliberately simpler than ProductDocument: no document type/status/
+// versioning, just a flat attached-file list with upload/download/remove.
+model RequirementAttachment {
+  id            String   @id @default(uuid())
+  requirementId String   @map("requirement_id")
+  fileName      String   @map("file_name")
+  mimeType      String   @map("mime_type")
+  fileSize      Int      @map("file_size")
+  content       Bytes
+  uploadedBy    String   @map("uploaded_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  requirement Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  @@index([requirementId])
+  @@map("requirement_attachments")
+}
+
+// Append-only version history: one row per bump, written whenever a tracked
+// field (title/description/type/priority/riskLevel/ownerId/releaseId/status/
+// acceptanceCriteria) actually changes. Never deleted. `changes` is a
+// JSON-stringified array of {field, previousValue, newValue}, matching
+// AuditLog.metadata's string+manual-JSON convention rather than Prisma's
+// Json type (unused elsewhere in this schema). `comment` carries a review
+// decision's reason when this row was produced by an approve/reject/rework.
+model RequirementVersion {
+  id            String   @id @default(uuid())
+  requirementId String   @map("requirement_id")
+  version       String
+  changedById   String?  @map("changed_by_id")
+  changedAt     DateTime @default(now()) @map("changed_at")
+  summary       String
+  changes       String?
+  comment       String?
+
+  requirement Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  changedBy   User?       @relation("RequirementVersionChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([requirementId])
+  @@map("requirement_versions")
 }
 
 model TestPlan {
@@ -952,10 +1076,46 @@ model Release {
   performanceTests PerformanceTest[]
   securityTests    SecurityTest[]
   uatCycles        UatCycle[]
+  sprints          Sprint[]
+  builds           Build[]
 
   @@index([productId])
   @@index([environmentId])
   @@map("releases")
+}
+
+// Foundation only, per the QMICS TestSphere Product Management spec:
+// Release -> Sprint / Build (matches the spec's own "Release 2.5 -> Sprint
+// 21/22/23" example). Both are pure children of a Release, so they cascade
+// with it -- same relationship class as TestCaseStep -> TestCase.
+model Sprint {
+  id        String       @id @default(uuid())
+  releaseId String       @map("release_id")
+  name      String
+  startDate DateTime?    @map("start_date")
+  endDate   DateTime?    @map("end_date")
+  status    SprintStatus @default(PLANNED)
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  release Release @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+
+  @@index([releaseId])
+  @@map("sprints")
+}
+
+model Build {
+  id          String      @id @default(uuid())
+  releaseId   String      @map("release_id")
+  buildNumber String      @map("build_number")
+  status      BuildStatus @default(PENDING)
+  buildDate   DateTime?   @map("build_date")
+  notes       String?
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  release Release @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+
+  @@index([releaseId])
+  @@map("builds")
 }
 
 // Every AI-assisted suggestion this platform generates -- kept as a real,
@@ -1050,12 +1210,15 @@ model User {
   createdAt                 DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                 DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  role                   Role                @relation(fields: [roleId], references: [id], onDelete: Restrict)
-  sessions               Session[]
-  auditLogs              AuditLog[]          @relation("AuditLogActor")
-  appSettingUpdates      AppSetting[]
-  ownedProducts          Product[]           @relation("ProductOwner")
-  productTeamMemberships ProductTeamMember[] @relation("ProductTeamMembership")
+  role                      Role                 @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  sessions                  Session[]
+  auditLogs                 AuditLog[]           @relation("AuditLogActor")
+  appSettingUpdates         AppSetting[]
+  ownedProducts             Product[]            @relation("ProductOwner")
+  productTeamMemberships    ProductTeamMember[]  @relation("ProductTeamMembership")
+  requirementsOwned         Requirement[]        @relation("RequirementOwner")
+  requirementReviews        Requirement[]        @relation("RequirementReviewedBy")
+  requirementVersionChanges RequirementVersion[] @relation("RequirementVersionChangedBy")
 
   @@index([roleId])
   @@map("users")

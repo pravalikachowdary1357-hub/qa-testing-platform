@@ -36,27 +36,32 @@ import { DeleteRequirementDialog } from '../components/requirement/DeleteRequire
 import {
   createRequirement,
   deleteRequirement,
+  fetchRequirement,
   fetchRequirements,
   importRequirements,
   updateRequirement,
 } from '../api/requirements';
 import { fetchProducts } from '../api/products';
 import { fetchReleases } from '../api/release';
+import { fetchUsers } from '../api/users';
 import { ApiError } from '../api/client';
 import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
 import type {
   ApiRequirement,
   ApiRequirementPriority,
+  ApiRequirementRisk,
   ApiRequirementStatus,
   ApiRequirementType,
   CreateRequirementPayload,
   RequirementPriority,
+  RequirementRisk,
   RequirementStatus,
   RequirementType,
 } from '../types/requirement';
 import type { ApiProduct } from '../types/product';
 import type { ApiRelease } from '../types/release';
+import type { ApiUser } from '../types/settings';
 
 const TYPE_LABELS: Record<ApiRequirementType, RequirementType> = {
   FUNCTIONAL: 'Functional',
@@ -72,8 +77,16 @@ const PRIORITY_LABELS: Record<ApiRequirementPriority, RequirementPriority> = {
   LOW: 'Low',
 };
 
+const RISK_LABELS: Record<ApiRequirementRisk, RequirementRisk> = {
+  CRITICAL: 'Critical',
+  HIGH: 'High',
+  MEDIUM: 'Medium',
+  LOW: 'Low',
+};
+
 const STATUS_LABELS: Record<ApiRequirementStatus, RequirementStatus> = {
   DRAFT: 'Draft',
+  IN_REVIEW: 'In Review',
   APPROVED: 'Approved',
   IMPLEMENTED: 'Implemented',
   VERIFIED: 'Verified',
@@ -96,18 +109,23 @@ export function RequirementsPage() {
   const [requirements, setRequirements] = useState<ApiRequirement[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [releases, setReleases] = useState<ApiRelease[]>([]);
+  const [users, setUsers] = useState<ApiUser[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ApiRequirementStatus | typeof ALL>(ALL);
   const [priorityFilter, setPriorityFilter] = useState<ApiRequirementPriority | typeof ALL>(ALL);
+  const [riskFilter, setRiskFilter] = useState<ApiRequirementRisk | typeof ALL>(ALL);
   const [typeFilter, setTypeFilter] = useState<ApiRequirementType | typeof ALL>(ALL);
+  const [ownerFilter, setOwnerFilter] = useState<string | typeof ALL>(ALL);
+  const [releaseFilter, setReleaseFilter] = useState<string | typeof ALL>(ALL);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
 
   const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
   const [editingRequirement, setEditingRequirement] = useState<ApiRequirement | null>(null);
   const [viewingRequirementId, setViewingRequirementId] = useState<string | null>(null);
   const [deletingRequirement, setDeletingRequirement] = useState<ApiRequirement | null>(null);
+  const [loadingEditId, setLoadingEditId] = useState<string | null>(null);
 
   const [snackbar, setSnackbar] = useState<{ message: string; severity: 'success' | 'error' } | null>(
     null,
@@ -162,6 +180,14 @@ export function RequirementsPage() {
         // Only feeds the optional Release picker in the create/edit form.
       });
 
+    fetchUsers()
+      .then((data) => {
+        if (!cancelled) setUsers(data);
+      })
+      .catch(() => {
+        // Only feeds the optional Owner picker/filter.
+      });
+
     return () => {
       cancelled = true;
     };
@@ -175,7 +201,10 @@ export function RequirementsPage() {
       if (query && !requirement.title.toLowerCase().includes(query)) return false;
       if (statusFilter !== ALL && requirement.status !== statusFilter) return false;
       if (priorityFilter !== ALL && requirement.priority !== priorityFilter) return false;
+      if (riskFilter !== ALL && requirement.riskLevel !== riskFilter) return false;
       if (typeFilter !== ALL && requirement.type !== typeFilter) return false;
+      if (ownerFilter !== ALL && requirement.ownerId !== ownerFilter) return false;
+      if (releaseFilter !== ALL && requirement.releaseId !== releaseFilter) return false;
       return true;
     });
 
@@ -195,11 +224,27 @@ export function RequirementsPage() {
         break;
     }
     return sorted;
-  }, [requirements, searchQuery, statusFilter, priorityFilter, typeFilter, sortBy]);
+  }, [
+    requirements,
+    searchQuery,
+    statusFilter,
+    priorityFilter,
+    riskFilter,
+    typeFilter,
+    ownerFilter,
+    releaseFilter,
+    sortBy,
+  ]);
 
   const isLoading = requirements === null && !error;
   const hasActiveFilters =
-    searchQuery.trim() !== '' || statusFilter !== ALL || priorityFilter !== ALL || typeFilter !== ALL;
+    searchQuery.trim() !== '' ||
+    statusFilter !== ALL ||
+    priorityFilter !== ALL ||
+    riskFilter !== ALL ||
+    typeFilter !== ALL ||
+    ownerFilter !== ALL ||
+    releaseFilter !== ALL;
 
   const handleCreateSubmit = async (data: CreateRequirementPayload) => {
     await createRequirement(data);
@@ -212,6 +257,25 @@ export function RequirementsPage() {
     await updateRequirement(editingRequirement.id, data);
     await loadRequirements();
     setSnackbar({ message: 'Requirement updated.', severity: 'success' });
+  };
+
+  // Rows from the list endpoint don't carry acceptanceCriteria (kept off
+  // the list select to avoid over-fetching) -- fetch the full record before
+  // opening Edit so criteria aren't silently dropped from the form.
+  const handleEditClick = async (requirement: ApiRequirement) => {
+    setLoadingEditId(requirement.id);
+    try {
+      const full = await fetchRequirement(requirement.id);
+      setEditingRequirement(full);
+      setFormMode('edit');
+    } catch (err: unknown) {
+      setSnackbar({
+        message: err instanceof ApiError ? `Failed to load requirement (HTTP ${err.status}).` : 'Failed to load requirement.',
+        severity: 'error',
+      });
+    } finally {
+      setLoadingEditId(null);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -245,8 +309,16 @@ export function RequirementsPage() {
       { header: 'Product', value: (r) => r.product.name },
       { header: 'Type', value: (r) => TYPE_LABELS[r.type] },
       { header: 'Priority', value: (r) => PRIORITY_LABELS[r.priority] },
+      { header: 'Risk', value: (r) => RISK_LABELS[r.riskLevel] },
+      { header: 'Owner', value: (r) => r.owner?.name ?? '' },
+      { header: 'Version', value: (r) => r.version },
       { header: 'Status', value: (r) => STATUS_LABELS[r.status] },
-      { header: 'Created', value: (r) => new Date(r.createdAt).toLocaleDateString() },
+      { header: 'Release', value: (r) => (r.release ? `${r.release.name} (${r.release.version})` : '') },
+      {
+        header: 'Acceptance Criteria',
+        value: (r) => (r.acceptanceCriteria ?? []).map((c) => c.text).join('; '),
+      },
+      { header: 'Updated', value: (r) => new Date(r.updatedAt).toLocaleDateString() },
     ]);
   };
 
@@ -284,7 +356,7 @@ export function RequirementsPage() {
             placeholder="Search requirements by title…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            sx={{ width: { xs: '100%', sm: 260 } }}
+            sx={{ width: { xs: '100%', sm: 220 } }}
             slotProps={{
               input: {
                 startAdornment: (
@@ -301,7 +373,7 @@ export function RequirementsPage() {
             label="Status"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as ApiRequirementStatus | typeof ALL)}
-            sx={{ width: { xs: '100%', sm: 150 } }}
+            sx={{ width: { xs: '100%', sm: 140 } }}
           >
             <MenuItem value={ALL}>All Statuses</MenuItem>
             {Object.entries(STATUS_LABELS).map(([value, label]) => (
@@ -316,7 +388,7 @@ export function RequirementsPage() {
             label="Priority"
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value as ApiRequirementPriority | typeof ALL)}
-            sx={{ width: { xs: '100%', sm: 150 } }}
+            sx={{ width: { xs: '100%', sm: 140 } }}
           >
             <MenuItem value={ALL}>All Priorities</MenuItem>
             {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
@@ -328,15 +400,60 @@ export function RequirementsPage() {
           <TextField
             select
             size="small"
+            label="Risk"
+            value={riskFilter}
+            onChange={(e) => setRiskFilter(e.target.value as ApiRequirementRisk | typeof ALL)}
+            sx={{ width: { xs: '100%', sm: 130 } }}
+          >
+            <MenuItem value={ALL}>All Risks</MenuItem>
+            {Object.entries(RISK_LABELS).map(([value, label]) => (
+              <MenuItem key={value} value={value}>
+                {label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            size="small"
             label="Type"
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value as ApiRequirementType | typeof ALL)}
-            sx={{ width: { xs: '100%', sm: 170 } }}
+            sx={{ width: { xs: '100%', sm: 160 } }}
           >
             <MenuItem value={ALL}>All Types</MenuItem>
             {Object.entries(TYPE_LABELS).map(([value, label]) => (
               <MenuItem key={value} value={value}>
                 {label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            size="small"
+            label="Owner"
+            value={ownerFilter}
+            onChange={(e) => setOwnerFilter(e.target.value)}
+            sx={{ width: { xs: '100%', sm: 160 } }}
+          >
+            <MenuItem value={ALL}>All Owners</MenuItem>
+            {users.map((user) => (
+              <MenuItem key={user.id} value={user.id}>
+                {user.name}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            size="small"
+            label="Release"
+            value={releaseFilter}
+            onChange={(e) => setReleaseFilter(e.target.value)}
+            sx={{ width: { xs: '100%', sm: 160 } }}
+          >
+            <MenuItem value={ALL}>All Releases</MenuItem>
+            {releases.map((release) => (
+              <MenuItem key={release.id} value={release.id}>
+                {release.name} ({release.version})
               </MenuItem>
             ))}
           </TextField>
@@ -394,15 +511,18 @@ export function RequirementsPage() {
                 <TableCell>Product</TableCell>
                 <TableCell>Type</TableCell>
                 <TableCell>Priority</TableCell>
+                <TableCell>Risk</TableCell>
+                <TableCell>Owner</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell>Created</TableCell>
+                <TableCell>Release</TableCell>
+                <TableCell>Updated</TableCell>
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {visibleRequirements.map((requirement) => (
                 <TableRow key={requirement.id} hover>
-                  <TableCell sx={{ maxWidth: 280 }}>
+                  <TableCell sx={{ maxWidth: 220 }}>
                     <Typography variant="body2" noWrap>
                       {requirement.title}
                     </Typography>
@@ -417,9 +537,22 @@ export function RequirementsPage() {
                     <StatusChip status={PRIORITY_LABELS[requirement.priority]} />
                   </TableCell>
                   <TableCell>
+                    <StatusChip status={RISK_LABELS[requirement.riskLevel]} />
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" color="text.secondary">
+                      {requirement.owner?.name ?? '—'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
                     <StatusChip status={STATUS_LABELS[requirement.status]} />
                   </TableCell>
-                  <TableCell>{new Date(requirement.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" color="text.secondary">
+                      {requirement.release ? requirement.release.name : '—'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>{new Date(requirement.updatedAt).toLocaleDateString()}</TableCell>
                   <TableCell align="right">
                     <Tooltip title="View">
                       <IconButton
@@ -430,15 +563,15 @@ export function RequirementsPage() {
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Edit">
-                      <IconButton
-                        size="small"
-                        onClick={() => {
-                          setEditingRequirement(requirement);
-                          setFormMode('edit');
-                        }}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
+                      <span>
+                        <IconButton
+                          size="small"
+                          disabled={loadingEditId === requirement.id}
+                          onClick={() => handleEditClick(requirement)}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </span>
                     </Tooltip>
                     <Tooltip title="Delete">
                       <IconButton
@@ -461,6 +594,7 @@ export function RequirementsPage() {
         mode={formMode ?? 'create'}
         products={products}
         releases={releases}
+        users={users}
         currentProductId={currentProduct?.id}
         initialValues={
           formMode === 'edit' && editingRequirement
@@ -471,7 +605,10 @@ export function RequirementsPage() {
                 description: editingRequirement.description,
                 type: editingRequirement.type,
                 priority: editingRequirement.priority,
+                riskLevel: editingRequirement.riskLevel,
                 status: editingRequirement.status,
+                ownerId: editingRequirement.ownerId ?? '',
+                acceptanceCriteria: (editingRequirement.acceptanceCriteria ?? []).map((c) => c.text),
               }
             : undefined
         }

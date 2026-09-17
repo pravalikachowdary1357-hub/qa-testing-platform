@@ -3,6 +3,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma.module';
 import { OrganizationsModule } from './organizations/organizations.module';
+import { ProjectsModule } from './projects/projects.module';
 import { ProductsModule } from './products/products.module';
 import { ProductDocumentsModule } from './product-documents/product-documents.module';
 import { ProductComponentsModule } from './product-components/product-components.module';
@@ -22,6 +23,8 @@ import { SecurityTestingModule } from './security-testing/security-testing.modul
 import { UatModule } from './uat/uat.module';
 import { TraceabilityModule } from './traceability/traceability.module';
 import { ReleaseQualityModule } from './release-quality/release-quality.module';
+import { SprintsModule } from './sprints/sprints.module';
+import { BuildsModule } from './builds/builds.module';
 import { ReportsModule } from './reports/reports.module';
 import { AiModule } from './ai/ai.module';
 import { AuthModule } from './auth/auth.module';
@@ -39,6 +42,7 @@ import { AppSettingsModule } from './app-settings/app-settings.module';
     RolesModule,
     AppSettingsModule,
     OrganizationsModule,
+    ProjectsModule,
     ProductsModule,
     ProductDocumentsModule,
     ProductComponentsModule,
@@ -58,6 +62,8 @@ import { AppSettingsModule } from './app-settings/app-settings.module';
     UatModule,
     TraceabilityModule,
     ReleaseQualityModule,
+    SprintsModule,
+    BuildsModule,
     ReportsModule,
     AiModule,
   ],

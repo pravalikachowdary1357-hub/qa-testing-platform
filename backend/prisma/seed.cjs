@@ -50,9 +50,10 @@ const ADMIN_PERMISSIONS = [
 // POST :id/sign-off), never invented.
 const MODULES = {
   organizations: ['read', 'write', 'manage'],
+  projects: ['read', 'write', 'manage'],
   products: ['read', 'write', 'manage'],
   product_documents: ['read', 'write', 'manage'],
-  requirements: ['read', 'write', 'manage'],
+  requirements: ['read', 'write', 'manage', 'approve'],
   test_plans: ['read', 'write', 'manage'],
   test_scenarios: ['read', 'write', 'manage'],
   test_cases: ['read', 'write', 'manage'],
@@ -202,7 +203,7 @@ const ROLE_GRANTS = {
   // role to requirements + UAT + release, approving based on UAT results
   // and release readiness rather than test-case-level detail.
   'Business/Release Approver': [
-    ...keys('requirements', 'read', 'write', 'manage'),
+    ...keys('requirements', 'read', 'write', 'manage', 'approve'),
     ...allKeys('product_documents'),
     ...keys('defects', 'read'),
     ...allKeys('uat'),

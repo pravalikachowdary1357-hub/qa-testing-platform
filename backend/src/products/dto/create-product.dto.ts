@@ -6,6 +6,7 @@ import {
   IsString,
   IsUUID,
   IsUrl,
+  Matches,
   Max,
   Min,
 } from 'class-validator';
@@ -18,9 +19,20 @@ export class CreateProductDto {
   @IsUUID()
   organizationId: string;
 
+  @IsOptional()
+  @IsUUID()
+  projectId?: string;
+
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^[A-Z0-9]{2,10}$/, {
+    message: 'Product key must be 2-10 uppercase letters/digits (e.g. CP).',
+  })
+  productKey?: string;
 
   @IsString()
   @IsNotEmpty()

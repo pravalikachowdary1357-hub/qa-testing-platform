@@ -1,5 +1,6 @@
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import BusinessIcon from '@mui/icons-material/Business';
+import FolderSpecialIcon from '@mui/icons-material/FolderSpecial';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import EventNoteIcon from '@mui/icons-material/EventNote';
@@ -22,6 +23,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 
 import { DashboardPage } from '../pages/DashboardPage';
 import { OrganizationsPage } from '../pages/OrganizationsPage';
+import { ProjectsPage } from '../pages/ProjectsPage';
 import { ProductsPage } from '../pages/ProductsPage';
 import { RequirementsPage } from '../pages/RequirementsPage';
 import { TestPlansPage } from '../pages/TestPlansPage';
@@ -54,6 +56,13 @@ export const navItems: NavItemConfig[] = [
     icon: BusinessIcon,
     element: <OrganizationsPage />,
     permission: 'organizations:read',
+  },
+  {
+    path: '/projects',
+    label: 'Project',
+    icon: FolderSpecialIcon,
+    element: <ProjectsPage />,
+    permission: 'projects:read',
   },
   {
     path: '/products',

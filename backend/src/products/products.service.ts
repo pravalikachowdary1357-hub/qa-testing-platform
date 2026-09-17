@@ -11,12 +11,17 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { validateRow } from '../common/import/validate-row.util';
-import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
+import type {
+  ImportResult,
+  ImportRowError,
+} from '../common/import/import-result.interface';
 
 const ORGANIZATION_REF_SELECT = { select: { id: true, name: true } };
+const PROJECT_REF_SELECT = { select: { id: true, name: true } };
 const PRODUCT_OWNER_SELECT = { select: { id: true, name: true, email: true } };
 const PRODUCT_INCLUDE = {
   organization: ORGANIZATION_REF_SELECT,
+  project: PROJECT_REF_SELECT,
   productOwner: PRODUCT_OWNER_SELECT,
 };
 
@@ -55,13 +60,17 @@ export class ProductsService {
         include: PRODUCT_INCLUDE,
       });
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2003'
-      ) {
-        throw new BadRequestException(
-          `Organization ${dto.organizationId} not found`,
-        );
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2003') {
+          throw new BadRequestException(
+            `Organization or project not found for this product`,
+          );
+        }
+        if (error.code === 'P2002') {
+          throw new ConflictException(
+            `Product key "${dto.productKey}" is already used by another product in this organization.`,
+          );
+        }
       }
       throw error;
     }
@@ -93,7 +102,12 @@ export class ProductsService {
         }
         if (error.code === 'P2003') {
           throw new BadRequestException(
-            `Organization ${dto.organizationId} not found`,
+            `Organization or project not found for this product`,
+          );
+        }
+        if (error.code === 'P2002') {
+          throw new ConflictException(
+            `Product key "${dto.productKey}" is already used by another product in this organization.`,
           );
         }
       }
@@ -133,19 +147,36 @@ export class ProductsService {
       testCasesWithAutomation,
     ] = await Promise.all([
       this.prisma.requirement.count({ where: { productId: id } }),
-      this.prisma.testPlan.count({ where: { productId: id, status: 'ACTIVE' } }),
-      this.prisma.testCase.count({ where: { testScenario: { productId: id } } }),
-      this.prisma.testExecution.count({
-        where: { testCase: { testScenario: { productId: id } }, status: { not: 'PENDING' } },
+      this.prisma.testPlan.count({
+        where: { productId: id, status: 'ACTIVE' },
+      }),
+      this.prisma.testCase.count({
+        where: { testScenario: { productId: id } },
       }),
       this.prisma.testExecution.count({
-        where: { testCase: { testScenario: { productId: id } }, status: 'FAIL' },
+        where: {
+          testCase: { testScenario: { productId: id } },
+          status: { not: 'PENDING' },
+        },
       }),
       this.prisma.testExecution.count({
-        where: { testCase: { testScenario: { productId: id } }, status: 'BLOCKED' },
+        where: {
+          testCase: { testScenario: { productId: id } },
+          status: 'FAIL',
+        },
+      }),
+      this.prisma.testExecution.count({
+        where: {
+          testCase: { testScenario: { productId: id } },
+          status: 'BLOCKED',
+        },
       }),
       this.prisma.defect.count({
-        where: { productId: id, severity: 'CRITICAL', status: { notIn: ['RESOLVED', 'CLOSED'] } },
+        where: {
+          productId: id,
+          severity: 'CRITICAL',
+          status: { notIn: ['RESOLVED', 'CLOSED'] },
+        },
       }),
       this.prisma.testCase.count({
         where: { testScenario: { productId: id }, automations: { some: {} } },
@@ -153,7 +184,9 @@ export class ProductsService {
     ]);
 
     const automationCoveragePercent =
-      testCases === 0 ? 0 : Math.round((testCasesWithAutomation / testCases) * 100);
+      testCases === 0
+        ? 0
+        : Math.round((testCasesWithAutomation / testCases) * 100);
 
     return {
       requirements,
@@ -202,7 +235,8 @@ export class ProductsService {
         release: raw.release,
         testCoverage: this.parseImportInt(raw.testCoverage),
         passRate: this.parseImportInt(raw.passRate),
-        releaseReadiness: raw.releaseReadiness?.trim().toUpperCase() || undefined,
+        releaseReadiness:
+          raw.releaseReadiness?.trim().toUpperCase() || undefined,
       };
 
       const result = await validateRow(CreateProductDto, candidate);
@@ -217,7 +251,8 @@ export class ProductsService {
       } catch (error) {
         errors.push({
           row: rowNumber,
-          message: error instanceof Error ? error.message : 'Failed to create row',
+          message:
+            error instanceof Error ? error.message : 'Failed to create row',
         });
       }
     }

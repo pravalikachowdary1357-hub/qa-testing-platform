@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Button,
@@ -16,9 +16,11 @@ import type {
   CreateProductPayload,
 } from '../../types/product';
 import type { ApiOrganization } from '../../types/organization';
+import type { ApiProject } from '../../types/project';
 import type { ApiUser } from '../../types/settings';
 
 const NO_OWNER = '' as const;
+const NO_PROJECT = '' as const;
 
 function isValidOptionalUrl(value: string): boolean {
   if (value.trim() === '') return true;
@@ -44,7 +46,9 @@ const READINESS_OPTIONS: { value: ApiReleaseReadiness; label: string }[] = [
 
 interface ProductFormValues {
   organizationId: string;
+  projectId: string;
   name: string;
+  productKey: string;
   description: string;
   status: ApiProductStatus;
   environment: string;
@@ -62,7 +66,9 @@ interface ProductFormValues {
 function emptyValues(defaultOrganizationId: string): ProductFormValues {
   return {
     organizationId: defaultOrganizationId,
+    projectId: NO_PROJECT,
     name: '',
+    productKey: '',
     description: '',
     status: 'ACTIVE',
     environment: '',
@@ -88,6 +94,7 @@ interface ProductFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   organizations: ApiOrganization[];
+  projects: ApiProject[];
   users: ApiUser[];
   initialValues?: ProductFormValues;
   onClose: () => void;
@@ -98,6 +105,7 @@ export function ProductFormDialog({
   open,
   mode,
   organizations,
+  projects,
   users,
   initialValues,
   onClose,
@@ -105,6 +113,7 @@ export function ProductFormDialog({
 }: ProductFormDialogProps) {
   const [values, setValues] = useState<ProductFormValues>(emptyValues(''));
   const [nameError, setNameError] = useState<string | null>(null);
+  const [productKeyError, setProductKeyError] = useState<string | null>(null);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [environmentError, setEnvironmentError] = useState<string | null>(null);
   const [releaseError, setReleaseError] = useState<string | null>(null);
@@ -119,6 +128,7 @@ export function ProductFormDialog({
     if (open) {
       setValues(initialValues ?? emptyValues(organizations[0]?.id ?? ''));
       setNameError(null);
+      setProductKeyError(null);
       setDescriptionError(null);
       setEnvironmentError(null);
       setReleaseError(null);
@@ -133,6 +143,23 @@ export function ProductFormDialog({
 
   const noOrganizationsAvailable = mode === 'create' && organizations.length === 0;
 
+  const projectsForOrganization = useMemo(
+    () => projects.filter((project) => project.organizationId === values.organizationId),
+    [projects, values.organizationId],
+  );
+
+  const handleOrganizationChange = (organizationId: string) => {
+    setValues((prev) => ({
+      ...prev,
+      organizationId,
+      projectId: projects.some(
+        (project) => project.id === prev.projectId && project.organizationId === organizationId,
+      )
+        ? prev.projectId
+        : NO_PROJECT,
+    }));
+  };
+
   const handleSubmit = async () => {
     const trimmedName = values.name.trim();
     const trimmedDescription = values.description.trim();
@@ -140,8 +167,14 @@ export function ProductFormDialog({
     const trimmedRelease = values.release.trim();
     let hasError = false;
 
+    const trimmedProductKey = values.productKey.trim().toUpperCase();
+
     if (!trimmedName) {
       setNameError('Product name is required.');
+      hasError = true;
+    }
+    if (trimmedProductKey && !/^[A-Z0-9]{2,10}$/.test(trimmedProductKey)) {
+      setProductKeyError('Use 2-10 uppercase letters/digits (e.g. CP).');
       hasError = true;
     }
     if (!trimmedDescription) {
@@ -180,7 +213,9 @@ export function ProductFormDialog({
     try {
       await onSubmit({
         organizationId: values.organizationId,
+        projectId: values.projectId || undefined,
         name: trimmedName,
+        productKey: trimmedProductKey || undefined,
         description: trimmedDescription,
         status: values.status,
         environment: trimmedEnvironment,
@@ -215,35 +250,65 @@ export function ProductFormDialog({
             </Alert>
           ) : (
             <>
-              <TextField
-                select
-                label="Organization"
-                required
-                fullWidth
-                value={values.organizationId}
-                onChange={(e) =>
-                  setValues((prev) => ({ ...prev, organizationId: e.target.value }))
-                }
-              >
-                {organizations.map((organization) => (
-                  <MenuItem key={organization.id} value={organization.id}>
-                    {organization.name}
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  select
+                  label="Organization"
+                  required
+                  fullWidth
+                  value={values.organizationId}
+                  onChange={(e) => handleOrganizationChange(e.target.value)}
+                >
+                  {organizations.map((organization) => (
+                    <MenuItem key={organization.id} value={organization.id}>
+                      {organization.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  select
+                  label="Project (optional)"
+                  fullWidth
+                  value={values.projectId}
+                  onChange={(e) => setValues((prev) => ({ ...prev, projectId: e.target.value }))}
+                >
+                  <MenuItem value={NO_PROJECT}>
+                    <em>No project assigned</em>
                   </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                label="Product Name"
-                required
-                fullWidth
-                autoFocus
-                value={values.name}
-                error={Boolean(nameError)}
-                helperText={nameError ?? ' '}
-                onChange={(e) => {
-                  setValues((prev) => ({ ...prev, name: e.target.value }));
-                  if (nameError) setNameError(null);
-                }}
-              />
+                  {projectsForOrganization.map((project) => (
+                    <MenuItem key={project.id} value={project.id}>
+                      {project.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Stack>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  label="Product Name"
+                  required
+                  fullWidth
+                  autoFocus
+                  value={values.name}
+                  error={Boolean(nameError)}
+                  helperText={nameError ?? ' '}
+                  onChange={(e) => {
+                    setValues((prev) => ({ ...prev, name: e.target.value }));
+                    if (nameError) setNameError(null);
+                  }}
+                />
+                <TextField
+                  label="Product Key (optional)"
+                  fullWidth
+                  placeholder="e.g. CP"
+                  value={values.productKey}
+                  error={Boolean(productKeyError)}
+                  helperText={productKeyError ?? ' '}
+                  onChange={(e) => {
+                    setValues((prev) => ({ ...prev, productKey: e.target.value.toUpperCase() }));
+                    if (productKeyError) setProductKeyError(null);
+                  }}
+                />
+              </Stack>
               <TextField
                 label="Description"
                 required
