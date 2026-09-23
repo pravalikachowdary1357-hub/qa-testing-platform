@@ -27,8 +27,8 @@ export class UsersController {
 
   @Get()
   @RequirePermission('users:read')
-  findAll(@Query() query: ListUsersQueryDto) {
-    return this.usersService.findAll(query);
+  findAll(@Query() query: ListUsersQueryDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.usersService.findAll(query, actor.organizationId);
   }
 
   @Patch('me')
@@ -41,8 +41,8 @@ export class UsersController {
 
   @Get(':id')
   @RequirePermission('users:read')
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.usersService.findOne(id, actor.organizationId);
   }
 
   @Post()

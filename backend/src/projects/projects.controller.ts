@@ -38,14 +38,14 @@ export class ProjectsController {
 
   @Get()
   @RequirePermission('projects:read')
-  findAll() {
-    return this.projectsService.findAll();
+  findAll(@CurrentUser() actor: AuthenticatedUser) {
+    return this.projectsService.findAll(actor.organizationId);
   }
 
   @Get(':id')
   @RequirePermission('projects:read')
-  findOne(@Param('id') id: string) {
-    return this.projectsService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.projectsService.findOne(id, actor.organizationId);
   }
 
   @Post()

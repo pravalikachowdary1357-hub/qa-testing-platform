@@ -7,6 +7,7 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { validateRow } from '../common/import/validate-row.util';
 import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
+import { assertSameOrganization } from '../common/organization-scope.util';
 
 const TEST_CASE_REF = { select: { id: true, title: true } };
 
@@ -31,28 +32,59 @@ export class TestDataService {
     private readonly auditLog: AuditLogService,
   ) {}
 
-  findAll(productId?: string) {
+  findAll(productId: string | undefined, actorOrganizationId: string | null) {
     return this.prisma.testData.findMany({
-      where: productId ? { testCase: { testScenario: { productId } } } : {},
+      where: {
+        ...(productId || actorOrganizationId
+          ? {
+              testCase: {
+                testScenario: {
+                  ...(productId ? { productId } : {}),
+                  ...(actorOrganizationId ? { product: { organizationId: actorOrganizationId } } : {}),
+                },
+              },
+            }
+          : {}),
+      },
       select: LIST_SELECT,
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actorOrganizationId: string | null) {
     const record = await this.prisma.testData.findUnique({
       where: { id },
-      include: { testCase: TEST_CASE_REF },
+      include: {
+        testCase: {
+          select: {
+            id: true,
+            title: true,
+            testScenario: { select: { product: { select: { organizationId: true } } } },
+          },
+        },
+      },
     });
 
     if (!record) {
       throw new NotFoundException(`Test data ${id} not found`);
     }
+    // Test data isn't required to be linked to a test case -- when it isn't,
+    // there's no organization to check against, so a scoped actor can't see
+    // it (matches how the same "no linked test case" filter naturally
+    // excludes it from findAll's where clause above).
+    assertSameOrganization(
+      actorOrganizationId,
+      record.testCase?.testScenario.product.organizationId ?? null,
+      `Test data ${id} not found`,
+    );
 
     return record;
   }
 
-  async create(dto: CreateTestDataDto) {
+  async create(dto: CreateTestDataDto, actor: AuthenticatedUser) {
+    if (dto.testCaseId) {
+      await this.assertTestCaseInScope(dto.testCaseId, actor.organizationId);
+    }
     try {
       return await this.prisma.testData.create({
         data: dto,
@@ -66,7 +98,22 @@ export class TestDataService {
     }
   }
 
-  async update(id: string, dto: UpdateTestDataDto) {
+  async update(id: string, dto: UpdateTestDataDto, actor: AuthenticatedUser) {
+    const existing = await this.prisma.testData.findUnique({
+      where: { id },
+      select: {
+        testCase: { select: { testScenario: { select: { product: { select: { organizationId: true } } } } } },
+      },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Test data ${id} not found`);
+    }
+    assertSameOrganization(
+      actor.organizationId,
+      existing.testCase?.testScenario.product.organizationId ?? null,
+      `Test data ${id} not found`,
+    );
+
     try {
       return await this.prisma.testData.update({
         where: { id },
@@ -136,7 +183,7 @@ export class TestDataService {
       }
 
       try {
-        await this.create(result.dto);
+        await this.create(result.dto, actor);
         successCount++;
       } catch (error) {
         errors.push({
@@ -157,7 +204,37 @@ export class TestDataService {
     return { totalRows: rows.length, successCount, errors };
   }
 
-  async remove(id: string) {
+  private async assertTestCaseInScope(testCaseId: string, actorOrganizationId: string | null): Promise<void> {
+    const testCase = await this.prisma.testCase.findUnique({
+      where: { id: testCaseId },
+      select: { testScenario: { select: { product: { select: { organizationId: true } } } } },
+    });
+    if (!testCase) {
+      throw new BadRequestException(`Test case ${testCaseId} not found`);
+    }
+    assertSameOrganization(
+      actorOrganizationId,
+      testCase.testScenario.product.organizationId,
+      `Test case ${testCaseId} not found`,
+    );
+  }
+
+  async remove(id: string, actor: AuthenticatedUser) {
+    const existing = await this.prisma.testData.findUnique({
+      where: { id },
+      select: {
+        testCase: { select: { testScenario: { select: { product: { select: { organizationId: true } } } } } },
+      },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Test data ${id} not found`);
+    }
+    assertSameOrganization(
+      actor.organizationId,
+      existing.testCase?.testScenario.product.organizationId ?? null,
+      `Test data ${id} not found`,
+    );
+
     try {
       await this.prisma.testData.delete({ where: { id } });
     } catch (error) {

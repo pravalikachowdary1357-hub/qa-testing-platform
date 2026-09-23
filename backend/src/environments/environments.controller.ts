@@ -41,33 +41,37 @@ export class EnvironmentsController {
 
   @Get()
   @RequirePermission('environments:read')
-  findAll(@Query() query: ListEnvironmentsQueryDto) {
-    return this.environmentsService.findAll(query.productId);
+  findAll(@Query() query: ListEnvironmentsQueryDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.environmentsService.findAll(query.productId, actor.organizationId);
   }
 
   @Get(':id')
   @RequirePermission('environments:read')
-  findOne(@Param('id') id: string) {
-    return this.environmentsService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.environmentsService.findOne(id, actor.organizationId);
   }
 
   @Post()
   @RequirePermission('environments:write')
-  create(@Body() dto: CreateEnvironmentDto) {
-    return this.environmentsService.create(dto);
+  create(@Body() dto: CreateEnvironmentDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.environmentsService.create(dto, actor);
   }
 
   @Patch(':id')
   @RequirePermission('environments:write')
-  update(@Param('id') id: string, @Body() dto: UpdateEnvironmentDto) {
-    return this.environmentsService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateEnvironmentDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.environmentsService.update(id, dto, actor);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission('environments:manage')
-  remove(@Param('id') id: string) {
-    return this.environmentsService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.environmentsService.remove(id, actor);
   }
 
   @Post('import')

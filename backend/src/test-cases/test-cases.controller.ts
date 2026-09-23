@@ -41,33 +41,37 @@ export class TestCasesController {
 
   @Get()
   @RequirePermission('test_cases:read')
-  findAll(@Query() query: ListTestCasesQueryDto) {
-    return this.testCasesService.findAll(query.productId);
+  findAll(@Query() query: ListTestCasesQueryDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.testCasesService.findAll(query.productId, actor.organizationId);
   }
 
   @Get(':id')
   @RequirePermission('test_cases:read')
-  findOne(@Param('id') id: string) {
-    return this.testCasesService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.testCasesService.findOne(id, actor.organizationId);
   }
 
   @Post()
   @RequirePermission('test_cases:write')
-  create(@Body() dto: CreateTestCaseDto) {
-    return this.testCasesService.create(dto);
+  create(@Body() dto: CreateTestCaseDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.testCasesService.create(dto, actor);
   }
 
   @Patch(':id')
   @RequirePermission('test_cases:write')
-  update(@Param('id') id: string, @Body() dto: UpdateTestCaseDto) {
-    return this.testCasesService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateTestCaseDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.testCasesService.update(id, dto, actor);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission('test_cases:manage')
-  remove(@Param('id') id: string) {
-    return this.testCasesService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.testCasesService.remove(id, actor);
   }
 
   @Post('import')

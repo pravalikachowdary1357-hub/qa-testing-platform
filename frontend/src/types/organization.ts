@@ -9,9 +9,14 @@ export type ApiOrganizationStatus = 'ACTIVE' | 'INACTIVE';
 export interface ApiOrganization {
   id: string;
   name: string;
+  orgKey: string | null;
   description: string | null;
   status: ApiOrganizationStatus;
   productCount: number;
+  projectCount: number;
+  businessUnitCount: number;
+  teamCount: number;
+  userCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -30,6 +35,7 @@ export interface ApiOrganizationDetail extends ApiOrganization {
 
 export interface CreateOrganizationPayload {
   name: string;
+  orgKey?: string;
   description?: string;
   status?: ApiOrganizationStatus;
 }

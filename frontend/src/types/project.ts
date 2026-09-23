@@ -11,6 +11,11 @@ export interface ApiProjectOrganizationRef {
   name: string;
 }
 
+export interface ApiProjectBusinessUnitRef {
+  id: string;
+  name: string;
+}
+
 // Shape returned by GET /projects (and by create/update). Unlike
 // OrganizationsService, ProjectsService does not flatten `_count` into a
 // top-level `productCount` field -- findAll/findOne/create/update all return
@@ -19,12 +24,14 @@ export interface ApiProjectOrganizationRef {
 export interface ApiProject {
   id: string;
   organizationId: string;
+  businessUnitId: string | null;
   name: string;
   description: string | null;
   status: ApiProjectStatus;
   createdAt: string;
   updatedAt: string;
   organization: ApiProjectOrganizationRef;
+  businessUnit: ApiProjectBusinessUnitRef | null;
   _count: { products: number };
 }
 
@@ -36,9 +43,12 @@ export interface ApiProjectDetail extends ApiProject {
 
 export interface CreateProjectPayload {
   organizationId: string;
+  businessUnitId?: string | null;
   name: string;
   description?: string;
   status?: ApiProjectStatus;
 }
 
+// null explicitly clears an existing businessUnitId; undefined/omitted
+// leaves it untouched -- see UpdateProjectDto on the backend.
 export type UpdateProjectPayload = Partial<CreateProjectPayload>;

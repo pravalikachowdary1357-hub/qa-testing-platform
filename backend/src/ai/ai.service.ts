@@ -22,6 +22,7 @@ import {
   ApplySeverityDto,
 } from './dto/accept.dto';
 import { ListSuggestionsQueryDto, UpdateSuggestionStatusDto } from './dto/suggestion-query.dto';
+import { assertSameOrganization } from '../common/organization-scope.util';
 
 function percent(numerator: number, denominator: number): number {
   return denominator > 0 ? Math.round((numerator / denominator) * 100) : 0;
@@ -92,14 +93,19 @@ export class AiService {
 
   // ==================== Generation capabilities ====================
 
-  async generateScenarios(dto: GenerateScenariosDto) {
+  async generateScenarios(dto: GenerateScenariosDto, actorOrganizationId: string | null) {
     const requirement = await this.prisma.requirement.findUnique({
       where: { id: dto.requirementId },
-      include: { product: { select: { id: true, name: true } } },
+      include: { product: { select: { id: true, name: true, organizationId: true } } },
     });
     if (!requirement) {
       throw new NotFoundException(`Requirement ${dto.requirementId} not found`);
     }
+    assertSameOrganization(
+      actorOrganizationId,
+      requirement.product.organizationId,
+      `Requirement ${dto.requirementId} not found`,
+    );
 
     const system =
       'You are a senior QA engineer helping design test scenarios for a software testing management ' +
@@ -138,17 +144,22 @@ export class AiService {
     };
   }
 
-  async generateTestCases(dto: GenerateTestCasesDto) {
+  async generateTestCases(dto: GenerateTestCasesDto, actorOrganizationId: string | null) {
     const scenario = await this.prisma.testScenario.findUnique({
       where: { id: dto.testScenarioId },
       include: {
-        product: { select: { id: true, name: true } },
+        product: { select: { id: true, name: true, organizationId: true } },
         requirement: { select: { id: true, title: true } },
       },
     });
     if (!scenario) {
       throw new NotFoundException(`Test scenario ${dto.testScenarioId} not found`);
     }
+    assertSameOrganization(
+      actorOrganizationId,
+      scenario.product.organizationId,
+      `Test scenario ${dto.testScenarioId} not found`,
+    );
 
     const system =
       'You are a senior QA engineer writing detailed test cases for a software testing management ' +
@@ -188,17 +199,24 @@ export class AiService {
     };
   }
 
-  async suggestTestData(dto: SuggestTestDataDto) {
+  async suggestTestData(dto: SuggestTestDataDto, actorOrganizationId: string | null) {
     const testCase = await this.prisma.testCase.findUnique({
       where: { id: dto.testCaseId },
       include: {
         steps: { orderBy: { stepNumber: 'asc' } },
-        testScenario: { select: { productId: true, product: { select: { id: true, name: true } } } },
+        testScenario: {
+          select: { productId: true, product: { select: { id: true, name: true, organizationId: true } } },
+        },
       },
     });
     if (!testCase) {
       throw new NotFoundException(`Test case ${dto.testCaseId} not found`);
     }
+    assertSameOrganization(
+      actorOrganizationId,
+      testCase.testScenario.product.organizationId,
+      `Test case ${dto.testCaseId} not found`,
+    );
 
     const system =
       'You are a QA engineer preparing test data for a test case. Propose realistic, safe (non-real-PII) ' +
@@ -238,14 +256,16 @@ export class AiService {
     };
   }
 
-  async analyzeExecution(dto: AnalyzeExecutionDto) {
+  async analyzeExecution(dto: AnalyzeExecutionDto, actorOrganizationId: string | null) {
     const execution = await this.prisma.testExecution.findUnique({
       where: { id: dto.testExecutionId },
       include: {
         testCase: {
           include: {
             steps: { orderBy: { stepNumber: 'asc' } },
-            testScenario: { select: { productId: true, product: { select: { id: true, name: true } } } },
+            testScenario: {
+              select: { productId: true, product: { select: { id: true, name: true, organizationId: true } } },
+            },
           },
         },
         environment: { select: { id: true, name: true } },
@@ -254,6 +274,11 @@ export class AiService {
     if (!execution) {
       throw new NotFoundException(`Test execution ${dto.testExecutionId} not found`);
     }
+    assertSameOrganization(
+      actorOrganizationId,
+      execution.testCase.testScenario.product.organizationId,
+      `Test execution ${dto.testExecutionId} not found`,
+    );
 
     const system =
       'You are a QA engineer analyzing a test execution result to suggest a likely root cause and next ' +
@@ -302,8 +327,8 @@ export class AiService {
     };
   }
 
-  async summarizeDefect(dto: DefectTargetDto) {
-    const defect = await this.getDefectOr404(dto.defectId);
+  async summarizeDefect(dto: DefectTargetDto, actorOrganizationId: string | null) {
+    const defect = await this.getDefectOr404(dto.defectId, actorOrganizationId);
 
     const system =
       'Summarize this software defect for a stand-up update in 2 to 4 concise sentences, grounded only in ' +
@@ -330,8 +355,8 @@ export class AiService {
     };
   }
 
-  async suggestDefectSeverity(dto: DefectTargetDto) {
-    const defect = await this.getDefectOr404(dto.defectId);
+  async suggestDefectSeverity(dto: DefectTargetDto, actorOrganizationId: string | null) {
+    const defect = await this.getDefectOr404(dto.defectId, actorOrganizationId);
 
     const system =
       'You are a QA lead triaging a defect. Suggest a severity (CRITICAL, MAJOR, MINOR, or TRIVIAL) and a ' +
@@ -367,11 +392,15 @@ export class AiService {
   // no provider configured. Uses Jaccard similarity over title+description
   // word tokens; flagged pairs are candidates for a human to confirm, never
   // auto-merged or auto-closed.
-  async findDuplicateDefects(dto: DuplicateDefectsDto) {
-    const product = await this.prisma.product.findUnique({ where: { id: dto.productId }, select: { id: true, name: true } });
+  async findDuplicateDefects(dto: DuplicateDefectsDto, actorOrganizationId: string | null) {
+    const product = await this.prisma.product.findUnique({
+      where: { id: dto.productId },
+      select: { id: true, name: true, organizationId: true },
+    });
     if (!product) {
       throw new BadRequestException(`Product ${dto.productId} not found`);
     }
+    assertSameOrganization(actorOrganizationId, product.organizationId, `Product ${dto.productId} not found`);
 
     const defects = await this.prisma.defect.findMany({
       where: { productId: dto.productId },
@@ -424,11 +453,15 @@ export class AiService {
     };
   }
 
-  async analyzeCoverage(dto: AnalyzeCoverageDto) {
-    const product = await this.prisma.product.findUnique({ where: { id: dto.productId }, select: { id: true, name: true } });
+  async analyzeCoverage(dto: AnalyzeCoverageDto, actorOrganizationId: string | null) {
+    const product = await this.prisma.product.findUnique({
+      where: { id: dto.productId },
+      select: { id: true, name: true, organizationId: true },
+    });
     if (!product) {
       throw new BadRequestException(`Product ${dto.productId} not found`);
     }
+    assertSameOrganization(actorOrganizationId, product.organizationId, `Product ${dto.productId} not found`);
 
     const requirements = await this.prisma.requirement.findMany({
       where: { productId: dto.productId },
@@ -502,8 +535,8 @@ export class AiService {
     };
   }
 
-  async explainReleaseRisks(dto: ExplainReleaseRisksDto) {
-    const release = await this.releaseQualityService.findOne(dto.releaseId);
+  async explainReleaseRisks(dto: ExplainReleaseRisksDto, actorOrganizationId: string | null) {
+    const release = await this.releaseQualityService.findOne(dto.releaseId, actorOrganizationId);
 
     const system =
       'You are a release manager explaining why a release is or is not ready, based ONLY on the real ' +
@@ -570,8 +603,8 @@ export class AiService {
 
   // ==================== Accept / apply (writes real entities) ====================
 
-  async acceptScenarios(suggestionId: string, dto: AcceptScenariosDto) {
-    const suggestion = await this.getSuggestionOr404(suggestionId);
+  async acceptScenarios(suggestionId: string, dto: AcceptScenariosDto, actorOrganizationId: string | null) {
+    const suggestion = await this.getSuggestionOr404(suggestionId, actorOrganizationId);
     if (suggestion.capability !== AiCapability.GENERATE_TEST_SCENARIOS) {
       throw new BadRequestException('This suggestion is not a scenario-generation suggestion.');
     }
@@ -607,8 +640,8 @@ export class AiService {
     return { created };
   }
 
-  async acceptTestCases(suggestionId: string, dto: AcceptTestCasesDto) {
-    const suggestion = await this.getSuggestionOr404(suggestionId);
+  async acceptTestCases(suggestionId: string, dto: AcceptTestCasesDto, actorOrganizationId: string | null) {
+    const suggestion = await this.getSuggestionOr404(suggestionId, actorOrganizationId);
     if (suggestion.capability !== AiCapability.GENERATE_TEST_CASES) {
       throw new BadRequestException('This suggestion is not a test-case-generation suggestion.');
     }
@@ -652,8 +685,8 @@ export class AiService {
     return { created };
   }
 
-  async acceptTestData(suggestionId: string, dto: AcceptTestDataDto) {
-    const suggestion = await this.getSuggestionOr404(suggestionId);
+  async acceptTestData(suggestionId: string, dto: AcceptTestDataDto, actorOrganizationId: string | null) {
+    const suggestion = await this.getSuggestionOr404(suggestionId, actorOrganizationId);
     if (suggestion.capability !== AiCapability.SUGGEST_TEST_DATA) {
       throw new BadRequestException('This suggestion is not a test-data suggestion.');
     }
@@ -688,8 +721,8 @@ export class AiService {
     return { created };
   }
 
-  async applySeverity(suggestionId: string, dto: ApplySeverityDto) {
-    const suggestion = await this.getSuggestionOr404(suggestionId);
+  async applySeverity(suggestionId: string, dto: ApplySeverityDto, actorOrganizationId: string | null) {
+    const suggestion = await this.getSuggestionOr404(suggestionId, actorOrganizationId);
     if (suggestion.capability !== AiCapability.SUGGEST_DEFECT_SEVERITY) {
       throw new BadRequestException('This suggestion is not a defect-severity suggestion.');
     }
@@ -717,14 +750,18 @@ export class AiService {
     return { updated };
   }
 
-  async updateSuggestionStatus(suggestionId: string, dto: UpdateSuggestionStatusDto) {
-    await this.getSuggestionOr404(suggestionId);
+  async updateSuggestionStatus(
+    suggestionId: string,
+    dto: UpdateSuggestionStatusDto,
+    actorOrganizationId: string | null,
+  ) {
+    await this.getSuggestionOr404(suggestionId, actorOrganizationId);
     return this.prisma.aiSuggestion.update({ where: { id: suggestionId }, data: { status: dto.status } });
   }
 
   // ==================== History ====================
 
-  async listSuggestions(query: ListSuggestionsQueryDto) {
+  async listSuggestions(query: ListSuggestionsQueryDto, actorOrganizationId: string | null) {
     const capability = validateEnumParam(query.capability, AI_CAPABILITY_VALUES, 'capability');
     const status = validateEnumParam(query.status, AI_SUGGESTION_STATUS_VALUES, 'status');
     return this.prisma.aiSuggestion.findMany({
@@ -732,6 +769,13 @@ export class AiService {
         productId: query.productId,
         capability: capability as AiCapability | undefined,
         status: status as AiSuggestionStatus | undefined,
+        // A suggestion with no product (e.g. chat) isn't organization-owned
+        // data, so it stays visible to everyone; a product-linked suggestion
+        // is only visible to actors scoped to that product's organization
+        // (unscoped actors see everything, same as every other list here).
+        ...(actorOrganizationId
+          ? { OR: [{ productId: null }, { product: { organizationId: actorOrganizationId } }] }
+          : {}),
       },
       include: { product: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'desc' },
@@ -739,25 +783,26 @@ export class AiService {
     });
   }
 
-  async getSuggestion(id: string) {
-    return this.getSuggestionOr404(id);
+  async getSuggestion(id: string, actorOrganizationId: string | null) {
+    return this.getSuggestionOr404(id, actorOrganizationId);
   }
 
-  async removeSuggestion(id: string) {
-    await this.getSuggestionOr404(id);
+  async removeSuggestion(id: string, actorOrganizationId: string | null) {
+    await this.getSuggestionOr404(id, actorOrganizationId);
     await this.prisma.aiSuggestion.delete({ where: { id } });
   }
 
   // ==================== private helpers ====================
 
-  private async getDefectOr404(defectId: string) {
+  private async getDefectOr404(defectId: string, actorOrganizationId: string | null) {
     const defect = await this.prisma.defect.findUnique({
       where: { id: defectId },
-      include: { product: { select: { id: true, name: true } } },
+      include: { product: { select: { id: true, name: true, organizationId: true } } },
     });
     if (!defect) {
       throw new NotFoundException(`Defect ${defectId} not found`);
     }
+    assertSameOrganization(actorOrganizationId, defect.product.organizationId, `Defect ${defectId} not found`);
     return defect;
   }
 
@@ -781,10 +826,20 @@ export class AiService {
     );
   }
 
-  private async getSuggestionOr404(id: string) {
+  private async getSuggestionOr404(id: string, actorOrganizationId: string | null) {
     const suggestion = await this.prisma.aiSuggestion.findUnique({ where: { id } });
     if (!suggestion) {
       throw new NotFoundException(`AI suggestion ${id} not found`);
+    }
+    // A suggestion with no productId (e.g. a chat message) isn't tied to any
+    // organization's data, so there's nothing to scope it against -- every
+    // other suggestion is anchored to the product it was generated from.
+    if (suggestion.productId) {
+      const product = await this.prisma.product.findUnique({
+        where: { id: suggestion.productId },
+        select: { organizationId: true },
+      });
+      assertSameOrganization(actorOrganizationId, product?.organizationId ?? null, `AI suggestion ${id} not found`);
     }
     return suggestion;
   }

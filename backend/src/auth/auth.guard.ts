@@ -57,6 +57,7 @@ export class AuthGuard implements CanActivate {
         (rp) => rp.permission.key,
       ),
       emailNotificationsEnabled: session.user.emailNotificationsEnabled,
+      organizationId: session.user.organizationId,
     };
 
     (request as Request & { user: AuthenticatedUser }).user =

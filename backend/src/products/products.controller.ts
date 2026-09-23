@@ -47,21 +47,21 @@ export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Get()
-  findAll() {
-    return this.productsService.findAll();
+  findAll(@CurrentUser() actor: AuthenticatedUser) {
+    return this.productsService.findAll(actor.organizationId);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.productsService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.productsService.findOne(id, actor.organizationId);
   }
 
   // Unguarded for the same reason as the GET above: this is what the
   // Dashboard renders once it's scoped to a product, and the Dashboard
   // itself carries no permission gate today.
   @Get(':id/dashboard-summary')
-  getDashboardSummary(@Param('id') id: string) {
-    return this.productsService.getDashboardSummary(id);
+  getDashboardSummary(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.productsService.getDashboardSummary(id, actor.organizationId);
   }
 
   @Post()

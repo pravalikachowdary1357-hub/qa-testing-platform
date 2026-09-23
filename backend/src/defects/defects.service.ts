@@ -7,11 +7,12 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { validateRow } from '../common/import/validate-row.util';
 import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
+import { assertSameOrganization, productOrganizationScopeWhere } from '../common/organization-scope.util';
 
 const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
 
 const DEFECT_INCLUDE = {
-  product: { select: { id: true, name: true } },
+  product: { select: { id: true, name: true, organizationId: true } },
   release: RELEASE_REF_SELECT,
   environment: { select: { id: true, name: true, type: true } },
   testCase: { select: { id: true, title: true } },
@@ -25,15 +26,18 @@ export class DefectsService {
     private readonly auditLog: AuditLogService,
   ) {}
 
-  findAll(productId?: string) {
+  findAll(productId: string | undefined, actorOrganizationId: string | null) {
     return this.prisma.defect.findMany({
-      where: productId ? { productId } : {},
+      where: {
+        ...(productId ? { productId } : {}),
+        ...productOrganizationScopeWhere(actorOrganizationId),
+      },
       include: DEFECT_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actorOrganizationId: string | null) {
     const defect = await this.prisma.defect.findUnique({
       where: { id },
       include: DEFECT_INCLUDE,
@@ -42,16 +46,18 @@ export class DefectsService {
     if (!defect) {
       throw new NotFoundException(`Defect ${id} not found`);
     }
+    assertSameOrganization(actorOrganizationId, defect.product.organizationId, `Defect ${id} not found`);
 
     return defect;
   }
 
-  async create(dto: CreateDefectDto) {
+  async create(dto: CreateDefectDto, actor: AuthenticatedUser) {
     await this.validateRelationships(
       dto.productId,
       dto.environmentId,
       dto.testCaseId,
       dto.testExecutionId,
+      actor.organizationId,
     );
 
     try {
@@ -156,7 +162,7 @@ export class DefectsService {
       }
 
       try {
-        await this.create(result.dto);
+        await this.create(result.dto, actor);
         successCount++;
       } catch (error) {
         errors.push({
@@ -177,12 +183,16 @@ export class DefectsService {
     return { totalRows: rows.length, successCount, errors };
   }
 
-  async update(id: string, dto: UpdateDefectDto) {
-    const existing = await this.prisma.defect.findUnique({ where: { id } });
+  async update(id: string, dto: UpdateDefectDto, actor: AuthenticatedUser) {
+    const existing = await this.prisma.defect.findUnique({
+      where: { id },
+      include: { product: { select: { organizationId: true } } },
+    });
 
     if (!existing) {
       throw new NotFoundException(`Defect ${id} not found`);
     }
+    assertSameOrganization(actor.organizationId, existing.product.organizationId, `Defect ${id} not found`);
 
     const effectiveProductId = dto.productId ?? existing.productId;
     const effectiveEnvironmentId =
@@ -196,6 +206,7 @@ export class DefectsService {
       effectiveEnvironmentId,
       effectiveTestCaseId,
       effectiveTestExecutionId,
+      actor.organizationId,
     );
 
     try {
@@ -232,7 +243,16 @@ export class DefectsService {
     }
   }
 
-  async remove(id: string) {
+  async remove(id: string, actor: AuthenticatedUser) {
+    const existing = await this.prisma.defect.findUnique({
+      where: { id },
+      select: { product: { select: { organizationId: true } } },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Defect ${id} not found`);
+    }
+    assertSameOrganization(actor.organizationId, existing.product.organizationId, `Defect ${id} not found`);
+
     try {
       await this.prisma.defect.delete({ where: { id } });
     } catch (error) {
@@ -245,17 +265,19 @@ export class DefectsService {
 
   private async validateRelationships(
     productId: string,
-    environmentId?: string | null,
-    testCaseId?: string | null,
-    testExecutionId?: string | null,
+    environmentId: string | null | undefined,
+    testCaseId: string | null | undefined,
+    testExecutionId: string | null | undefined,
+    actorOrganizationId: string | null,
   ) {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
-      select: { id: true },
+      select: { id: true, organizationId: true },
     });
     if (!product) {
       throw new BadRequestException(`Product ${productId} not found`);
     }
+    assertSameOrganization(actorOrganizationId, product.organizationId, `Product ${productId} not found`);
 
     if (environmentId) {
       const environment = await this.prisma.environment.findUnique({

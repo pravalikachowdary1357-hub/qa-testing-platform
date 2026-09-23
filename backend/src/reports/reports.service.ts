@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { ReleaseQualityService } from '../release-quality/release-quality.service';
 import { ReportFilterDto } from './dto/report-filter.dto';
+import { organizationScopeWhere, productOrganizationScopeWhere } from '../common/organization-scope.util';
 
 // Row-level tables for event-log-shaped data (execution history, automation
 // runs, API/performance runs, security findings) are capped so a payload
@@ -100,14 +101,35 @@ export class ReportsService {
     private readonly releaseQualityService: ReleaseQualityService,
   ) {}
 
-  async getOverview(filter: ReportFilterDto) {
-    await this.validateFilter(filter, { allowEnvironment: false });
+  async getOverview(filter: ReportFilterDto, actorOrganizationId: string | null) {
+    await this.validateFilter(filter, actorOrganizationId, { allowEnvironment: false });
     const dateRange = buildDateRange(filter.dateFrom, filter.dateTo);
-    const productScope = filter.productId ? { productId: filter.productId } : {};
-    const testCaseScope = filter.productId ? { testScenario: { productId: filter.productId } } : {};
-    const automationScope = filter.productId
-      ? { testCase: { testScenario: { productId: filter.productId } } }
-      : {};
+    const productScope = {
+      ...(filter.productId ? { productId: filter.productId } : {}),
+      ...productOrganizationScopeWhere(actorOrganizationId),
+    };
+    const testCaseScope = {
+      ...(filter.productId || actorOrganizationId
+        ? {
+            testScenario: {
+              ...(filter.productId ? { productId: filter.productId } : {}),
+              ...(actorOrganizationId ? { product: { organizationId: actorOrganizationId } } : {}),
+            },
+          }
+        : {}),
+    };
+    const automationScope = {
+      ...(filter.productId || actorOrganizationId
+        ? {
+            testCase: {
+              testScenario: {
+                ...(filter.productId ? { productId: filter.productId } : {}),
+                ...(actorOrganizationId ? { product: { organizationId: actorOrganizationId } } : {}),
+              },
+            },
+          }
+        : {}),
+    };
 
     const [
       productCount,
@@ -122,7 +144,12 @@ export class ReportsService {
       uatCycles,
       allReleases,
     ] = await Promise.all([
-      this.prisma.product.count({ where: filter.productId ? { id: filter.productId } : {} }),
+      this.prisma.product.count({
+        where: {
+          ...(filter.productId ? { id: filter.productId } : {}),
+          ...organizationScopeWhere(actorOrganizationId),
+        },
+      }),
       this.prisma.requirement.count({ where: productScope }),
       this.prisma.requirement.count({ where: { ...productScope, testScenarios: { some: {} } } }),
       this.prisma.testCase.findMany({ where: testCaseScope, select: { id: true } }),
@@ -135,7 +162,7 @@ export class ReportsService {
       this.prisma.performanceTest.findMany({ where: productScope, select: { lastRunStatus: true } }),
       this.prisma.securityTest.findMany({ where: productScope, select: { id: true } }),
       this.prisma.uatCycle.findMany({ where: productScope, select: { status: true } }),
-      this.releaseQualityService.findAll(),
+      this.releaseQualityService.findAll(filter.productId, actorOrganizationId),
     ]);
 
     const testCaseIds = testCases.map((testCase) => testCase.id);
@@ -252,8 +279,8 @@ export class ReportsService {
     };
   }
 
-  async getTestExecutionReport(filter: ReportFilterDto, status?: string) {
-    await this.validateFilter(filter);
+  async getTestExecutionReport(filter: ReportFilterDto, status: string | undefined, actorOrganizationId: string | null) {
+    await this.validateFilter(filter, actorOrganizationId);
     const validStatus = validateEnumParam(status, ['PENDING', 'PASS', 'FAIL', 'BLOCKED'] as const, 'status');
     const dateRange = buildDateRange(filter.dateFrom, filter.dateTo);
 
@@ -261,7 +288,15 @@ export class ReportsService {
       where: {
         executedAt: dateRange,
         environmentId: filter.environmentId,
-        testCase: filter.productId ? { testScenario: { productId: filter.productId } } : undefined,
+        testCase:
+          filter.productId || actorOrganizationId
+            ? {
+                testScenario: {
+                  ...(filter.productId ? { productId: filter.productId } : {}),
+                  ...(actorOrganizationId ? { product: { organizationId: actorOrganizationId } } : {}),
+                },
+              }
+            : undefined,
       },
       orderBy: { executedAt: 'desc' },
       include: {
@@ -299,8 +334,13 @@ export class ReportsService {
     };
   }
 
-  async getTestCaseStatusReport(filter: ReportFilterDto, lifecycleStatus?: string, resultStatus?: string) {
-    await this.validateFilter(filter);
+  async getTestCaseStatusReport(
+    filter: ReportFilterDto,
+    lifecycleStatus: string | undefined,
+    resultStatus: string | undefined,
+    actorOrganizationId: string | null,
+  ) {
+    await this.validateFilter(filter, actorOrganizationId);
     const validLifecycle = validateEnumParam(
       lifecycleStatus,
       ['DRAFT', 'READY', 'APPROVED', 'DEPRECATED'] as const,
@@ -314,7 +354,15 @@ export class ReportsService {
     const dateRange = buildDateRange(filter.dateFrom, filter.dateTo);
 
     const testCases = await this.prisma.testCase.findMany({
-      where: { testScenario: filter.productId ? { productId: filter.productId } : undefined },
+      where: {
+        testScenario:
+          filter.productId || actorOrganizationId
+            ? {
+                ...(filter.productId ? { productId: filter.productId } : {}),
+                ...(actorOrganizationId ? { product: { organizationId: actorOrganizationId } } : {}),
+              }
+            : undefined,
+      },
       select: {
         id: true,
         title: true,
@@ -402,11 +450,14 @@ export class ReportsService {
     };
   }
 
-  async getRequirementCoverageReport(filter: ReportFilterDto) {
-    await this.validateFilter(filter, { allowEnvironment: false, allowDateRange: false });
+  async getRequirementCoverageReport(filter: ReportFilterDto, actorOrganizationId: string | null) {
+    await this.validateFilter(filter, actorOrganizationId, { allowEnvironment: false, allowDateRange: false });
 
     const requirements = await this.prisma.requirement.findMany({
-      where: filter.productId ? { productId: filter.productId } : {},
+      where: {
+        ...(filter.productId ? { productId: filter.productId } : {}),
+        ...productOrganizationScopeWhere(actorOrganizationId),
+      },
       select: {
         id: true,
         title: true,
@@ -468,15 +519,27 @@ export class ReportsService {
     };
   }
 
-  async getTraceabilityReport(filter: ReportFilterDto) {
-    await this.validateFilter(filter, { allowEnvironment: false, allowDateRange: false });
-    const productScope = filter.productId ? { productId: filter.productId } : {};
+  async getTraceabilityReport(filter: ReportFilterDto, actorOrganizationId: string | null) {
+    await this.validateFilter(filter, actorOrganizationId, { allowEnvironment: false, allowDateRange: false });
+    const productScope = {
+      ...(filter.productId ? { productId: filter.productId } : {}),
+      ...productOrganizationScopeWhere(actorOrganizationId),
+    };
 
     const [requirements, testScenarios, testCases, defects] = await Promise.all([
       this.prisma.requirement.findMany({ where: productScope, select: { id: true, testScenarios: { select: { id: true } } } }),
       this.prisma.testScenario.findMany({ where: productScope, select: { id: true, requirementId: true } }),
       this.prisma.testCase.findMany({
-        where: filter.productId ? { testScenario: { productId: filter.productId } } : {},
+        where: {
+          ...(filter.productId || actorOrganizationId
+            ? {
+                testScenario: {
+                  ...(filter.productId ? { productId: filter.productId } : {}),
+                  ...(actorOrganizationId ? { product: { organizationId: actorOrganizationId } } : {}),
+                },
+              }
+            : {}),
+        },
         select: { id: true, title: true, testScenario: { select: { product: { select: { id: true, name: true } } } } },
       }),
       this.prisma.defect.findMany({ where: productScope, select: { id: true, testCaseId: true, testExecutionId: true } }),
@@ -545,8 +608,13 @@ export class ReportsService {
     };
   }
 
-  async getDefectReport(filter: ReportFilterDto, status?: string, severity?: string) {
-    await this.validateFilter(filter);
+  async getDefectReport(
+    filter: ReportFilterDto,
+    status: string | undefined,
+    severity: string | undefined,
+    actorOrganizationId: string | null,
+  ) {
+    await this.validateFilter(filter, actorOrganizationId);
     const validStatus = validateEnumParam(
       status,
       ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'REOPENED', 'CLOSED'] as const,
@@ -556,7 +624,12 @@ export class ReportsService {
     const dateRange = buildDateRange(filter.dateFrom, filter.dateTo);
 
     const defects = await this.prisma.defect.findMany({
-      where: { productId: filter.productId, environmentId: filter.environmentId, createdAt: dateRange },
+      where: {
+        productId: filter.productId,
+        environmentId: filter.environmentId,
+        createdAt: dateRange,
+        ...productOrganizationScopeWhere(actorOrganizationId),
+      },
       orderBy: { createdAt: 'desc' },
       include: {
         product: { select: { id: true, name: true } },
@@ -641,15 +714,23 @@ export class ReportsService {
     };
   }
 
-  async getAutomationReport(filter: ReportFilterDto, status?: string) {
-    await this.validateFilter(filter);
+  async getAutomationReport(filter: ReportFilterDto, status: string | undefined, actorOrganizationId: string | null) {
+    await this.validateFilter(filter, actorOrganizationId);
     const validStatus = validateEnumParam(status, ['PASS', 'FAIL', 'BLOCKED', 'NOT_RUN'] as const, 'status');
     const dateRange = buildDateRange(filter.dateFrom, filter.dateTo);
 
     const automations = await this.prisma.automation.findMany({
       where: {
         environmentId: filter.environmentId,
-        testCase: filter.productId ? { testScenario: { productId: filter.productId } } : undefined,
+        testCase:
+          filter.productId || actorOrganizationId
+            ? {
+                testScenario: {
+                  ...(filter.productId ? { productId: filter.productId } : {}),
+                  ...(actorOrganizationId ? { product: { organizationId: actorOrganizationId } } : {}),
+                },
+              }
+            : undefined,
       },
       select: {
         id: true,
@@ -734,13 +815,17 @@ export class ReportsService {
     };
   }
 
-  async getApiTestingReport(filter: ReportFilterDto, status?: string) {
-    await this.validateFilter(filter);
+  async getApiTestingReport(filter: ReportFilterDto, status: string | undefined, actorOrganizationId: string | null) {
+    await this.validateFilter(filter, actorOrganizationId);
     const validStatus = validateEnumParam(status, ['PASSED', 'FAILED', 'NO_ASSERTION'] as const, 'status');
     const dateRange = buildDateRange(filter.dateFrom, filter.dateTo);
 
     const requests = await this.prisma.apiTestRequest.findMany({
-      where: { productId: filter.productId, environmentId: filter.environmentId },
+      where: {
+        productId: filter.productId,
+        environmentId: filter.environmentId,
+        ...productOrganizationScopeWhere(actorOrganizationId),
+      },
       select: {
         id: true,
         name: true,
@@ -811,8 +896,8 @@ export class ReportsService {
     };
   }
 
-  async getPerformanceReport(filter: ReportFilterDto, status?: string) {
-    await this.validateFilter(filter);
+  async getPerformanceReport(filter: ReportFilterDto, status: string | undefined, actorOrganizationId: string | null) {
+    await this.validateFilter(filter, actorOrganizationId);
     const validStatus = validateEnumParam(
       status,
       ['QUEUED', 'RUNNING', 'PASSED', 'FAILED', 'STOPPED'] as const,
@@ -821,7 +906,11 @@ export class ReportsService {
     const dateRange = buildDateRange(filter.dateFrom, filter.dateTo);
 
     const tests = await this.prisma.performanceTest.findMany({
-      where: { productId: filter.productId, environmentId: filter.environmentId },
+      where: {
+        productId: filter.productId,
+        environmentId: filter.environmentId,
+        ...productOrganizationScopeWhere(actorOrganizationId),
+      },
       select: {
         id: true,
         name: true,
@@ -918,8 +1007,13 @@ export class ReportsService {
     };
   }
 
-  async getSecurityReport(filter: ReportFilterDto, status?: string, severity?: string) {
-    await this.validateFilter(filter);
+  async getSecurityReport(
+    filter: ReportFilterDto,
+    status: string | undefined,
+    severity: string | undefined,
+    actorOrganizationId: string | null,
+  ) {
+    await this.validateFilter(filter, actorOrganizationId);
     const validStatus = validateEnumParam(
       status,
       ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'REOPENED', 'ACCEPTED'] as const,
@@ -933,7 +1027,11 @@ export class ReportsService {
     const dateRange = buildDateRange(filter.dateFrom, filter.dateTo);
 
     const tests = await this.prisma.securityTest.findMany({
-      where: { productId: filter.productId, environmentId: filter.environmentId },
+      where: {
+        productId: filter.productId,
+        environmentId: filter.environmentId,
+        ...productOrganizationScopeWhere(actorOrganizationId),
+      },
       select: {
         id: true,
         name: true,
@@ -1023,8 +1121,8 @@ export class ReportsService {
     };
   }
 
-  async getUatReport(filter: ReportFilterDto, status?: string) {
-    await this.validateFilter(filter);
+  async getUatReport(filter: ReportFilterDto, status: string | undefined, actorOrganizationId: string | null) {
+    await this.validateFilter(filter, actorOrganizationId);
     const validStatus = validateEnumParam(
       status,
       ['PLANNED', 'IN_PROGRESS', 'COMPLETED', 'APPROVED', 'REJECTED'] as const,
@@ -1033,7 +1131,11 @@ export class ReportsService {
     const dateRange = buildDateRange(filter.dateFrom, filter.dateTo);
 
     const cycles = await this.prisma.uatCycle.findMany({
-      where: { productId: filter.productId, createdAt: dateRange },
+      where: {
+        productId: filter.productId,
+        createdAt: dateRange,
+        ...productOrganizationScopeWhere(actorOrganizationId),
+      },
       select: {
         id: true,
         name: true,
@@ -1126,8 +1228,13 @@ export class ReportsService {
     };
   }
 
-  async getReleaseQualityReport(filter: ReportFilterDto, status?: string, readiness?: string) {
-    await this.validateFilter(filter);
+  async getReleaseQualityReport(
+    filter: ReportFilterDto,
+    status: string | undefined,
+    readiness: string | undefined,
+    actorOrganizationId: string | null,
+  ) {
+    await this.validateFilter(filter, actorOrganizationId);
     const validStatus = validateEnumParam(
       status,
       ['PLANNED', 'IN_TESTING', 'COMPLETED', 'APPROVED', 'REJECTED'] as const,
@@ -1136,7 +1243,7 @@ export class ReportsService {
     const validReadiness = validateEnumParam(readiness, ['READY', 'CONDITIONAL', 'NOT_READY'] as const, 'readiness');
     const dateRange = buildDateRange(filter.dateFrom, filter.dateTo);
 
-    const allReleases = await this.releaseQualityService.findAll();
+    const allReleases = await this.releaseQualityService.findAll(filter.productId, actorOrganizationId);
     const population = allReleases.filter((r) => {
       if (filter.productId && r.productId !== filter.productId) return false;
       if (filter.environmentId && r.environmentId !== filter.environmentId) return false;
@@ -1207,10 +1314,19 @@ export class ReportsService {
     };
   }
 
-  private async assertProductExists(productId: string): Promise<void> {
-    const exists = await this.prisma.product.findUnique({ where: { id: productId }, select: { id: true } });
-    if (!exists) {
+  private async assertProductExists(productId: string, actorOrganizationId: string | null): Promise<void> {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true, organizationId: true },
+    });
+    if (!product) {
       throw new BadRequestException(`Product ${productId} not found`);
+    }
+    // A cross-organization productId is treated as not found, not a bad
+    // request -- same reasoning as assertSameOrganization elsewhere: it
+    // shouldn't confirm that the product exists in another organization.
+    if (actorOrganizationId && product.organizationId !== actorOrganizationId) {
+      throw new NotFoundException(`Product ${productId} not found`);
     }
   }
 
@@ -1229,6 +1345,7 @@ export class ReportsService {
 
   private async validateFilter(
     filter: ReportFilterDto,
+    actorOrganizationId: string | null,
     options?: { allowEnvironment?: boolean; allowDateRange?: boolean },
   ): Promise<void> {
     if (options?.allowDateRange === false && (filter.dateFrom || filter.dateTo)) {
@@ -1240,7 +1357,7 @@ export class ReportsService {
     if (filter.dateFrom && filter.dateTo && new Date(filter.dateFrom).getTime() > new Date(filter.dateTo).getTime()) {
       throw new BadRequestException('dateFrom must not be after dateTo.');
     }
-    if (filter.productId) await this.assertProductExists(filter.productId);
+    if (filter.productId) await this.assertProductExists(filter.productId, actorOrganizationId);
     if (filter.environmentId) await this.assertEnvironmentValid(filter.environmentId, filter.productId);
   }
 }

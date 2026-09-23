@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma.service';
 import { Prisma } from '../../generated/prisma/client.js';
 import { CreateTestExecutionDto } from './dto/create-test-execution.dto';
 import { UpdateTestExecutionDto } from './dto/update-test-execution.dto';
+import type { AuthenticatedUser } from '../auth/current-user.decorator';
+import { assertSameOrganization } from '../common/organization-scope.util';
 
 const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
 
@@ -16,7 +18,7 @@ const TEST_EXECUTION_INCLUDE = {
         select: {
           id: true,
           title: true,
-          product: { select: { id: true, name: true } },
+          product: { select: { id: true, name: true, organizationId: true } },
         },
       },
     },
@@ -30,15 +32,26 @@ const TEST_EXECUTION_INCLUDE = {
 export class TestExecutionsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(productId?: string) {
+  findAll(productId: string | undefined, actorOrganizationId: string | null) {
     return this.prisma.testExecution.findMany({
-      where: productId ? { testCase: { testScenario: { productId } } } : {},
+      where: {
+        ...(productId || actorOrganizationId
+          ? {
+              testCase: {
+                testScenario: {
+                  ...(productId ? { productId } : {}),
+                  ...(actorOrganizationId ? { product: { organizationId: actorOrganizationId } } : {}),
+                },
+              },
+            }
+          : {}),
+      },
       include: TEST_EXECUTION_INCLUDE,
       orderBy: { executedAt: 'desc' },
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actorOrganizationId: string | null) {
     const execution = await this.prisma.testExecution.findUnique({
       where: { id },
       include: TEST_EXECUTION_INCLUDE,
@@ -47,12 +60,17 @@ export class TestExecutionsService {
     if (!execution) {
       throw new NotFoundException(`Test execution ${id} not found`);
     }
+    assertSameOrganization(
+      actorOrganizationId,
+      execution.testCase.testScenario.product.organizationId,
+      `Test execution ${id} not found`,
+    );
 
     return execution;
   }
 
-  async create(dto: CreateTestExecutionDto) {
-    await this.validateRelationships(dto.testCaseId, dto.environmentId, dto.testDataId);
+  async create(dto: CreateTestExecutionDto, actor: AuthenticatedUser) {
+    await this.validateRelationships(dto.testCaseId, dto.environmentId, dto.testDataId, actor.organizationId);
 
     try {
       return await this.prisma.testExecution.create({
@@ -77,19 +95,34 @@ export class TestExecutionsService {
     }
   }
 
-  async update(id: string, dto: UpdateTestExecutionDto) {
-    const existing = await this.prisma.testExecution.findUnique({ where: { id } });
+  async update(id: string, dto: UpdateTestExecutionDto, actor: AuthenticatedUser) {
+    const existing = await this.prisma.testExecution.findUnique({
+      where: { id },
+      include: {
+        testCase: { select: { testScenario: { select: { product: { select: { organizationId: true } } } } } },
+      },
+    });
 
     if (!existing) {
       throw new NotFoundException(`Test execution ${id} not found`);
     }
+    assertSameOrganization(
+      actor.organizationId,
+      existing.testCase.testScenario.product.organizationId,
+      `Test execution ${id} not found`,
+    );
 
     const effectiveTestCaseId = dto.testCaseId ?? existing.testCaseId;
     const effectiveEnvironmentId = dto.environmentId ?? existing.environmentId;
     const effectiveTestDataId =
       dto.testDataId !== undefined ? dto.testDataId : existing.testDataId;
 
-    await this.validateRelationships(effectiveTestCaseId, effectiveEnvironmentId, effectiveTestDataId);
+    await this.validateRelationships(
+      effectiveTestCaseId,
+      effectiveEnvironmentId,
+      effectiveTestDataId,
+      actor.organizationId,
+    );
 
     try {
       return await this.prisma.testExecution.update({
@@ -120,7 +153,22 @@ export class TestExecutionsService {
     }
   }
 
-  async remove(id: string) {
+  async remove(id: string, actor: AuthenticatedUser) {
+    const existing = await this.prisma.testExecution.findUnique({
+      where: { id },
+      select: {
+        testCase: { select: { testScenario: { select: { product: { select: { organizationId: true } } } } } },
+      },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Test execution ${id} not found`);
+    }
+    assertSameOrganization(
+      actor.organizationId,
+      existing.testCase.testScenario.product.organizationId,
+      `Test execution ${id} not found`,
+    );
+
     try {
       await this.prisma.testExecution.delete({ where: { id } });
     } catch (error) {
@@ -134,15 +182,24 @@ export class TestExecutionsService {
   private async validateRelationships(
     testCaseId: string,
     environmentId: string,
-    testDataId?: string | null,
+    testDataId: string | null | undefined,
+    actorOrganizationId: string | null,
   ) {
     const testCase = await this.prisma.testCase.findUnique({
       where: { id: testCaseId },
-      select: { id: true, testScenario: { select: { productId: true } } },
+      select: {
+        id: true,
+        testScenario: { select: { productId: true, product: { select: { organizationId: true } } } },
+      },
     });
     if (!testCase) {
       throw new BadRequestException(`Test case ${testCaseId} not found`);
     }
+    assertSameOrganization(
+      actorOrganizationId,
+      testCase.testScenario.product.organizationId,
+      `Test case ${testCaseId} not found`,
+    );
 
     const environment = await this.prisma.environment.findUnique({
       where: { id: environmentId },

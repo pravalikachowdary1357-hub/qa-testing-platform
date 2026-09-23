@@ -4,6 +4,8 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { CreateAutomationDto } from './dto/create-automation.dto';
 import { UpdateAutomationDto } from './dto/update-automation.dto';
 import { CreateAutomationRunDto } from './dto/create-automation-run.dto';
+import type { AuthenticatedUser } from '../auth/current-user.decorator';
+import { assertSameOrganization } from '../common/organization-scope.util';
 
 const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
 
@@ -25,15 +27,47 @@ const AUTOMATION_DETAIL_INCLUDE = {
 export class AutomationService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(productId?: string) {
+  findAll(productId: string | undefined, actorOrganizationId: string | null) {
     return this.prisma.automation.findMany({
-      where: productId ? { testCase: { testScenario: { productId } } } : {},
+      where: {
+        ...(productId || actorOrganizationId
+          ? {
+              testCase: {
+                testScenario: {
+                  ...(productId ? { productId } : {}),
+                  ...(actorOrganizationId ? { product: { organizationId: actorOrganizationId } } : {}),
+                },
+              },
+            }
+          : {}),
+      },
       include: AUTOMATION_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string) {
+  // Every id-based route below is reached directly by an automation UUID,
+  // bypassing findAll's own scope filter -- so each one re-checks the
+  // automation's test case's product against the actor's organization first.
+  private async assertAutomationInScope(id: string, actorOrganizationId: string | null) {
+    const automation = await this.prisma.automation.findUnique({
+      where: { id },
+      select: {
+        testCase: { select: { testScenario: { select: { product: { select: { organizationId: true } } } } } },
+      },
+    });
+    if (!automation) {
+      throw new NotFoundException(`Automation ${id} not found`);
+    }
+    assertSameOrganization(
+      actorOrganizationId,
+      automation.testCase.testScenario.product.organizationId,
+      `Automation ${id} not found`,
+    );
+  }
+
+  async findOne(id: string, actorOrganizationId: string | null) {
+    await this.assertAutomationInScope(id, actorOrganizationId);
     const automation = await this.prisma.automation.findUnique({
       where: { id },
       include: AUTOMATION_DETAIL_INCLUDE,
@@ -46,8 +80,8 @@ export class AutomationService {
     return automation;
   }
 
-  async create(dto: CreateAutomationDto) {
-    await this.validateRelationships(dto.testCaseId, dto.environmentId);
+  async create(dto: CreateAutomationDto, actor: AuthenticatedUser) {
+    await this.validateRelationships(dto.testCaseId, dto.environmentId, actor.organizationId);
 
     try {
       return await this.prisma.automation.create({
@@ -72,7 +106,8 @@ export class AutomationService {
     }
   }
 
-  async update(id: string, dto: UpdateAutomationDto) {
+  async update(id: string, dto: UpdateAutomationDto, actor: AuthenticatedUser) {
+    await this.assertAutomationInScope(id, actor.organizationId);
     const existing = await this.prisma.automation.findUnique({ where: { id } });
 
     if (!existing) {
@@ -83,7 +118,7 @@ export class AutomationService {
     const effectiveEnvironmentId =
       dto.environmentId !== undefined ? dto.environmentId : existing.environmentId;
 
-    await this.validateRelationships(effectiveTestCaseId, effectiveEnvironmentId);
+    await this.validateRelationships(effectiveTestCaseId, effectiveEnvironmentId, actor.organizationId);
 
     try {
       return await this.prisma.automation.update({
@@ -114,7 +149,8 @@ export class AutomationService {
     }
   }
 
-  async remove(id: string) {
+  async remove(id: string, actor: AuthenticatedUser) {
+    await this.assertAutomationInScope(id, actor.organizationId);
     try {
       await this.prisma.automation.delete({ where: { id } });
     } catch (error) {
@@ -125,7 +161,8 @@ export class AutomationService {
     }
   }
 
-  async recordRun(id: string, dto: CreateAutomationRunDto) {
+  async recordRun(id: string, dto: CreateAutomationRunDto, actor: AuthenticatedUser) {
+    await this.assertAutomationInScope(id, actor.organizationId);
     const automation = await this.prisma.automation.findUnique({ where: { id } });
 
     if (!automation) {
@@ -161,14 +198,26 @@ export class AutomationService {
     return run;
   }
 
-  private async validateRelationships(testCaseId: string, environmentId?: string | null) {
+  private async validateRelationships(
+    testCaseId: string,
+    environmentId: string | null | undefined,
+    actorOrganizationId: string | null,
+  ) {
     const testCase = await this.prisma.testCase.findUnique({
       where: { id: testCaseId },
-      select: { id: true, testScenario: { select: { productId: true } } },
+      select: {
+        id: true,
+        testScenario: { select: { productId: true, product: { select: { organizationId: true } } } },
+      },
     });
     if (!testCase) {
       throw new BadRequestException(`Test case ${testCaseId} not found`);
     }
+    assertSameOrganization(
+      actorOrganizationId,
+      testCase.testScenario.product.organizationId,
+      `Test case ${testCaseId} not found`,
+    );
 
     if (environmentId) {
       const environment = await this.prisma.environment.findUnique({

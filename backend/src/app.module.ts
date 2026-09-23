@@ -3,6 +3,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma.module';
 import { OrganizationsModule } from './organizations/organizations.module';
+import { BusinessUnitsModule } from './business-units/business-units.module';
+import { TeamsModule } from './teams/teams.module';
 import { ProjectsModule } from './projects/projects.module';
 import { ProductsModule } from './products/products.module';
 import { ProductDocumentsModule } from './product-documents/product-documents.module';
@@ -42,6 +44,8 @@ import { AppSettingsModule } from './app-settings/app-settings.module';
     RolesModule,
     AppSettingsModule,
     OrganizationsModule,
+    BusinessUnitsModule,
+    TeamsModule,
     ProjectsModule,
     ProductsModule,
     ProductDocumentsModule,

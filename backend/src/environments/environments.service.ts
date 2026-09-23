@@ -12,9 +12,10 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { validateRow } from '../common/import/validate-row.util';
 import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
+import { assertSameOrganization, productOrganizationScopeWhere } from '../common/organization-scope.util';
 
 const ENVIRONMENT_INCLUDE = {
-  product: { select: { id: true, name: true } },
+  product: { select: { id: true, name: true, organizationId: true } },
 };
 
 @Injectable()
@@ -24,15 +25,18 @@ export class EnvironmentsService {
     private readonly auditLog: AuditLogService,
   ) {}
 
-  findAll(productId?: string) {
+  findAll(productId: string | undefined, actorOrganizationId: string | null) {
     return this.prisma.environment.findMany({
-      where: productId ? { productId } : {},
+      where: {
+        ...(productId ? { productId } : {}),
+        ...productOrganizationScopeWhere(actorOrganizationId),
+      },
       include: ENVIRONMENT_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actorOrganizationId: string | null) {
     const environment = await this.prisma.environment.findUnique({
       where: { id },
       include: ENVIRONMENT_INCLUDE,
@@ -41,11 +45,13 @@ export class EnvironmentsService {
     if (!environment) {
       throw new NotFoundException(`Environment ${id} not found`);
     }
+    assertSameOrganization(actorOrganizationId, environment.product.organizationId, `Environment ${id} not found`);
 
     return environment;
   }
 
-  async create(dto: CreateEnvironmentDto) {
+  async create(dto: CreateEnvironmentDto, actor: AuthenticatedUser) {
+    await this.assertProductInScope(dto.productId, actor.organizationId);
     try {
       return await this.prisma.environment.create({
         data: dto,
@@ -66,7 +72,16 @@ export class EnvironmentsService {
     }
   }
 
-  async update(id: string, dto: UpdateEnvironmentDto) {
+  async update(id: string, dto: UpdateEnvironmentDto, actor: AuthenticatedUser) {
+    const existing = await this.prisma.environment.findUnique({
+      where: { id },
+      select: { product: { select: { organizationId: true } } },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Environment ${id} not found`);
+    }
+    assertSameOrganization(actor.organizationId, existing.product.organizationId, `Environment ${id} not found`);
+
     try {
       return await this.prisma.environment.update({
         where: { id },
@@ -118,7 +133,7 @@ export class EnvironmentsService {
       }
 
       try {
-        await this.create(result.dto);
+        await this.create(result.dto, actor);
         successCount++;
       } catch (error) {
         errors.push({
@@ -139,15 +154,30 @@ export class EnvironmentsService {
     return { totalRows: rows.length, successCount, errors };
   }
 
-  async remove(id: string) {
+  private async assertProductInScope(productId: string, actorOrganizationId: string | null): Promise<void> {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { organizationId: true },
+    });
+    if (!product) {
+      throw new BadRequestException(`Product ${productId} not found`);
+    }
+    assertSameOrganization(actorOrganizationId, product.organizationId, `Product ${productId} not found`);
+  }
+
+  async remove(id: string, actor: AuthenticatedUser) {
     const environment = await this.prisma.environment.findUnique({
       where: { id },
-      include: { _count: { select: { testExecutions: true, uatExecutions: true } } },
+      include: {
+        _count: { select: { testExecutions: true, uatExecutions: true } },
+        product: { select: { organizationId: true } },
+      },
     });
 
     if (!environment) {
       throw new NotFoundException(`Environment ${id} not found`);
     }
+    assertSameOrganization(actor.organizationId, environment.product.organizationId, `Environment ${id} not found`);
 
     const blockers: string[] = [];
     if (environment._count.testExecutions > 0) {

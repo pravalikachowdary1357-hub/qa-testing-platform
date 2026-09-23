@@ -160,7 +160,9 @@ export function ProductDetailDialog({ productId, onClose }: ProductDetailDialogP
 
         {product && activeTab === 1 && <ProductComponentsTab productId={product.id} />}
 
-        {product && activeTab === 2 && <ProductTeamTab productId={product.id} />}
+        {product && activeTab === 2 && (
+          <ProductTeamTab productId={product.id} organizationId={product.organizationId} />
+        )}
 
         {product && activeTab === 3 && <ProductDocumentsTab productId={product.id} />}
 

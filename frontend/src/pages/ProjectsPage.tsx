@@ -368,6 +368,7 @@ export function ProjectsPage() {
           formMode === 'edit' && editingProject
             ? {
                 organizationId: editingProject.organizationId,
+                businessUnitId: editingProject.businessUnitId ?? '',
                 name: editingProject.name,
                 description: editingProject.description ?? '',
                 status: editingProject.status,

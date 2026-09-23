@@ -41,33 +41,40 @@ export class DefectsController {
 
   @Get()
   @RequirePermission('defects:read')
-  findAll(@Query() query: ListDefectsQueryDto) {
-    return this.defectsService.findAll(query.productId);
+  findAll(
+    @Query() query: ListDefectsQueryDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.defectsService.findAll(query.productId, actor.organizationId);
   }
 
   @Get(':id')
   @RequirePermission('defects:read')
-  findOne(@Param('id') id: string) {
-    return this.defectsService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.defectsService.findOne(id, actor.organizationId);
   }
 
   @Post()
   @RequirePermission('defects:write')
-  create(@Body() dto: CreateDefectDto) {
-    return this.defectsService.create(dto);
+  create(@Body() dto: CreateDefectDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.defectsService.create(dto, actor);
   }
 
   @Patch(':id')
   @RequirePermission('defects:write')
-  update(@Param('id') id: string, @Body() dto: UpdateDefectDto) {
-    return this.defectsService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateDefectDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.defectsService.update(id, dto, actor);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission('defects:manage')
-  remove(@Param('id') id: string) {
-    return this.defectsService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.defectsService.remove(id, actor);
   }
 
   @Post('import')

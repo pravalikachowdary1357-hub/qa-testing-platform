@@ -23,6 +23,8 @@ import { ListUatCyclesQueryDto } from './dto/list-uat-cycles-query.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermission } from '../auth/require-permission.decorator';
+import { CurrentUser } from '../auth/current-user.decorator';
+import type { AuthenticatedUser } from '../auth/current-user.decorator';
 
 @Controller('uat-cycles')
 @UseGuards(AuthGuard, PermissionsGuard)
@@ -31,46 +33,58 @@ export class UatController {
 
   @Get()
   @RequirePermission('uat:read')
-  findAll(@Query() query: ListUatCyclesQueryDto) {
-    return this.uatService.findAll(query.productId);
+  findAll(@Query() query: ListUatCyclesQueryDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.uatService.findAll(query.productId, actor.organizationId);
   }
 
   @Get(':id')
   @RequirePermission('uat:read')
-  findOne(@Param('id') id: string) {
-    return this.uatService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.uatService.findOne(id, actor.organizationId);
   }
 
   @Post()
   @RequirePermission('uat:write')
-  create(@Body() dto: CreateUatCycleDto) {
-    return this.uatService.create(dto);
+  create(@Body() dto: CreateUatCycleDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.uatService.create(dto, actor);
   }
 
   @Patch(':id')
   @RequirePermission('uat:write')
-  update(@Param('id') id: string, @Body() dto: UpdateUatCycleDto) {
-    return this.uatService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateUatCycleDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.uatService.update(id, dto, actor);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission('uat:manage')
-  remove(@Param('id') id: string) {
-    return this.uatService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.uatService.remove(id, actor);
   }
 
   @Post(':id/sign-off')
   @RequirePermission('uat:approve')
-  signOff(@Param('id') id: string, @Body() dto: SignOffUatCycleDto) {
-    return this.uatService.signOff(id, dto);
+  signOff(
+    @Param('id') id: string,
+    @Body() dto: SignOffUatCycleDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.uatService.signOff(id, dto, actor);
   }
 
   @Post(':id/test-cases')
   @HttpCode(HttpStatus.CREATED)
   @RequirePermission('uat:write')
-  addTestCase(@Param('id') id: string, @Body() dto: CreateUatTestCaseDto) {
-    return this.uatService.addTestCase(id, dto);
+  addTestCase(
+    @Param('id') id: string,
+    @Body() dto: CreateUatTestCaseDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.uatService.addTestCase(id, dto, actor);
   }
 
   @Patch(':id/test-cases/:testCaseId')
@@ -79,15 +93,20 @@ export class UatController {
     @Param('id') id: string,
     @Param('testCaseId') testCaseId: string,
     @Body() dto: UpdateUatTestCaseDto,
+    @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.uatService.updateTestCase(id, testCaseId, dto);
+    return this.uatService.updateTestCase(id, testCaseId, dto, actor);
   }
 
   @Delete(':id/test-cases/:testCaseId')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission('uat:manage')
-  removeTestCase(@Param('id') id: string, @Param('testCaseId') testCaseId: string) {
-    return this.uatService.removeTestCase(id, testCaseId);
+  removeTestCase(
+    @Param('id') id: string,
+    @Param('testCaseId') testCaseId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.uatService.removeTestCase(id, testCaseId, actor);
   }
 
   @Post(':id/test-cases/:testCaseId/executions')
@@ -97,8 +116,9 @@ export class UatController {
     @Param('id') id: string,
     @Param('testCaseId') testCaseId: string,
     @Body() dto: CreateUatExecutionDto,
+    @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.uatService.addExecution(id, testCaseId, dto);
+    return this.uatService.addExecution(id, testCaseId, dto, actor);
   }
 
   @Patch(':id/test-cases/:testCaseId/executions/:executionId')
@@ -108,8 +128,9 @@ export class UatController {
     @Param('testCaseId') testCaseId: string,
     @Param('executionId') executionId: string,
     @Body() dto: UpdateUatExecutionDto,
+    @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.uatService.updateExecution(id, testCaseId, executionId, dto);
+    return this.uatService.updateExecution(id, testCaseId, executionId, dto, actor);
   }
 
   @Delete(':id/test-cases/:testCaseId/executions/:executionId')
@@ -119,7 +140,8 @@ export class UatController {
     @Param('id') id: string,
     @Param('testCaseId') testCaseId: string,
     @Param('executionId') executionId: string,
+    @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.uatService.removeExecution(id, testCaseId, executionId);
+    return this.uatService.removeExecution(id, testCaseId, executionId, actor);
   }
 }

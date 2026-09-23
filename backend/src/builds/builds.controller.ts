@@ -27,8 +27,8 @@ export class BuildsController {
   constructor(private readonly buildsService: BuildsService) {}
 
   @Get()
-  findAll(@Query() query: ListBuildsQueryDto) {
-    return this.buildsService.findAll(query.productId);
+  findAll(@Query() query: ListBuildsQueryDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.buildsService.findAll(query.productId, actor.organizationId);
   }
 
   @Post()

@@ -9,7 +9,11 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import { UpdateRolePermissionsDto } from './dto/update-role-permissions.dto';
 import { AuthenticatedUser } from '../auth/current-user.decorator';
 
-const ADMIN_ROLE_NAME = 'Admin';
+// Kept in sync with seed.cjs's platform-administrator role name -- this was
+// stale at 'Admin' (the role's pre-rename name from before the 6-role
+// consolidation), which meant this guard silently never matched the real
+// admin role since that rename. Fixed here as part of the 9-role update.
+const ADMIN_ROLE_NAME = 'QMICS TestSphere Administrator';
 const ROLES_MANAGE_KEY = 'roles:manage';
 
 @Injectable()

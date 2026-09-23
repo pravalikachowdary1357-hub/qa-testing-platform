@@ -12,14 +12,19 @@ import {
 } from '@mui/material';
 import type { ApiProjectStatus, CreateProjectPayload } from '../../types/project';
 import type { ApiOrganization } from '../../types/organization';
+import { fetchBusinessUnits } from '../../api/businessUnits';
+import type { ApiBusinessUnit } from '../../types/businessUnit';
 
 const STATUS_OPTIONS: { value: ApiProjectStatus; label: string }[] = [
   { value: 'ACTIVE', label: 'Active' },
   { value: 'INACTIVE', label: 'Inactive' },
 ];
 
+const NO_BUSINESS_UNIT = '';
+
 interface ProjectFormValues {
   organizationId: string;
+  businessUnitId: string;
   name: string;
   description: string;
   status: ApiProjectStatus;
@@ -28,6 +33,7 @@ interface ProjectFormValues {
 function emptyValues(defaultOrganizationId: string): ProjectFormValues {
   return {
     organizationId: defaultOrganizationId,
+    businessUnitId: NO_BUSINESS_UNIT,
     name: '',
     description: '',
     status: 'ACTIVE',
@@ -55,6 +61,7 @@ export function ProjectFormDialog({
   const [nameError, setNameError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [businessUnits, setBusinessUnits] = useState<ApiBusinessUnit[]>([]);
 
   useEffect(() => {
     if (open) {
@@ -64,6 +71,32 @@ export function ProjectFormDialog({
       setSubmitting(false);
     }
   }, [open, initialValues, organizations]);
+
+  // Business units are scoped to one organization -- refetch whenever the
+  // selected organization changes, and drop a previously-selected business
+  // unit that no longer belongs to it.
+  useEffect(() => {
+    if (!values.organizationId) {
+      setBusinessUnits([]);
+      return;
+    }
+    let cancelled = false;
+    fetchBusinessUnits(values.organizationId)
+      .then((data) => {
+        if (cancelled) return;
+        setBusinessUnits(data);
+        if (values.businessUnitId && !data.some((bu) => bu.id === values.businessUnitId)) {
+          setValues((prev) => ({ ...prev, businessUnitId: NO_BUSINESS_UNIT }));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setBusinessUnits([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values.organizationId]);
 
   const noOrganizationsAvailable = mode === 'create' && organizations.length === 0;
 
@@ -80,6 +113,11 @@ export function ProjectFormDialog({
     try {
       await onSubmit({
         organizationId: values.organizationId,
+        // Explicit null clears an existing business unit on edit -- omitting
+        // the field (via `|| undefined`) would leave the old value in place
+        // instead of clearing it. Harmless on create, where there's nothing
+        // to clear yet.
+        businessUnitId: values.businessUnitId || null,
         name: trimmedName,
         description: values.description.trim() || undefined,
         status: values.status,
@@ -118,6 +156,22 @@ export function ProjectFormDialog({
                 {organizations.map((organization) => (
                   <MenuItem key={organization.id} value={organization.id}>
                     {organization.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Business Unit (optional)"
+                fullWidth
+                value={values.businessUnitId}
+                onChange={(e) =>
+                  setValues((prev) => ({ ...prev, businessUnitId: e.target.value }))
+                }
+              >
+                <MenuItem value={NO_BUSINESS_UNIT}>No business unit</MenuItem>
+                {businessUnits.map((unit) => (
+                  <MenuItem key={unit.id} value={unit.id}>
+                    {unit.name}
                   </MenuItem>
                 ))}
               </TextField>

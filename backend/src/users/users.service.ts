@@ -15,8 +15,14 @@ import { UpdateOwnProfileDto } from './dto/update-own-profile.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { hashPassword } from '../auth/password.util';
 import { AuthenticatedUser } from '../auth/current-user.decorator';
+import { assertSameOrganization } from '../common/organization-scope.util';
 
 const USER_STATUS_VALUES = ['ACTIVE', 'INACTIVE'] as const;
+const ORGANIZATION_REF_SELECT = { select: { id: true, name: true } };
+const USER_INCLUDE = {
+  role: { select: { id: true, name: true } },
+  organization: ORGANIZATION_REF_SELECT,
+};
 
 function validateStatusParam(value: string | undefined) {
   if (value === undefined) return undefined;
@@ -35,12 +41,15 @@ export class UsersService {
     private readonly auditLog: AuditLogService,
   ) {}
 
-  async findAll(query: ListUsersQueryDto) {
+  async findAll(query: ListUsersQueryDto, actorOrganizationId: string | null) {
     const status = validateStatusParam(query.status);
     const users = await this.prisma.user.findMany({
       where: {
         roleId: query.roleId,
         status,
+        // A scoped actor can never widen this past their own organization,
+        // even if they pass a different organizationId in the query.
+        organizationId: actorOrganizationId ?? query.organizationId,
         ...(query.search
           ? {
               OR: [
@@ -50,19 +59,30 @@ export class UsersService {
             }
           : {}),
       },
-      include: { role: { select: { id: true, name: true } } },
+      include: USER_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
     return users.map((user) => this.toListItem(user));
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actorOrganizationId: string | null) {
     const user = await this.getUserOr404(id);
+    assertSameOrganization(actorOrganizationId, user.organizationId, `User ${id} not found`);
     return this.toListItem(user);
   }
 
   async create(dto: CreateUserDto, actor: AuthenticatedUser) {
     await this.getRoleOr404(dto.roleId);
+    if (dto.organizationId) {
+      await this.getOrganizationOr404(dto.organizationId);
+      // A scoped actor may only create a user in their own organization,
+      // even though the DTO field is a plain organizationId.
+      assertSameOrganization(
+        actor.organizationId,
+        dto.organizationId,
+        `Organization ${dto.organizationId} not found`,
+      );
+    }
     try {
       const user = await this.prisma.user.create({
         data: {
@@ -70,8 +90,9 @@ export class UsersService {
           name: dto.name,
           passwordHash: await hashPassword(dto.password),
           roleId: dto.roleId,
+          organizationId: dto.organizationId,
         },
-        include: { role: { select: { id: true, name: true } } },
+        include: USER_INCLUDE,
       });
       await this.auditLog.record({
         actorUserId: actor.id,
@@ -98,7 +119,7 @@ export class UsersService {
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: dto,
-      include: { role: { select: { id: true, name: true } } },
+      include: USER_INCLUDE,
     });
     return this.toListItem(user);
   }
@@ -108,14 +129,26 @@ export class UsersService {
       throw new ForbiddenException('You cannot change your own role.');
     }
     const existing = await this.getUserOr404(id);
+    assertSameOrganization(actor.organizationId, existing.organizationId, `User ${id} not found`);
     if (dto.roleId) {
       await this.getRoleOr404(dto.roleId);
+    }
+    if (dto.organizationId) {
+      await this.getOrganizationOr404(dto.organizationId);
+      // Reassignment guard: a scoped actor editing a user in their own
+      // organization still can't move that user into a DIFFERENT
+      // organization by supplying a foreign organizationId in the update.
+      assertSameOrganization(
+        actor.organizationId,
+        dto.organizationId,
+        `Organization ${dto.organizationId} not found`,
+      );
     }
 
     const user = await this.prisma.user.update({
       where: { id },
       data: dto,
-      include: { role: { select: { id: true, name: true } } },
+      include: USER_INCLUDE,
     });
 
     if (dto.roleId && dto.roleId !== existing.roleId) {
@@ -125,6 +158,15 @@ export class UsersService {
         entityType: 'User',
         entityId: user.id,
         summary: `Changed ${user.email}'s role from ${existing.role.name} to ${user.role.name}.`,
+      });
+    }
+    if (dto.organizationId !== undefined && dto.organizationId !== existing.organizationId) {
+      await this.auditLog.record({
+        actorUserId: actor.id,
+        action: 'user.organization_changed',
+        entityType: 'User',
+        entityId: user.id,
+        summary: `Changed ${user.email}'s organization to ${user.organization?.name ?? 'none'}.`,
       });
     }
     return this.toListItem(user);
@@ -141,11 +183,12 @@ export class UsersService {
       );
     }
     const existing = await this.getUserOr404(id);
+    assertSameOrganization(actor.organizationId, existing.organizationId, `User ${id} not found`);
 
     const user = await this.prisma.user.update({
       where: { id },
       data: { status: dto.status },
-      include: { role: { select: { id: true, name: true } } },
+      include: USER_INCLUDE,
     });
 
     if (dto.status !== existing.status) {
@@ -163,7 +206,7 @@ export class UsersService {
   private async getUserOr404(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      include: { role: { select: { id: true, name: true } } },
+      include: USER_INCLUDE,
     });
     if (!user) {
       throw new NotFoundException(`User ${id} not found`);
@@ -179,6 +222,16 @@ export class UsersService {
     return role;
   }
 
+  private async getOrganizationOr404(organizationId: string) {
+    const organization = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+    });
+    if (!organization) {
+      throw new NotFoundException(`Organization ${organizationId} not found`);
+    }
+    return organization;
+  }
+
   // Never includes passwordHash -- callers only ever see this projection.
   private toListItem(user: {
     id: string;
@@ -186,11 +239,13 @@ export class UsersService {
     name: string;
     status: string;
     roleId: string;
+    organizationId: string | null;
     emailNotificationsEnabled: boolean;
     lastLoginAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
     role: { id: string; name: string };
+    organization: { id: string; name: string } | null;
   }) {
     return {
       id: user.id,
@@ -198,6 +253,7 @@ export class UsersService {
       name: user.name,
       status: user.status,
       role: user.role,
+      organization: user.organization,
       emailNotificationsEnabled: user.emailNotificationsEnabled,
       lastLoginAt: user.lastLoginAt,
       createdAt: user.createdAt,

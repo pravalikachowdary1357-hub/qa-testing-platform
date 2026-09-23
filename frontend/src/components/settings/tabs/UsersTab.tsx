@@ -22,9 +22,11 @@ import { useAuth } from '../../../context/AuthContext';
 import { StatusChip } from '../../common/StatusChip';
 import { fetchUsers, createUser, updateUser, updateUserStatus } from '../../../api/users';
 import { fetchRoles } from '../../../api/roles';
+import { fetchOrganizations } from '../../../api/organizations';
 import { UserFormDialog } from '../UserFormDialog';
 import { ConfirmDialog } from '../ConfirmDialog';
 import type { ApiUser, ApiRole } from '../../../types/settings';
+import type { ApiOrganization } from '../../../types/organization';
 
 const STATUS_LABELS: Record<string, string> = { ACTIVE: 'Active', INACTIVE: 'Inactive' };
 
@@ -34,6 +36,7 @@ export function UsersTab() {
 
   const [users, setUsers] = useState<ApiUser[] | null>(null);
   const [roles, setRoles] = useState<ApiRole[]>([]);
+  const [organizations, setOrganizations] = useState<ApiOrganization[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [rolesError, setRolesError] = useState<string | null>(null);
 
@@ -62,6 +65,13 @@ export function UsersTab() {
     fetchRoles()
       .then(setRoles)
       .catch((err) => setRolesError(err instanceof Error ? err.message : 'Failed to load roles.'));
+    fetchOrganizations()
+      .then(setOrganizations)
+      .catch(() => {
+        // Only feeds the Organization picker in the user dialog; a failure
+        // here shouldn't block the user list itself.
+        setOrganizations([]);
+      });
   }, []);
 
   const isLoading = users === null && !error;
@@ -141,6 +151,7 @@ export function UsersTab() {
                 <TableCell>Name</TableCell>
                 <TableCell>Email</TableCell>
                 <TableCell>Role</TableCell>
+                <TableCell>Organization</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Last Login</TableCell>
                 {canManage && <TableCell align="right">Actions</TableCell>}
@@ -162,6 +173,9 @@ export function UsersTab() {
                     </TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>{user.role.name}</TableCell>
+                    <TableCell sx={{ color: user.organization ? 'text.primary' : 'text.secondary' }}>
+                      {user.organization?.name ?? 'Unassigned'}
+                    </TableCell>
                     <TableCell>
                       <StatusChip status={STATUS_LABELS[user.status] ?? user.status} />
                     </TableCell>
@@ -217,15 +231,23 @@ export function UsersTab() {
         mode={dialogMode ?? 'create'}
         user={editingUser}
         roles={roles}
+        organizations={organizations}
         onClose={() => {
           setDialogMode(null);
           setEditingUser(null);
         }}
         onSubmit={async (values) => {
           if (dialogMode === 'create') {
-            await createUser(values);
+            await createUser({ ...values, organizationId: values.organizationId || undefined });
           } else if (editingUser) {
-            await updateUser(editingUser.id, { name: values.name, roleId: values.roleId });
+            await updateUser(editingUser.id, {
+              name: values.name,
+              roleId: values.roleId,
+              // Explicit null clears an existing organization -- omitting
+              // the field (via `|| undefined`) would leave the old value in
+              // place instead of clearing it.
+              organizationId: values.organizationId || null,
+            });
           }
           loadUsers();
         }}

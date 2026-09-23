@@ -38,33 +38,40 @@ export class OrganizationsController {
 
   @Get()
   @RequirePermission('organizations:read')
-  findAll() {
-    return this.organizationsService.findAll();
+  findAll(@CurrentUser() actor: AuthenticatedUser) {
+    return this.organizationsService.findAll(actor.organizationId);
   }
 
   @Get(':id')
   @RequirePermission('organizations:read')
-  findOne(@Param('id') id: string) {
-    return this.organizationsService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.organizationsService.findOne(id, actor.organizationId);
   }
 
   @Post()
   @RequirePermission('organizations:write')
-  create(@Body() dto: CreateOrganizationDto) {
-    return this.organizationsService.create(dto);
+  create(
+    @Body() dto: CreateOrganizationDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.organizationsService.create(dto, actor);
   }
 
   @Patch(':id')
   @RequirePermission('organizations:write')
-  update(@Param('id') id: string, @Body() dto: UpdateOrganizationDto) {
-    return this.organizationsService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateOrganizationDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.organizationsService.update(id, dto, actor);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission('organizations:manage')
-  remove(@Param('id') id: string) {
-    return this.organizationsService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.organizationsService.remove(id, actor);
   }
 
   @Post('import')

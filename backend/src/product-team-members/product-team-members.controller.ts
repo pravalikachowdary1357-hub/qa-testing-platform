@@ -27,8 +27,8 @@ export class ProductTeamMembersController {
   constructor(private readonly teamMembersService: ProductTeamMembersService) {}
 
   @Get()
-  findAll(@Query() query: ListProductTeamMembersQueryDto) {
-    return this.teamMembersService.findAll(query.productId);
+  findAll(@Query() query: ListProductTeamMembersQueryDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.teamMembersService.findAll(query.productId, actor.organizationId);
   }
 
   @Post()

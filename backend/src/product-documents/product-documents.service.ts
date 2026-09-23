@@ -10,6 +10,7 @@ import { UpdateProductDocumentDto } from './dto/update-product-document.dto';
 import { ReplaceProductDocumentDto } from './dto/replace-product-document.dto';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
+import { assertSameOrganization, productOrganizationScopeWhere } from '../common/organization-scope.util';
 
 // Never select `content` for list/detail/version-history responses -- these
 // can be multi-megabyte blobs and the frontend only ever needs the bytes
@@ -58,15 +59,45 @@ export class ProductDocumentsService {
     private readonly auditLog: AuditLogService,
   ) {}
 
-  findAll(productId: string) {
+  findAll(productId: string, actorOrganizationId: string | null) {
     return this.prisma.productDocument.findMany({
-      where: { productId },
+      where: {
+        productId,
+        ...productOrganizationScopeWhere(actorOrganizationId),
+      },
       select: DOCUMENT_SELECT,
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string) {
+  // Every route below is reached by a document UUID in the URL, bypassing
+  // findAll's own scope filter entirely -- so each one re-checks the
+  // document's product against the actor's organization before returning
+  // anything, including file bytes.
+  private async assertDocumentInScope(id: string, actorOrganizationId: string | null) {
+    const document = await this.prisma.productDocument.findUnique({
+      where: { id },
+      select: { product: { select: { organizationId: true } } },
+    });
+    if (!document) {
+      throw new NotFoundException(`Document ${id} not found`);
+    }
+    assertSameOrganization(actorOrganizationId, document.product.organizationId, `Document ${id} not found`);
+  }
+
+  private async assertProductInScope(productId: string, actorOrganizationId: string | null): Promise<void> {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { organizationId: true },
+    });
+    if (!product) {
+      throw new BadRequestException(`Product ${productId} not found`);
+    }
+    assertSameOrganization(actorOrganizationId, product.organizationId, `Product ${productId} not found`);
+  }
+
+  async findOne(id: string, actorOrganizationId: string | null) {
+    await this.assertDocumentInScope(id, actorOrganizationId);
     const document = await this.prisma.productDocument.findUnique({
       where: { id },
       select: DOCUMENT_SELECT,
@@ -81,8 +112,8 @@ export class ProductDocumentsService {
   // versions into one descending timeline, so the frontend can render a
   // single "version history" list without knowing about the two tables
   // behind it.
-  async findVersionHistory(id: string) {
-    const document = await this.findOne(id);
+  async findVersionHistory(id: string, actorOrganizationId: string | null) {
+    const document = await this.findOne(id, actorOrganizationId);
     const versions = await this.prisma.productDocumentVersion.findMany({
       where: { documentId: id },
       select: VERSION_SELECT,
@@ -120,6 +151,7 @@ export class ProductDocumentsService {
   }
 
   async getContent(id: string, actor: AuthenticatedUser) {
+    await this.assertDocumentInScope(id, actor.organizationId);
     const document = await this.prisma.productDocument.findUnique({
       where: { id },
     });
@@ -141,6 +173,7 @@ export class ProductDocumentsService {
     versionId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertDocumentInScope(documentId, actor.organizationId);
     const version = await this.prisma.productDocumentVersion.findFirst({
       where: { id: versionId, documentId },
     });
@@ -168,6 +201,7 @@ export class ProductDocumentsService {
     if (file.size === 0) {
       throw new BadRequestException('The selected file is empty.');
     }
+    await this.assertProductInScope(dto.productId, actor.organizationId);
 
     let created;
     try {
@@ -207,6 +241,7 @@ export class ProductDocumentsService {
   }
 
   async update(id: string, dto: UpdateProductDocumentDto, actor: AuthenticatedUser) {
+    await this.assertDocumentInScope(id, actor.organizationId);
     let updated;
     try {
       updated = await this.prisma.productDocument.update({
@@ -240,6 +275,7 @@ export class ProductDocumentsService {
     dto: ReplaceProductDocumentDto,
     actor: AuthenticatedUser,
   ) {
+    await this.assertDocumentInScope(id, actor.organizationId);
     if (!file) {
       throw new BadRequestException('A file is required.');
     }
@@ -298,6 +334,7 @@ export class ProductDocumentsService {
   }
 
   async remove(id: string, actor: AuthenticatedUser) {
+    await this.assertDocumentInScope(id, actor.organizationId);
     let existing;
     try {
       existing = await this.prisma.productDocument.delete({ where: { id } });

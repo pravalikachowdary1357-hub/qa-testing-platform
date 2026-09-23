@@ -3,12 +3,18 @@ export interface ApiRoleRef {
   name: string;
 }
 
+export interface ApiUserOrganizationRef {
+  id: string;
+  name: string;
+}
+
 export interface ApiUser {
   id: string;
   email: string;
   name: string;
   status: 'ACTIVE' | 'INACTIVE';
   role: ApiRoleRef;
+  organization: ApiUserOrganizationRef | null;
   emailNotificationsEnabled: boolean;
   lastLoginAt: string | null;
   createdAt: string;
@@ -20,11 +26,16 @@ export interface CreateUserPayload {
   name: string;
   password: string;
   roleId: string;
+  organizationId?: string;
 }
 
 export interface UpdateUserPayload {
   name?: string;
   roleId?: string;
+  // null explicitly clears an existing assignment; undefined leaves it
+  // untouched (the backend/Prisma distinguish the two -- an absent key is a
+  // no-op, so "None" in the picker must send null, not just omit the field).
+  organizationId?: string | null;
 }
 
 export interface ApiPermission {

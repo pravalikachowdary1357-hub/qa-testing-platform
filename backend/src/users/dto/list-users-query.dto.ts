@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, IsUUID } from 'class-validator';
 
 // Every query key this endpoint accepts must be declared here -- the global
 // ValidationPipe validates a bare @Query() DTO against the entire raw query
@@ -15,4 +15,8 @@ export class ListUsersQueryDto {
   @IsOptional()
   @IsString()
   status?: string;
+
+  @IsOptional()
+  @IsUUID()
+  organizationId?: string;
 }

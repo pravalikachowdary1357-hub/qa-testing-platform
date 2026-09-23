@@ -18,6 +18,8 @@ import { ListApiTestRequestsQueryDto } from './dto/list-api-test-requests-query.
 import { AuthGuard } from '../auth/auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermission } from '../auth/require-permission.decorator';
+import { CurrentUser } from '../auth/current-user.decorator';
+import type { AuthenticatedUser } from '../auth/current-user.decorator';
 
 @Controller('api-testing')
 @UseGuards(AuthGuard, PermissionsGuard)
@@ -26,38 +28,42 @@ export class ApiTestingController {
 
   @Get()
   @RequirePermission('api_testing:read')
-  findAll(@Query() query: ListApiTestRequestsQueryDto) {
-    return this.apiTestingService.findAll(query.productId);
+  findAll(@Query() query: ListApiTestRequestsQueryDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.apiTestingService.findAll(query.productId, actor.organizationId);
   }
 
   @Get(':id')
   @RequirePermission('api_testing:read')
-  findOne(@Param('id') id: string) {
-    return this.apiTestingService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.apiTestingService.findOne(id, actor.organizationId);
   }
 
   @Post()
   @RequirePermission('api_testing:write')
-  create(@Body() dto: CreateApiTestRequestDto) {
-    return this.apiTestingService.create(dto);
+  create(@Body() dto: CreateApiTestRequestDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.apiTestingService.create(dto, actor);
   }
 
   @Patch(':id')
   @RequirePermission('api_testing:write')
-  update(@Param('id') id: string, @Body() dto: UpdateApiTestRequestDto) {
-    return this.apiTestingService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateApiTestRequestDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.apiTestingService.update(id, dto, actor);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission('api_testing:manage')
-  remove(@Param('id') id: string) {
-    return this.apiTestingService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.apiTestingService.remove(id, actor);
   }
 
   @Post(':id/execute')
   @RequirePermission('api_testing:execute')
-  execute(@Param('id') id: string) {
-    return this.apiTestingService.execute(id);
+  execute(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.apiTestingService.execute(id, actor);
   }
 }

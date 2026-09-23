@@ -11,6 +11,10 @@ export class CreateProjectDto {
   @IsUUID()
   organizationId: string;
 
+  @IsOptional()
+  @IsUUID()
+  businessUnitId?: string;
+
   @IsString()
   @IsNotEmpty()
   name: string;

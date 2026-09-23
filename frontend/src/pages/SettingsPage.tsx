@@ -51,7 +51,7 @@ export function SettingsPage() {
 
       {tab === 0 && <ProfileTab />}
       {tab === 1 && (
-        <PermissionGate permission="organization:read">
+        <PermissionGate permission="organizations:read">
           <OrganizationTab />
         </PermissionGate>
       )}

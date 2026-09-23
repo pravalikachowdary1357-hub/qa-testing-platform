@@ -4,8 +4,10 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { ApiAuthType, HttpMethod } from '../../generated/prisma/enums.js';
 import { CreateApiTestRequestDto } from './dto/create-api-test-request.dto';
 import { UpdateApiTestRequestDto } from './dto/update-api-test-request.dto';
+import type { AuthenticatedUser } from '../auth/current-user.decorator';
+import { assertSameOrganization, productOrganizationScopeWhere } from '../common/organization-scope.util';
 
-const PRODUCT_REF = { select: { id: true, name: true } };
+const PRODUCT_REF = { select: { id: true, name: true, organizationId: true } };
 const ENVIRONMENT_REF = { select: { id: true, name: true, baseUrl: true } };
 const RELEASE_REF = { select: { id: true, name: true, version: true } };
 
@@ -56,15 +58,18 @@ const REQUEST_TIMEOUT_MS = 15000;
 export class ApiTestingService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(productId?: string) {
+  findAll(productId: string | undefined, actorOrganizationId: string | null) {
     return this.prisma.apiTestRequest.findMany({
-      where: productId ? { productId } : {},
+      where: {
+        ...(productId ? { productId } : {}),
+        ...productOrganizationScopeWhere(actorOrganizationId),
+      },
       select: LIST_SELECT,
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actorOrganizationId: string | null) {
     const record = await this.prisma.apiTestRequest.findUnique({
       where: { id },
       include: {
@@ -76,11 +81,13 @@ export class ApiTestingService {
     if (!record) {
       throw new NotFoundException(`API test request ${id} not found`);
     }
+    assertSameOrganization(actorOrganizationId, record.product.organizationId, `API test request ${id} not found`);
 
     return record;
   }
 
-  async create(dto: CreateApiTestRequestDto) {
+  async create(dto: CreateApiTestRequestDto, actor: AuthenticatedUser) {
+    await this.assertProductInScope(dto.productId, actor.organizationId);
     if (dto.environmentId) {
       await this.validateEnvironmentBelongsToProduct(dto.productId, dto.environmentId);
     }
@@ -114,12 +121,16 @@ export class ApiTestingService {
     }
   }
 
-  async update(id: string, dto: UpdateApiTestRequestDto) {
-    const existing = await this.prisma.apiTestRequest.findUnique({ where: { id } });
+  async update(id: string, dto: UpdateApiTestRequestDto, actor: AuthenticatedUser) {
+    const existing = await this.prisma.apiTestRequest.findUnique({
+      where: { id },
+      include: { product: { select: { organizationId: true } } },
+    });
 
     if (!existing) {
       throw new NotFoundException(`API test request ${id} not found`);
     }
+    assertSameOrganization(actor.organizationId, existing.product.organizationId, `API test request ${id} not found`);
 
     const effectiveProductId = dto.productId ?? existing.productId;
     const effectiveEnvironmentId =
@@ -168,7 +179,16 @@ export class ApiTestingService {
     }
   }
 
-  async remove(id: string) {
+  async remove(id: string, actor: AuthenticatedUser) {
+    const existing = await this.prisma.apiTestRequest.findUnique({
+      where: { id },
+      select: { product: { select: { organizationId: true } } },
+    });
+    if (!existing) {
+      throw new NotFoundException(`API test request ${id} not found`);
+    }
+    assertSameOrganization(actor.organizationId, existing.product.organizationId, `API test request ${id} not found`);
+
     try {
       await this.prisma.apiTestRequest.delete({ where: { id } });
     } catch (error) {
@@ -179,15 +199,19 @@ export class ApiTestingService {
     }
   }
 
-  async execute(id: string) {
+  async execute(id: string, actor: AuthenticatedUser) {
     const request = await this.prisma.apiTestRequest.findUnique({
       where: { id },
-      include: { environment: { select: { baseUrl: true } } },
+      include: {
+        environment: { select: { baseUrl: true } },
+        product: { select: { organizationId: true } },
+      },
     });
 
     if (!request) {
       throw new NotFoundException(`API test request ${id} not found`);
     }
+    assertSameOrganization(actor.organizationId, request.product.organizationId, `API test request ${id} not found`);
 
     const effectiveUrl = this.buildEffectiveUrl(
       request.url,
@@ -258,6 +282,17 @@ export class ApiTestingService {
         errorMessage,
       },
     });
+  }
+
+  private async assertProductInScope(productId: string, actorOrganizationId: string | null): Promise<void> {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { organizationId: true },
+    });
+    if (!product) {
+      throw new BadRequestException(`Product ${productId} not found`);
+    }
+    assertSameOrganization(actorOrganizationId, product.organizationId, `Product ${productId} not found`);
   }
 
   private async validateEnvironmentBelongsToProduct(productId: string, environmentId: string) {

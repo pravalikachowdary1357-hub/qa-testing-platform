@@ -7,10 +7,11 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { validateRow } from '../common/import/validate-row.util';
 import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
+import { assertSameOrganization, productOrganizationScopeWhere } from '../common/organization-scope.util';
 
 const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
 const TEST_PLAN_INCLUDE = {
-  product: { select: { id: true, name: true } },
+  product: { select: { id: true, name: true, organizationId: true } },
   release: RELEASE_REF_SELECT,
   requirements: { select: { id: true, title: true, status: true } },
 };
@@ -28,15 +29,18 @@ export class TestPlansService {
     private readonly auditLog: AuditLogService,
   ) {}
 
-  findAll(productId?: string) {
+  findAll(productId: string | undefined, actorOrganizationId: string | null) {
     return this.prisma.testPlan.findMany({
-      where: productId ? { productId } : {},
+      where: {
+        ...(productId ? { productId } : {}),
+        ...productOrganizationScopeWhere(actorOrganizationId),
+      },
       include: TEST_PLAN_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actorOrganizationId: string | null) {
     const testPlan = await this.prisma.testPlan.findUnique({
       where: { id },
       include: TEST_PLAN_INCLUDE,
@@ -45,11 +49,13 @@ export class TestPlansService {
     if (!testPlan) {
       throw new NotFoundException(`Test plan ${id} not found`);
     }
+    assertSameOrganization(actorOrganizationId, testPlan.product.organizationId, `Test plan ${id} not found`);
 
     return testPlan;
   }
 
-  async create(dto: CreateTestPlanDto) {
+  async create(dto: CreateTestPlanDto, actor: AuthenticatedUser) {
+    await this.assertProductInScope(dto.productId, actor.organizationId);
     this.validateDateRange(dto.startDate, dto.endDate);
 
     const requirementIds = dto.requirementIds ?? [];
@@ -113,7 +119,7 @@ export class TestPlansService {
       }
 
       try {
-        await this.create(result.dto);
+        await this.create(result.dto, actor);
         successCount++;
       } catch (error) {
         errors.push({
@@ -134,15 +140,19 @@ export class TestPlansService {
     return { totalRows: rows.length, successCount, errors };
   }
 
-  async update(id: string, dto: UpdateTestPlanDto) {
+  async update(id: string, dto: UpdateTestPlanDto, actor: AuthenticatedUser) {
     const existing = await this.prisma.testPlan.findUnique({
       where: { id },
-      include: { requirements: { select: { id: true } } },
+      include: {
+        requirements: { select: { id: true } },
+        product: { select: { organizationId: true } },
+      },
     });
 
     if (!existing) {
       throw new NotFoundException(`Test plan ${id} not found`);
     }
+    assertSameOrganization(actor.organizationId, existing.product.organizationId, `Test plan ${id} not found`);
 
     const effectiveProductId = dto.productId ?? existing.productId;
     const effectiveStartDate =
@@ -195,7 +205,16 @@ export class TestPlansService {
     }
   }
 
-  async remove(id: string) {
+  async remove(id: string, actor: AuthenticatedUser) {
+    const existing = await this.prisma.testPlan.findUnique({
+      where: { id },
+      select: { product: { select: { organizationId: true } } },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Test plan ${id} not found`);
+    }
+    assertSameOrganization(actor.organizationId, existing.product.organizationId, `Test plan ${id} not found`);
+
     try {
       await this.prisma.testPlan.delete({ where: { id } });
     } catch (error) {
@@ -204,6 +223,17 @@ export class TestPlansService {
       }
       throw error;
     }
+  }
+
+  private async assertProductInScope(productId: string, actorOrganizationId: string | null): Promise<void> {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { organizationId: true },
+    });
+    if (!product) {
+      throw new BadRequestException(`Product ${productId} not found`);
+    }
+    assertSameOrganization(actorOrganizationId, product.organizationId, `Product ${productId} not found`);
   }
 
   private validateDateRange(startDate?: string | Date, endDate?: string | Date) {

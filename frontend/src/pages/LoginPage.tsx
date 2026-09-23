@@ -40,6 +40,9 @@ import PlayCircleIcon from '@mui/icons-material/PlayCircle';
 import HistoryIcon from '@mui/icons-material/History';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+import StorageIcon from '@mui/icons-material/Storage';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
 import { useAuth } from '../context/AuthContext';
 import testSphereLogo from '../assets/testsphere-logo.png';
 import { drift1, drift2, drift3, floatY } from '../utils/motion';
@@ -54,41 +57,56 @@ interface DemoAccount {
   color: string;
 }
 
-// Mirrors the 6 real seeded roles/users in backend/prisma/seed.cjs -- same
+// Mirrors the 9 real seeded roles/users in backend/prisma/seed.cjs -- same
 // emails, same default password, same role descriptions. These are genuine
-// accounts in this database, not placeholders. Consolidated down from an
-// earlier 10-role design: Test Manager+Test Lead merged into "Test Lead /
-// Test Manager", Business Analyst+Product Owner merged into "Business/
-// Release Approver", and Auditor/Management were dropped (their read-only
-// needs are covered by assigning one of the remaining roles).
+// accounts in this database, not placeholders. Evolved from the earlier
+// 6-role model: Automation Engineer and UAT Coordinator / Business Tester
+// are newly split out (from Tester and Business/Release Approver
+// respectively), and Database Test Engineer is reserved for a future
+// database-testing module -- that account currently has zero granted
+// permissions by design, not a bug.
 const DEMO_ACCOUNTS: DemoAccount[] = [
   {
-    role: 'System Administrator',
+    role: 'QMICS TestSphere Administrator',
     email: 'admin@testsphere.local',
-    description: 'Full administrative access to every module and all platform settings.',
+    description: 'Platform administration: organizations, users, roles, and system/audit settings. No QA testing execution, planning, or governance.',
     icon: AdminPanelSettingsIcon,
     color: '#0F4C81',
   },
   {
-    role: 'QA Manager',
+    role: 'Test Manager / Test Program Manager',
     email: 'qa.manager@testsphere.local',
-    description: 'Overall QA owner: full authority across the whole testing lifecycle, including automation, performance, security, UAT, release quality, and AI.',
+    description: 'Overall testing owner: full authority across the whole testing lifecycle, including automation, performance, security, UAT, release quality, and AI.',
     icon: AssignmentIndIcon,
     color: '#5E35B1',
   },
   {
-    role: 'Test Lead / Test Manager',
+    role: 'Test Lead / QA Lead',
     email: 'test.manager@testsphere.local',
     description: 'Day-to-day testing management: test plans, scenarios, cases, data, environments, execution, and defects.',
     icon: AssignmentTurnedInIcon,
     color: '#EF6C00',
   },
   {
-    role: 'Tester',
+    role: 'Tester / Test Engineer / QA Engineer',
     email: 'tester@testsphere.local',
-    description: 'Creates/executes test cases, records results, raises and updates defects, executes UAT.',
+    description: 'Creates/executes test cases, records evidence, raises and updates defects, executes UAT, and performs assigned specialized testing.',
     icon: ScienceIcon,
     color: '#2E7D32',
+  },
+  {
+    role: 'Automation Engineer',
+    email: 'automation.engineer@testsphere.local',
+    description: 'Owns test automation: develops/maintains frameworks and scripts, executes automated regression, analyzes failures.',
+    icon: SmartToyIcon,
+    color: '#00838F',
+  },
+  {
+    role: 'Database Test Engineer',
+    email: 'database.engineer@testsphere.local',
+    description: 'Reserved for a future database-testing capability -- no TestSphere module exists for this yet, so this account currently has no granted permissions.',
+    icon: StorageIcon,
+    color: '#6D4C41',
   },
   {
     role: 'Developer',
@@ -98,9 +116,16 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     color: '#D84315',
   },
   {
-    role: 'Business/Release Approver',
+    role: 'UAT Coordinator / Business Tester',
+    email: 'uat.coordinator@testsphere.local',
+    description: 'Coordinates and executes User Acceptance Testing; records business-user feedback. Does not hold final UAT approval authority.',
+    icon: HowToRegIcon,
+    color: '#AD1457',
+  },
+  {
+    role: 'Product Owner / Release Approver',
     email: 'business.approver@testsphere.local',
-    description: 'Business acceptance and release decision authority: owns requirements, UAT sign-off, and release readiness approval.',
+    description: 'Business acceptance and release decision authority: owns requirements, approves UAT results, and approves release readiness.',
     icon: FlagCircleIcon,
     color: '#C9A227',
   },

@@ -9,8 +9,10 @@ import { CreateUatTestCaseDto } from './dto/create-uat-test-case.dto';
 import { UpdateUatTestCaseDto } from './dto/update-uat-test-case.dto';
 import { CreateUatExecutionDto } from './dto/create-uat-execution.dto';
 import { UpdateUatExecutionDto } from './dto/update-uat-execution.dto';
+import type { AuthenticatedUser } from '../auth/current-user.decorator';
+import { assertSameOrganization, productOrganizationScopeWhere } from '../common/organization-scope.util';
 
-const PRODUCT_REF = { select: { id: true, name: true } };
+const PRODUCT_REF = { select: { id: true, name: true, organizationId: true } };
 const RELEASE_REF = { select: { id: true, name: true, version: true } };
 
 const CYCLE_LIST_SELECT_EXTRA = {
@@ -97,9 +99,12 @@ function withSummary<T extends CycleWithSummarySource>(cycle: T) {
 export class UatService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(productId?: string) {
+  async findAll(productId: string | undefined, actorOrganizationId: string | null) {
     const cycles = await this.prisma.uatCycle.findMany({
-      where: productId ? { productId } : {},
+      where: {
+        ...(productId ? { productId } : {}),
+        ...productOrganizationScopeWhere(actorOrganizationId),
+      },
       include: CYCLE_LIST_SELECT_EXTRA,
       orderBy: { createdAt: 'desc' },
     });
@@ -107,7 +112,34 @@ export class UatService {
     return cycles.map((cycle) => summarize(cycle));
   }
 
-  async findOne(id: string) {
+  // Every id-based route below (cycle, test case and execution sub-routes
+  // alike) is reached directly by a UUID, bypassing findAll's own scope
+  // filter -- so each one re-checks the cycle's product against the actor's
+  // organization before returning or mutating anything.
+  private async assertCycleInScope(id: string, actorOrganizationId: string | null) {
+    const cycle = await this.prisma.uatCycle.findUnique({
+      where: { id },
+      select: { product: { select: { organizationId: true } } },
+    });
+    if (!cycle) {
+      throw new NotFoundException(`UAT cycle ${id} not found`);
+    }
+    assertSameOrganization(actorOrganizationId, cycle.product.organizationId, `UAT cycle ${id} not found`);
+  }
+
+  private async assertProductInScope(productId: string, actorOrganizationId: string | null): Promise<void> {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { organizationId: true },
+    });
+    if (!product) {
+      throw new BadRequestException(`Product ${productId} not found`);
+    }
+    assertSameOrganization(actorOrganizationId, product.organizationId, `Product ${productId} not found`);
+  }
+
+  async findOne(id: string, actorOrganizationId: string | null) {
+    await this.assertCycleInScope(id, actorOrganizationId);
     const cycle = await this.prisma.uatCycle.findUnique({
       where: { id },
       include: CYCLE_DETAIL_INCLUDE,
@@ -120,7 +152,8 @@ export class UatService {
     return withSummary(cycle);
   }
 
-  async create(dto: CreateUatCycleDto) {
+  async create(dto: CreateUatCycleDto, actor: AuthenticatedUser) {
+    await this.assertProductInScope(dto.productId, actor.organizationId);
     try {
       const cycle = await this.prisma.uatCycle.create({
         data: {
@@ -140,7 +173,8 @@ export class UatService {
     }
   }
 
-  async update(id: string, dto: UpdateUatCycleDto) {
+  async update(id: string, dto: UpdateUatCycleDto, actor: AuthenticatedUser) {
+    await this.assertCycleInScope(id, actor.organizationId);
     const existing = await this.prisma.uatCycle.findUnique({ where: { id } });
     if (!existing) {
       throw new NotFoundException(`UAT cycle ${id} not found`);
@@ -172,7 +206,8 @@ export class UatService {
     }
   }
 
-  async remove(id: string) {
+  async remove(id: string, actor: AuthenticatedUser) {
+    await this.assertCycleInScope(id, actor.organizationId);
     const cycle = await this.prisma.uatCycle.findUnique({
       where: { id },
       include: { _count: { select: { testCases: true } } },
@@ -198,7 +233,8 @@ export class UatService {
     }
   }
 
-  async signOff(id: string, dto: SignOffUatCycleDto) {
+  async signOff(id: string, dto: SignOffUatCycleDto, actor: AuthenticatedUser) {
+    await this.assertCycleInScope(id, actor.organizationId);
     const existing = await this.prisma.uatCycle.findUnique({ where: { id } });
     if (!existing) {
       throw new NotFoundException(`UAT cycle ${id} not found`);
@@ -228,7 +264,8 @@ export class UatService {
     return summarize(cycle);
   }
 
-  async addTestCase(cycleId: string, dto: CreateUatTestCaseDto) {
+  async addTestCase(cycleId: string, dto: CreateUatTestCaseDto, actor: AuthenticatedUser) {
+    await this.assertCycleInScope(cycleId, actor.organizationId);
     const cycle = await this.prisma.uatCycle.findUnique({ where: { id: cycleId } });
     if (!cycle) {
       throw new NotFoundException(`UAT cycle ${cycleId} not found`);
@@ -269,8 +306,13 @@ export class UatService {
     }
   }
 
-  async updateTestCase(cycleId: string, testCaseId: string, dto: UpdateUatTestCaseDto) {
-    const testCase = await this.findTestCaseOrThrow(cycleId, testCaseId);
+  async updateTestCase(
+    cycleId: string,
+    testCaseId: string,
+    dto: UpdateUatTestCaseDto,
+    actor: AuthenticatedUser,
+  ) {
+    const testCase = await this.findTestCaseOrThrow(cycleId, testCaseId, actor.organizationId);
 
     const effectiveRequirementId =
       dto.requirementId !== undefined ? dto.requirementId : testCase.requirementId;
@@ -325,7 +367,8 @@ export class UatService {
     }
   }
 
-  async removeTestCase(cycleId: string, testCaseId: string) {
+  async removeTestCase(cycleId: string, testCaseId: string, actor: AuthenticatedUser) {
+    await this.findTestCaseOrThrow(cycleId, testCaseId, actor.organizationId);
     const testCase = await this.prisma.uatTestCase.findUnique({
       where: { id: testCaseId },
       include: { _count: { select: { executions: true } } },
@@ -344,8 +387,13 @@ export class UatService {
     await this.prisma.uatTestCase.delete({ where: { id: testCaseId } });
   }
 
-  async addExecution(cycleId: string, testCaseId: string, dto: CreateUatExecutionDto) {
-    const testCase = await this.findTestCaseOrThrow(cycleId, testCaseId);
+  async addExecution(
+    cycleId: string,
+    testCaseId: string,
+    dto: CreateUatExecutionDto,
+    actor: AuthenticatedUser,
+  ) {
+    const testCase = await this.findTestCaseOrThrow(cycleId, testCaseId, actor.organizationId);
     const productId = testCase.uatCycle.productId;
 
     await this.validateEnvironmentBelongsToProduct(dto.environmentId, productId);
@@ -384,8 +432,9 @@ export class UatService {
     testCaseId: string,
     executionId: string,
     dto: UpdateUatExecutionDto,
+    actor: AuthenticatedUser,
   ) {
-    const testCase = await this.findTestCaseOrThrow(cycleId, testCaseId);
+    const testCase = await this.findTestCaseOrThrow(cycleId, testCaseId, actor.organizationId);
     const execution = await this.findExecutionOrThrow(testCaseId, executionId);
     const productId = testCase.uatCycle.productId;
 
@@ -428,21 +477,35 @@ export class UatService {
     }
   }
 
-  async removeExecution(cycleId: string, testCaseId: string, executionId: string) {
-    await this.findTestCaseOrThrow(cycleId, testCaseId);
+  async removeExecution(
+    cycleId: string,
+    testCaseId: string,
+    executionId: string,
+    actor: AuthenticatedUser,
+  ) {
+    await this.findTestCaseOrThrow(cycleId, testCaseId, actor.organizationId);
     await this.findExecutionOrThrow(testCaseId, executionId);
     await this.prisma.uatExecution.delete({ where: { id: executionId } });
   }
 
-  private async findTestCaseOrThrow(cycleId: string, testCaseId: string) {
+  private async findTestCaseOrThrow(
+    cycleId: string,
+    testCaseId: string,
+    actorOrganizationId: string | null,
+  ) {
     const testCase = await this.prisma.uatTestCase.findUnique({
       where: { id: testCaseId },
-      include: { uatCycle: { select: { productId: true } } },
+      include: { uatCycle: { select: { productId: true, product: { select: { organizationId: true } } } } },
     });
 
     if (!testCase || testCase.uatCycleId !== cycleId) {
       throw new NotFoundException(`UAT test case ${testCaseId} not found on cycle ${cycleId}`);
     }
+    assertSameOrganization(
+      actorOrganizationId,
+      testCase.uatCycle.product.organizationId,
+      `UAT test case ${testCaseId} not found on cycle ${cycleId}`,
+    );
 
     return testCase;
   }

@@ -33,8 +33,8 @@ export class ProductComponentsController {
   constructor(private readonly componentsService: ProductComponentsService) {}
 
   @Get()
-  findAll(@Query() query: ListProductComponentsQueryDto) {
-    return this.componentsService.findAll(query.productId);
+  findAll(@Query() query: ListProductComponentsQueryDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.componentsService.findAll(query.productId, actor.organizationId);
   }
 
   @Post()

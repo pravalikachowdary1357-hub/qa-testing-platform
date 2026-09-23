@@ -9,6 +9,7 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { CreateProductTeamMemberDto } from './dto/create-product-team-member.dto';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
+import { assertSameOrganization } from '../common/organization-scope.util';
 
 const USER_SELECT = { select: { id: true, name: true, email: true } };
 
@@ -19,15 +20,38 @@ export class ProductTeamMembersService {
     private readonly auditLog: AuditLogService,
   ) {}
 
-  findAll(productId: string) {
+  findAll(productId: string, actorOrganizationId: string | null) {
     return this.prisma.productTeamMember.findMany({
-      where: { productId },
+      where: {
+        productId,
+        ...(actorOrganizationId ? { product: { organizationId: actorOrganizationId } } : {}),
+      },
       include: { user: USER_SELECT },
       orderBy: { createdAt: 'asc' },
     });
   }
 
   async create(dto: CreateProductTeamMemberDto, actor: AuthenticatedUser) {
+    const productOrganizationId = await this.assertProductInScope(dto.productId, actor.organizationId);
+
+    // The product's team roster must stay within the product's own
+    // organization -- checked against the product's organization directly
+    // (not the actor's), so this also holds for an unscoped actor
+    // administering multiple organizations. Mirrors TeamsService.addMember's
+    // identical check for team membership.
+    const user = await this.prisma.user.findUnique({
+      where: { id: dto.userId },
+      select: { organizationId: true },
+    });
+    if (!user) {
+      throw new BadRequestException(`User ${dto.userId} not found`);
+    }
+    if (user.organizationId !== productOrganizationId) {
+      throw new BadRequestException(
+        `User ${dto.userId} does not belong to this product's organization.`,
+      );
+    }
+
     let created;
     try {
       created = await this.prisma.productTeamMember.create({
@@ -56,7 +80,32 @@ export class ProductTeamMembersService {
     return created;
   }
 
+  private async assertProductInScope(productId: string, actorOrganizationId: string | null): Promise<string> {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { organizationId: true },
+    });
+    if (!product) {
+      throw new BadRequestException(`Product ${productId} not found`);
+    }
+    assertSameOrganization(actorOrganizationId, product.organizationId, `Product ${productId} not found`);
+    return product.organizationId;
+  }
+
   async remove(id: string, actor: AuthenticatedUser) {
+    const existingWithScope = await this.prisma.productTeamMember.findUnique({
+      where: { id },
+      select: { product: { select: { organizationId: true } } },
+    });
+    if (!existingWithScope) {
+      throw new NotFoundException(`Product team member ${id} not found`);
+    }
+    assertSameOrganization(
+      actor.organizationId,
+      existingWithScope.product.organizationId,
+      `Product team member ${id} not found`,
+    );
+
     let existing;
     try {
       existing = await this.prisma.productTeamMember.delete({

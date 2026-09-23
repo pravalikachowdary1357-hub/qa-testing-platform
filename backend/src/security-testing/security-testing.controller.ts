@@ -21,6 +21,8 @@ import { ListSecurityTestsQueryDto } from './dto/list-security-tests-query.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermission } from '../auth/require-permission.decorator';
+import { CurrentUser } from '../auth/current-user.decorator';
+import type { AuthenticatedUser } from '../auth/current-user.decorator';
 
 @Controller('security-tests')
 @UseGuards(AuthGuard, PermissionsGuard)
@@ -29,60 +31,72 @@ export class SecurityTestingController {
 
   @Get()
   @RequirePermission('security_testing:read')
-  findAll(@Query() query: ListSecurityTestsQueryDto) {
-    return this.securityTestingService.findAll(query.productId);
+  findAll(@Query() query: ListSecurityTestsQueryDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.securityTestingService.findAll(query.productId, actor.organizationId);
   }
 
   // Must be declared before ':id' -- otherwise Nest would match "summary" as
   // an :id path param instead of routing here.
   @Get('summary')
   @RequirePermission('security_testing:read')
-  summary(@Query() query: ListSecurityTestsQueryDto) {
-    return this.securityTestingService.summary(query.productId);
+  summary(@Query() query: ListSecurityTestsQueryDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.securityTestingService.summary(query.productId, actor.organizationId);
   }
 
   @Get(':id')
   @RequirePermission('security_testing:read')
-  findOne(@Param('id') id: string) {
-    return this.securityTestingService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.securityTestingService.findOne(id, actor.organizationId);
   }
 
   @Post()
   @RequirePermission('security_testing:write')
-  create(@Body() dto: CreateSecurityTestDto) {
-    return this.securityTestingService.create(dto);
+  create(@Body() dto: CreateSecurityTestDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.securityTestingService.create(dto, actor);
   }
 
   @Patch(':id')
   @RequirePermission('security_testing:write')
-  update(@Param('id') id: string, @Body() dto: UpdateSecurityTestDto) {
-    return this.securityTestingService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateSecurityTestDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.securityTestingService.update(id, dto, actor);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission('security_testing:manage')
-  remove(@Param('id') id: string) {
-    return this.securityTestingService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.securityTestingService.remove(id, actor);
   }
 
   @Post(':id/execute')
   @RequirePermission('security_testing:execute')
-  execute(@Param('id') id: string) {
-    return this.securityTestingService.execute(id);
+  execute(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.securityTestingService.execute(id, actor);
   }
 
   @Post(':id/complete')
   @RequirePermission('security_testing:execute')
-  complete(@Param('id') id: string, @Body() dto: CompleteSecurityTestDto) {
-    return this.securityTestingService.complete(id, dto);
+  complete(
+    @Param('id') id: string,
+    @Body() dto: CompleteSecurityTestDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.securityTestingService.complete(id, dto, actor);
   }
 
   @Post(':id/findings')
   @HttpCode(HttpStatus.CREATED)
   @RequirePermission('security_testing:write')
-  addFinding(@Param('id') id: string, @Body() dto: CreateSecurityFindingDto) {
-    return this.securityTestingService.addFinding(id, dto);
+  addFinding(
+    @Param('id') id: string,
+    @Body() dto: CreateSecurityFindingDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.securityTestingService.addFinding(id, dto, actor);
   }
 
   @Patch(':id/findings/:findingId')
@@ -91,14 +105,19 @@ export class SecurityTestingController {
     @Param('id') id: string,
     @Param('findingId') findingId: string,
     @Body() dto: UpdateSecurityFindingDto,
+    @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.securityTestingService.updateFinding(id, findingId, dto);
+    return this.securityTestingService.updateFinding(id, findingId, dto, actor);
   }
 
   @Delete(':id/findings/:findingId')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission('security_testing:manage')
-  removeFinding(@Param('id') id: string, @Param('findingId') findingId: string) {
-    return this.securityTestingService.removeFinding(id, findingId);
+  removeFinding(
+    @Param('id') id: string,
+    @Param('findingId') findingId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.securityTestingService.removeFinding(id, findingId, actor);
   }
 }

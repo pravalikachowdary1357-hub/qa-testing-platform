@@ -18,6 +18,8 @@ import { ListTestExecutionsQueryDto } from './dto/list-test-executions-query.dto
 import { AuthGuard } from '../auth/auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermission } from '../auth/require-permission.decorator';
+import { CurrentUser } from '../auth/current-user.decorator';
+import type { AuthenticatedUser } from '../auth/current-user.decorator';
 
 // Creating/updating a TestExecution record IS "executing a test" in this
 // app's model -- there's no separate run endpoint -- so those two actions
@@ -29,32 +31,36 @@ export class TestExecutionsController {
 
   @Get()
   @RequirePermission('test_executions:read')
-  findAll(@Query() query: ListTestExecutionsQueryDto) {
-    return this.testExecutionsService.findAll(query.productId);
+  findAll(@Query() query: ListTestExecutionsQueryDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.testExecutionsService.findAll(query.productId, actor.organizationId);
   }
 
   @Get(':id')
   @RequirePermission('test_executions:read')
-  findOne(@Param('id') id: string) {
-    return this.testExecutionsService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.testExecutionsService.findOne(id, actor.organizationId);
   }
 
   @Post()
   @RequirePermission('test_executions:execute')
-  create(@Body() dto: CreateTestExecutionDto) {
-    return this.testExecutionsService.create(dto);
+  create(@Body() dto: CreateTestExecutionDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.testExecutionsService.create(dto, actor);
   }
 
   @Patch(':id')
   @RequirePermission('test_executions:execute')
-  update(@Param('id') id: string, @Body() dto: UpdateTestExecutionDto) {
-    return this.testExecutionsService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateTestExecutionDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.testExecutionsService.update(id, dto, actor);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission('test_executions:manage')
-  remove(@Param('id') id: string) {
-    return this.testExecutionsService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.testExecutionsService.remove(id, actor);
   }
 }

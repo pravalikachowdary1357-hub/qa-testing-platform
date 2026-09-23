@@ -41,20 +41,20 @@ export class ProductDocumentsController {
 
   @Get()
   @RequirePermission('product_documents:read')
-  findAll(@Query() query: ListProductDocumentsQueryDto) {
-    return this.documentsService.findAll(query.productId);
+  findAll(@Query() query: ListProductDocumentsQueryDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.documentsService.findAll(query.productId, actor.organizationId);
   }
 
   @Get(':id')
   @RequirePermission('product_documents:read')
-  findOne(@Param('id') id: string) {
-    return this.documentsService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.documentsService.findOne(id, actor.organizationId);
   }
 
   @Get(':id/versions')
   @RequirePermission('product_documents:read')
-  findVersionHistory(@Param('id') id: string) {
-    return this.documentsService.findVersionHistory(id);
+  findVersionHistory(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.documentsService.findVersionHistory(id, actor.organizationId);
   }
 
   @Get(':id/content')

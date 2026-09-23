@@ -22,8 +22,9 @@ import {
   REQUIREMENT_FIELD_LABELS,
   REQUIREMENT_TRACKED_FIELDS,
 } from './requirements.constants';
+import { assertSameOrganization, productOrganizationScopeWhere } from '../common/organization-scope.util';
 
-const PRODUCT_REF_SELECT = { select: { id: true, name: true } };
+const PRODUCT_REF_SELECT = { select: { id: true, name: true, organizationId: true } };
 const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
 const USER_REF_SELECT = {
   select: { id: true, name: true, email: true, status: true },
@@ -95,15 +96,18 @@ export class RequirementsService {
     private readonly auditLog: AuditLogService,
   ) {}
 
-  findAll(productId?: string) {
+  findAll(productId: string | undefined, actorOrganizationId: string | null) {
     return this.prisma.requirement.findMany({
-      where: productId ? { productId } : {},
+      where: {
+        ...(productId ? { productId } : {}),
+        ...productOrganizationScopeWhere(actorOrganizationId),
+      },
       include: REQUIREMENT_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actorOrganizationId: string | null) {
     const requirement = await this.prisma.requirement.findUnique({
       where: { id },
       include: REQUIREMENT_DETAIL_INCLUDE,
@@ -112,11 +116,13 @@ export class RequirementsService {
     if (!requirement) {
       throw new NotFoundException(`Requirement ${id} not found`);
     }
+    assertSameOrganization(actorOrganizationId, requirement.product.organizationId, `Requirement ${id} not found`);
 
     return requirement;
   }
 
   async create(dto: CreateRequirementDto, actor: AuthenticatedUser) {
+    await this.assertProductInScope(dto.productId, actor.organizationId);
     const { acceptanceCriteria, ...scalarDto } = dto;
 
     let created;
@@ -182,7 +188,7 @@ export class RequirementsService {
     const { updated, changes, criteriaChanged } = await this.persistChange(
       id,
       dto,
-      actor.id,
+      actor,
     );
 
     const summaryParts = this.describeChanges(changes, criteriaChanged);
@@ -205,10 +211,14 @@ export class RequirementsService {
     dto: ReviewRequirementDto,
     actor: AuthenticatedUser,
   ) {
-    const current = await this.prisma.requirement.findUnique({ where: { id } });
+    const current = await this.prisma.requirement.findUnique({
+      where: { id },
+      include: { product: { select: { organizationId: true } } },
+    });
     if (!current) {
       throw new NotFoundException(`Requirement ${id} not found`);
     }
+    assertSameOrganization(actor.organizationId, current.product.organizationId, `Requirement ${id} not found`);
     if (current.status !== RequirementStatus.IN_REVIEW) {
       throw new BadRequestException(
         'Only a requirement that is In Review can be approved, rejected, or returned for rework.',
@@ -223,7 +233,7 @@ export class RequirementsService {
         reviewedAt: new Date(),
         reviewComment: dto.comment ?? null,
       } as unknown as UpdateRequirementDto,
-      actor.id,
+      actor,
       dto.comment,
     );
 
@@ -241,6 +251,19 @@ export class RequirementsService {
   }
 
   async remove(id: string, actor: AuthenticatedUser) {
+    const existingWithProduct = await this.prisma.requirement.findUnique({
+      where: { id },
+      include: { product: { select: { organizationId: true } } },
+    });
+    if (!existingWithProduct) {
+      throw new NotFoundException(`Requirement ${id} not found`);
+    }
+    assertSameOrganization(
+      actor.organizationId,
+      existingWithProduct.product.organizationId,
+      `Requirement ${id} not found`,
+    );
+
     let existing;
     try {
       existing = await this.prisma.requirement.delete({ where: { id } });
@@ -263,11 +286,39 @@ export class RequirementsService {
     });
   }
 
-  findActivity(id: string) {
+  // Every sub-resource route below is reached by a requirement UUID in the
+  // URL, bypassing findOne()'s own scope check entirely -- so each one needs
+  // its own confirmation that the requirement is actually visible to this
+  // actor before touching its activity/versions/attachments.
+  private async assertRequirementInScope(id: string, actorOrganizationId: string | null) {
+    const requirement = await this.prisma.requirement.findUnique({
+      where: { id },
+      select: { product: { select: { organizationId: true } } },
+    });
+    if (!requirement) {
+      throw new NotFoundException(`Requirement ${id} not found`);
+    }
+    assertSameOrganization(actorOrganizationId, requirement.product.organizationId, `Requirement ${id} not found`);
+  }
+
+  private async assertProductInScope(productId: string, actorOrganizationId: string | null): Promise<void> {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { organizationId: true },
+    });
+    if (!product) {
+      throw new BadRequestException(`Product ${productId} not found`);
+    }
+    assertSameOrganization(actorOrganizationId, product.organizationId, `Product ${productId} not found`);
+  }
+
+  async findActivity(id: string, actor: AuthenticatedUser) {
+    await this.assertRequirementInScope(id, actor.organizationId);
     return this.auditLog.findAll('Requirement', id);
   }
 
-  async findVersions(id: string) {
+  async findVersions(id: string, actor: AuthenticatedUser) {
+    await this.assertRequirementInScope(id, actor.organizationId);
     const versions = await this.prisma.requirementVersion.findMany({
       where: { requirementId: id },
       include: { changedBy: { select: { id: true, name: true, email: true } } },
@@ -280,7 +331,8 @@ export class RequirementsService {
     }));
   }
 
-  listAttachments(requirementId: string) {
+  async listAttachments(requirementId: string, actor: AuthenticatedUser) {
+    await this.assertRequirementInScope(requirementId, actor.organizationId);
     return this.prisma.requirementAttachment.findMany({
       where: { requirementId },
       select: ATTACHMENT_SELECT,
@@ -293,6 +345,7 @@ export class RequirementsService {
     attachmentId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertRequirementInScope(requirementId, actor.organizationId);
     const attachment = await this.prisma.requirementAttachment.findFirst({
       where: { id: attachmentId, requirementId },
     });
@@ -316,6 +369,7 @@ export class RequirementsService {
     file: UploadedFileLike | undefined,
     actor: AuthenticatedUser,
   ) {
+    await this.assertRequirementInScope(requirementId, actor.organizationId);
     if (!file) {
       throw new BadRequestException('A file is required.');
     }
@@ -362,6 +416,7 @@ export class RequirementsService {
     attachmentId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertRequirementInScope(requirementId, actor.organizationId);
     const attachment = await this.prisma.requirementAttachment.findFirst({
       where: { id: attachmentId, requirementId },
     });
@@ -459,16 +514,21 @@ export class RequirementsService {
   private async persistChange(
     id: string,
     changeData: UpdateRequirementDto,
-    actorId: string,
+    actor: AuthenticatedUser,
     versionComment?: string,
   ) {
     const current = await this.prisma.requirement.findUnique({
       where: { id },
-      include: { acceptanceCriteria: { orderBy: { sortOrder: 'asc' } } },
+      include: {
+        acceptanceCriteria: { orderBy: { sortOrder: 'asc' } },
+        product: { select: { organizationId: true } },
+      },
     });
     if (!current) {
       throw new NotFoundException(`Requirement ${id} not found`);
     }
+    assertSameOrganization(actor.organizationId, current.product.organizationId, `Requirement ${id} not found`);
+    const actorId = actor.id;
 
     const { acceptanceCriteria, ...rest } = changeData;
     const currentRecord = current as unknown as Record<string, unknown>;

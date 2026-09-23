@@ -107,6 +107,7 @@ export class AuthService {
     name: string;
     status: string;
     roleId: string;
+    organizationId: string | null;
     emailNotificationsEnabled: boolean;
     role: {
       name: string;
@@ -122,6 +123,7 @@ export class AuthService {
       roleName: user.role.name,
       permissions: user.role.rolePermissions.map((rp) => rp.permission.key),
       emailNotificationsEnabled: user.emailNotificationsEnabled,
+      organizationId: user.organizationId,
     };
   }
 }

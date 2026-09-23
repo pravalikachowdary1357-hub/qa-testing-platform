@@ -5,6 +5,7 @@ export interface ListUsersFilter {
   search?: string;
   roleId?: string;
   status?: string;
+  organizationId?: string;
 }
 
 export function fetchUsers(filter: ListUsersFilter = {}): Promise<ApiUser[]> {
@@ -12,6 +13,7 @@ export function fetchUsers(filter: ListUsersFilter = {}): Promise<ApiUser[]> {
   if (filter.search) params.set('search', filter.search);
   if (filter.roleId) params.set('roleId', filter.roleId);
   if (filter.status) params.set('status', filter.status);
+  if (filter.organizationId) params.set('organizationId', filter.organizationId);
   const qs = params.toString();
   return apiFetch<ApiUser[]>(`/users${qs ? `?${qs}` : ''}`);
 }

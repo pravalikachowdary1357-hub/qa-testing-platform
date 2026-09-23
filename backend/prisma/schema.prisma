@@ -330,15 +330,44 @@ enum ProductDocumentStatus {
 model Organization {
   id          String             @id @default(uuid())
   name        String             @unique
+  // Optional short code, mirroring Product.productKey's exact convention
+  // (nullable, unique, regex-validated at the DTO layer) -- not required
+  // since the existing entity has shipped without one until now.
+  orgKey      String?            @unique @map("org_key")
   description String?
   status      OrganizationStatus @default(ACTIVE)
   createdAt   DateTime           @default(now()) @map("created_at")
   updatedAt   DateTime           @updatedAt @map("updated_at")
 
-  products Product[]
-  projects Project[]
+  products      Product[]
+  projects      Project[]
+  businessUnits BusinessUnit[]
+  teams         Team[]
+  users         User[]
 
   @@map("organizations")
+}
+
+// Sits between Organization and Project per the QMICS TestSphere hierarchy
+// (Organization -> Business Unit -> Project -> Product). businessUnitId on
+// Project is nullable so every existing project keeps working unassigned --
+// additive, not a forced migration of existing data, same pattern as
+// Product.projectId.
+model BusinessUnit {
+  id             String             @id @default(uuid())
+  organizationId String             @map("organization_id")
+  name           String
+  description    String?
+  status         OrganizationStatus @default(ACTIVE)
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  projects     Project[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("business_units")
 }
 
 // Sits between Organization and Product per the QMICS TestSphere hierarchy.
@@ -347,17 +376,56 @@ model Organization {
 model Project {
   id             String        @id @default(uuid())
   organizationId String        @map("organization_id")
+  businessUnitId String?       @map("business_unit_id")
   name           String
   description    String?
   status         ProjectStatus @default(ACTIVE)
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  businessUnit BusinessUnit? @relation(fields: [businessUnitId], references: [id], onDelete: SetNull)
   products     Product[]
 
   @@index([organizationId])
+  @@index([businessUnitId])
   @@map("projects")
+}
+
+// A named group of users within an Organization (QA/dev/business "testing
+// group"), independent of any single Product -- distinct from
+// ProductTeamMember, which is a per-product membership roster, not a
+// reusable cross-product Team entity.
+model Team {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String
+  description    String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  members      TeamMember[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("teams")
+}
+
+model TeamMember {
+  id             String   @id @default(uuid())
+  teamId         String   @map("team_id")
+  userId         String   @map("user_id")
+  responsibility String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation("TeamMembership", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+  @@map("team_members")
 }
 
 model Product {
@@ -1205,22 +1273,30 @@ model User {
   name                      String
   status                    UserStatus @default(ACTIVE)
   roleId                    String     @map("role_id")
+  // Nullable and not backfilled for existing users: a user with no
+  // organization is treated as unscoped (sees across every organization,
+  // matching today's behavior for everyone) -- organization-level data
+  // isolation only starts applying once an admin explicitly assigns one.
+  organizationId            String?    @map("organization_id")
   emailNotificationsEnabled Boolean    @default(true) @map("email_notifications_enabled")
   lastLoginAt               DateTime?  @map("last_login_at") @db.Timestamptz(3)
   createdAt                 DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                 DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   role                      Role                 @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  organization              Organization?        @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   sessions                  Session[]
   auditLogs                 AuditLog[]           @relation("AuditLogActor")
   appSettingUpdates         AppSetting[]
   ownedProducts             Product[]            @relation("ProductOwner")
   productTeamMemberships    ProductTeamMember[]  @relation("ProductTeamMembership")
+  teamMemberships           TeamMember[]         @relation("TeamMembership")
   requirementsOwned         Requirement[]        @relation("RequirementOwner")
   requirementReviews        Requirement[]        @relation("RequirementReviewedBy")
   requirementVersionChanges RequirementVersion[] @relation("RequirementVersionChangedBy")
 
   @@index([roleId])
+  @@index([organizationId])
   @@map("users")
 }
 

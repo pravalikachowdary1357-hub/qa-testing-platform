@@ -41,33 +41,37 @@ export class TestScenariosController {
 
   @Get()
   @RequirePermission('test_scenarios:read')
-  findAll(@Query() query: ListTestScenariosQueryDto) {
-    return this.testScenariosService.findAll(query.productId);
+  findAll(@Query() query: ListTestScenariosQueryDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.testScenariosService.findAll(query.productId, actor.organizationId);
   }
 
   @Get(':id')
   @RequirePermission('test_scenarios:read')
-  findOne(@Param('id') id: string) {
-    return this.testScenariosService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.testScenariosService.findOne(id, actor.organizationId);
   }
 
   @Post()
   @RequirePermission('test_scenarios:write')
-  create(@Body() dto: CreateTestScenarioDto) {
-    return this.testScenariosService.create(dto);
+  create(@Body() dto: CreateTestScenarioDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.testScenariosService.create(dto, actor);
   }
 
   @Patch(':id')
   @RequirePermission('test_scenarios:write')
-  update(@Param('id') id: string, @Body() dto: UpdateTestScenarioDto) {
-    return this.testScenariosService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateTestScenarioDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.testScenariosService.update(id, dto, actor);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission('test_scenarios:manage')
-  remove(@Param('id') id: string) {
-    return this.testScenariosService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.testScenariosService.remove(id, actor);
   }
 
   @Post('import')

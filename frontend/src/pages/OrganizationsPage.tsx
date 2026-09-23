@@ -333,6 +333,7 @@ export function OrganizationsPage() {
           formMode === 'edit' && editingOrganization
             ? {
                 name: editingOrganization.name,
+                orgKey: editingOrganization.orgKey ?? '',
                 description: editingOrganization.description ?? '',
                 status: editingOrganization.status,
               }

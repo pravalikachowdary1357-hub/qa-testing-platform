@@ -19,6 +19,8 @@ import { ListReleasesQueryDto } from './dto/list-releases-query.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermission } from '../auth/require-permission.decorator';
+import { CurrentUser } from '../auth/current-user.decorator';
+import type { AuthenticatedUser } from '../auth/current-user.decorator';
 
 @Controller('releases')
 @UseGuards(AuthGuard, PermissionsGuard)
@@ -27,38 +29,46 @@ export class ReleaseQualityController {
 
   @Get()
   @RequirePermission('release_quality:read')
-  findAll(@Query() query: ListReleasesQueryDto) {
-    return this.releaseQualityService.findAll(query.productId);
+  findAll(@Query() query: ListReleasesQueryDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.releaseQualityService.findAll(query.productId, actor.organizationId);
   }
 
   @Get(':id')
   @RequirePermission('release_quality:read')
-  findOne(@Param('id') id: string) {
-    return this.releaseQualityService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.releaseQualityService.findOne(id, actor.organizationId);
   }
 
   @Post()
   @RequirePermission('release_quality:write')
-  create(@Body() dto: CreateReleaseDto) {
-    return this.releaseQualityService.create(dto);
+  create(@Body() dto: CreateReleaseDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.releaseQualityService.create(dto, actor);
   }
 
   @Patch(':id')
   @RequirePermission('release_quality:write')
-  update(@Param('id') id: string, @Body() dto: UpdateReleaseDto) {
-    return this.releaseQualityService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateReleaseDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.releaseQualityService.update(id, dto, actor);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission('release_quality:manage')
-  remove(@Param('id') id: string) {
-    return this.releaseQualityService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.releaseQualityService.remove(id, actor);
   }
 
   @Post(':id/sign-off')
   @RequirePermission('release_quality:approve')
-  signOff(@Param('id') id: string, @Body() dto: SignOffReleaseDto) {
-    return this.releaseQualityService.signOff(id, dto);
+  signOff(
+    @Param('id') id: string,
+    @Body() dto: SignOffReleaseDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.releaseQualityService.signOff(id, dto, actor);
   }
 }

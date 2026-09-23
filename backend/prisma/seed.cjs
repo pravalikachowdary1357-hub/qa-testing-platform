@@ -50,6 +50,8 @@ const ADMIN_PERMISSIONS = [
 // POST :id/sign-off), never invented.
 const MODULES = {
   organizations: ['read', 'write', 'manage'],
+  business_units: ['read', 'write', 'manage'],
+  teams: ['read', 'write', 'manage'],
   projects: ['read', 'write', 'manage'],
   products: ['read', 'write', 'manage'],
   product_documents: ['read', 'write', 'manage'],
@@ -102,26 +104,59 @@ function allKeys(module) {
   return MODULES[module].map((a) => `${module}:${a}`);
 }
 
-// Consolidated per the user's explicit review: a 10-role matrix is more
-// than a practical QA tool needs. Test Manager + Test Lead merge into one
-// "Test Lead / Test Manager" role; Business Analyst + Product Owner merge
-// into "Business/Release Approver"; Auditor and Management are dropped
-// entirely (read-only/reporting needs are covered by assigning one of the
-// remaining roles, not by dedicated accounts). Every grant is still an
+// 9-role model, evolved from the earlier 6-role consolidation (itself a
+// consolidation of an original 10-role table). Every grant is still an
 // explicit permission key -- no implicit hierarchy -- so this table remains
-// the single place the whole matrix lives.
-const ROLE_GRANTS = {
-  'System Administrator': PERMISSIONS.map((p) => p.key),
+// the single place the whole matrix lives. Source: "QMICS TestSphere --
+// Software Test Management System -- Roles & Responsibilities" document,
+// mapped onto this application's actual modules per the approved role
+// analysis (not a mechanical RACI-to-CRUD conversion).
+//
+// Modules the platform Administrator does NOT get -- hands-on QA execution
+// work. The role administers the platform (organizations, users, teams,
+// roles, settings, audit) rather than doing the testing itself.
+const ADMINISTRATOR_EXCLUDED_MODULES = [
+  'test_scenarios',
+  'test_cases',
+  'test_data',
+  'environments',
+  'test_executions',
+  'defects',
+  'automation',
+  'api_testing',
+  'performance_testing',
+  'security_testing',
+  'uat',
+];
+// Testing-governance/oversight modules that now live solely with Test
+// Manager. Administrator previously also held a redundant copy of these
+// (requirements, test planning, traceability, release quality, reports,
+// AI) despite never using them for platform administration -- removed here
+// since Test Manager independently owns all of them for testing governance.
+const ADMINISTRATOR_ADDITIONAL_EXCLUDED_MODULES = [
+  'requirements',
+  'test_plans',
+  'traceability',
+  'release_quality',
+  'reports',
+  'ai',
+];
 
-  // Overall QA owner: full lifecycle authority (including the specialized
-  // test types and AI), but -- unlike the old 10-role QA Manager -- no
-  // longer manages Organizations/Products; that's System Administrator's
-  // job now. api_testing is included alongside automation/performance/
-  // security even though the user's 6-role table didn't name it
-  // explicitly, since leaving out just that one lifecycle module for the
-  // broadest QA role would be an inconsistent, almost certainly unintended
-  // gap.
-  'QA Manager': [
+const ROLE_GRANTS = {
+  'QMICS TestSphere Administrator': PERMISSIONS.map((p) => p.key).filter(
+    (key) =>
+      ![...ADMINISTRATOR_EXCLUDED_MODULES, ...ADMINISTRATOR_ADDITIONAL_EXCLUDED_MODULES].includes(
+        key.split(':')[0],
+      ),
+  ),
+
+  // Overall testing owner: strategy, governance, planning, quality, risk,
+  // release readiness, and full lifecycle authority (including the
+  // specialized test types and AI). api_testing is included alongside
+  // automation/performance/security for the same reason it always has
+  // been: leaving out just one lifecycle module for the broadest testing
+  // role would be an inconsistent, almost certainly unintended gap.
+  'Test Manager / Test Program Manager': [
     ...allKeys('requirements'),
     ...allKeys('product_documents'),
     ...allKeys('test_plans'),
@@ -143,12 +178,12 @@ const ROLE_GRANTS = {
   ],
 
   // Day-to-day test-cycle management: full authority over test planning,
-  // scenarios, cases, data, environments, execution, and defects -- but
-  // (per the user's table) not the specialized test types (automation/API/
-  // performance/security), UAT, release quality, or AI, which stay with QA
-  // Manager. Requirements access is read-only (needed to build test plans
-  // against them, not listed as an owned module).
-  'Test Lead / Test Manager': [
+  // scenarios, cases, data, environments, execution, and defects -- but not
+  // the specialized test types (automation/API/performance/security), UAT,
+  // release quality, or AI, which stay with Test Manager. Requirements
+  // access is read-only (needed to build test plans against them, not
+  // listed as an owned module).
+  'Test Lead / QA Lead': [
     ...keys('requirements', 'read'),
     ...keys('product_documents', 'read'),
     ...allKeys('test_plans'),
@@ -162,11 +197,14 @@ const ROLE_GRANTS = {
     ...keys('reports', 'read'),
   ],
 
-  // Per the user's own Tester-vs-Developer comparison table: create/edit/
-  // execute test cases, execute tests and UAT, create/update defects, view
-  // everything else needed to do that work. No automation/API/performance/
-  // security or AI at this role level in the 6-role design.
-  Tester: [
+  // Hands-on execution: create/edit/execute test cases, execute tests and
+  // UAT, create/update defects, view everything else needed to do that
+  // work. Per the Roles & Responsibilities document review, this role also
+  // represents the Performance/Security/API-Integration Test Engineer
+  // responsibility areas -- read/write/execute only, no `manage` (framework/
+  // deletion authority stays with Test Manager or, for automation
+  // specifically, the dedicated Automation Engineer role below).
+  'Tester / Test Engineer / QA Engineer': [
     ...keys('requirements', 'read'),
     ...keys('product_documents', 'read'),
     ...keys('test_scenarios', 'read'),
@@ -175,15 +213,49 @@ const ROLE_GRANTS = {
     ...keys('environments', 'read'),
     ...keys('test_executions', 'read', 'execute'),
     ...keys('defects', 'read', 'write'),
+    ...keys('automation', 'read', 'write', 'execute'),
+    ...keys('api_testing', 'read', 'write', 'execute'),
+    ...keys('performance_testing', 'read', 'write', 'execute'),
+    ...keys('security_testing', 'read', 'write', 'execute'),
     ...keys('uat', 'read', 'execute'),
     ...keys('release_quality', 'read'),
     ...keys('reports', 'read'),
   ],
 
-  // Per the same comparison table: view requirements/test cases/results/
-  // environments, investigate and fix defects (root cause, corrective
-  // action, mark ready for retest -- all just defect record updates), view
-  // UAT and release status.
+  // NEW. Owns the automation framework/scripts/repositories -- the source
+  // document's RACI gives "Automation" its own column, distinct from
+  // Tester, in every activity row, and its section uses ownership language
+  // ("maintain libraries", "maintain repositories") the API/performance/
+  // security sections don't. Read-only on test_cases/test_scenarios/
+  // test_executions (needs to know what to automate and see run history,
+  // but doesn't author manual test cases -- matches the RACI's C-not-R
+  // rating for Automation on Test Case Design). `automation:*` overlaps
+  // intentionally with Tester/Test Manager above: the RACI marks Tester,
+  // Automation, and Test Manager all Responsible/Accountable together on
+  // Test Case Design, Test Execution, Defect Reporting, and Regression.
+  'Automation Engineer': [
+    ...allKeys('automation'),
+    ...keys('test_cases', 'read'),
+    ...keys('test_scenarios', 'read'),
+    ...keys('test_executions', 'read'),
+    ...keys('reports', 'read'),
+  ],
+
+  // NEW -- intentionally granted ZERO permissions. The document's Database
+  // Test Engineer responsibilities (validate schemas, data integrity, ETL,
+  // stored procedures, DB performance) have no corresponding module in this
+  // application -- there is no database-testing entity/controller to grant
+  // access to. The role exists (so it can be assigned and expanded later)
+  // but is deliberately left non-functional rather than backfilled with
+  // unrelated modules just to appear complete. Proposed future permission
+  // keys (database_testing:read/write/execute/manage) are documented
+  // separately, NOT added here, since nothing in the schema exists yet for
+  // them to gate.
+  'Database Test Engineer': [],
+
+  // Unchanged: investigates and fixes defects (root cause, corrective
+  // action, ready-for-retest -- all just defect record updates); views
+  // requirements, test results, UAT, and release status.
   Developer: [
     ...keys('requirements', 'read'),
     ...keys('product_documents', 'read'),
@@ -197,16 +269,30 @@ const ROLE_GRANTS = {
     ...keys('reports', 'read'),
   ],
 
-  // Merges Business Analyst's requirements ownership with Product Owner's
-  // UAT/release approval authority. Deliberately does NOT get test
-  // planning/scenarios/cases visibility -- the 6-role table scopes this
-  // role to requirements + UAT + release, approving based on UAT results
-  // and release readiness rather than test-case-level detail.
-  'Business/Release Approver': [
+  // NEW -- split out of the old "Business/Release Approver" for
+  // segregation of duties: this role EXECUTES UAT (coordinates business
+  // users, prepares UAT test cases, manages UAT execution, records
+  // feedback), while "Product Owner / Release Approver" below APPROVES it.
+  // The same account no longer does both. Deliberately no uat:approve or
+  // uat:manage.
+  'UAT Coordinator / Business Tester': [
+    ...keys('uat', 'read', 'write', 'execute'),
+    ...keys('requirements', 'read'),
+    ...keys('test_cases', 'read'),
+    ...keys('reports', 'read'),
+  ],
+
+  // Renamed from "Business/Release Approver" and narrowed: uat:write/
+  // execute moved to the new UAT Coordinator role above, so this role can
+  // no longer execute the UAT it's meant to approve. Still deliberately
+  // does NOT get test planning/scenarios/cases visibility -- scopes to
+  // requirements + UAT + release, approving based on results rather than
+  // test-case-level detail.
+  'Product Owner / Release Approver': [
     ...keys('requirements', 'read', 'write', 'manage', 'approve'),
     ...allKeys('product_documents'),
     ...keys('defects', 'read'),
-    ...allKeys('uat'),
+    ...keys('uat', 'read', 'approve', 'manage'),
     ...allKeys('release_quality'),
     ...keys('traceability', 'read'),
     ...keys('reports', 'read'),
@@ -214,20 +300,26 @@ const ROLE_GRANTS = {
 };
 
 const ROLE_DESCRIPTIONS = {
-  'System Administrator': 'Full administrative access to every module and all platform settings.',
-  'QA Manager': 'Overall QA owner: full authority across the entire testing lifecycle, including automation, performance, security, UAT, release quality, and AI.',
-  'Test Lead / Test Manager': 'Day-to-day testing management: test plans, scenarios, cases, data, environments, execution, and defects.',
-  Tester: 'Creates/executes test cases, records results, raises and updates defects, executes UAT.',
+  'QMICS TestSphere Administrator': 'Platform administration: organizations, business units, teams, projects, products, users, roles/permissions, and system/audit settings. Does not include any QA testing execution, planning, or governance -- that is Test Manager\'s domain.',
+  'Test Manager / Test Program Manager': 'Overall testing ownership: strategy, governance, planning, quality risk, and release readiness, with full authority across the entire testing lifecycle including automation, performance, security, UAT, release quality, and AI.',
+  'Test Lead / QA Lead': 'Day-to-day testing management: test plans, scenarios, cases, data, environments, execution, and defects.',
+  'Tester / Test Engineer / QA Engineer': 'Creates/executes test cases, records evidence, raises and updates defects, executes UAT, and performs assigned specialized testing (automation, API, performance, security).',
+  'Automation Engineer': 'Owns test automation: develops/maintains automation frameworks, scripts, and repositories; executes automated regression; analyzes failures. Read-only on manual test cases/scenarios/execution history.',
+  'Database Test Engineer': 'Reserved for a future database-testing capability (schema validation, data integrity, ETL, stored procedures). No TestSphere module exists for this yet, so this role currently has no granted permissions.',
   Developer: 'Investigates and fixes defects (root cause, corrective action, ready-for-retest); views requirements, test results, UAT, and release status.',
-  'Business/Release Approver': 'Business acceptance and release decision authority: owns requirements, UAT sign-off, and release readiness approval.',
+  'UAT Coordinator / Business Tester': 'Coordinates and executes User Acceptance Testing: prepares UAT test cases, manages UAT execution, records business-user feedback. Does not hold final UAT approval authority.',
+  'Product Owner / Release Approver': 'Business acceptance and release decision authority: owns requirements, approves UAT results, and approves release readiness. Does not execute UAT directly.',
 };
 
 const ROLE_USERS = [
-  { role: 'QA Manager', email: 'qa.manager@testsphere.local', name: 'QA Manager' },
-  { role: 'Test Lead / Test Manager', email: 'test.manager@testsphere.local', name: 'Test Lead / Test Manager' },
-  { role: 'Tester', email: 'tester@testsphere.local', name: 'Tester' },
+  { role: 'Test Manager / Test Program Manager', email: 'qa.manager@testsphere.local', name: 'Test Manager / Test Program Manager' },
+  { role: 'Test Lead / QA Lead', email: 'test.manager@testsphere.local', name: 'Test Lead / QA Lead' },
+  { role: 'Tester / Test Engineer / QA Engineer', email: 'tester@testsphere.local', name: 'Tester / Test Engineer / QA Engineer' },
   { role: 'Developer', email: 'developer@testsphere.local', name: 'Developer' },
-  { role: 'Business/Release Approver', email: 'business.approver@testsphere.local', name: 'Business/Release Approver' },
+  { role: 'Product Owner / Release Approver', email: 'business.approver@testsphere.local', name: 'Product Owner / Release Approver' },
+  { role: 'Automation Engineer', email: 'automation.engineer@testsphere.local', name: 'Automation Engineer' },
+  { role: 'Database Test Engineer', email: 'database.engineer@testsphere.local', name: 'Database Test Engineer' },
+  { role: 'UAT Coordinator / Business Tester', email: 'uat.coordinator@testsphere.local', name: 'UAT Coordinator / Business Tester' },
 ];
 
 // Roles superseded by this consolidation (10 roles -> 6). "Manager"/"Member"
@@ -248,12 +340,27 @@ const RETIRED_ROLE_NAMES = [
   'Management',
 ];
 
+// Renames applied when moving from the 6-role model to the 9-role model --
+// migrated via role.update (preserving the role's id, and therefore every
+// existing user's roleId) rather than treated as retired/deleted, since
+// each of these is the SAME role continuing under a new name, not a role
+// being dropped. Checked in order so the Administrator role's full rename
+// history (Admin -> System Administrator -> this) migrates forward
+// correctly no matter which point in that history a given database is at.
+const ROLE_RENAME_CHAINS = {
+  'QMICS TestSphere Administrator': ['Admin', 'System Administrator'],
+  'Test Manager / Test Program Manager': ['QA Manager'],
+  'Test Lead / QA Lead': ['Test Lead / Test Manager'],
+  'Tester / Test Engineer / QA Engineer': ['Tester'],
+  'Product Owner / Release Approver': ['Business/Release Approver'],
+};
+
 async function ensureRole(name, isSystem, description) {
-  if (name === 'System Administrator') {
-    const legacyAdmin = await prisma.role.findUnique({ where: { name: 'Admin' } });
-    if (legacyAdmin) {
+  for (const priorName of ROLE_RENAME_CHAINS[name] ?? []) {
+    const legacy = await prisma.role.findUnique({ where: { name: priorName } });
+    if (legacy) {
       return prisma.role.update({
-        where: { id: legacyAdmin.id },
+        where: { id: legacy.id },
         data: { name, isSystem, description },
       });
     }
@@ -292,7 +399,7 @@ async function main() {
 
   const roleIds = {};
   for (const [name, grantedKeys] of Object.entries(ROLE_GRANTS)) {
-    const role = await ensureRole(name, name === 'System Administrator', ROLE_DESCRIPTIONS[name]);
+    const role = await ensureRole(name, name === 'QMICS TestSphere Administrator', ROLE_DESCRIPTIONS[name]);
     roleIds[name] = role.id;
 
     const permissions = await prisma.permission.findMany({
@@ -318,10 +425,10 @@ async function main() {
         email: adminEmail,
         name: 'Administrator',
         passwordHash: await bcrypt.hash(adminPassword, 10),
-        roleId: roleIds['System Administrator'],
+        roleId: roleIds['QMICS TestSphere Administrator'],
       },
     });
-    console.log(`Created initial System Administrator user: ${adminEmail}`);
+    console.log(`Created initial QMICS TestSphere Administrator user: ${adminEmail}`);
     if (!process.env.SEED_ADMIN_PASSWORD) {
       console.log(
         `WARNING: no SEED_ADMIN_PASSWORD was set -- used the default dev password "${adminPassword}". Change it immediately after first login.`,

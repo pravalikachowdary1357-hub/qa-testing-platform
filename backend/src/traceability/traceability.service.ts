@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
+import { productOrganizationScopeWhere } from '../common/organization-scope.util';
 
 const PRODUCT_REF_SELECT = { select: { id: true, name: true } };
 
@@ -49,30 +50,59 @@ function percent(numerator: number, denominator: number): number {
 export class TraceabilityService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getMatrix(productId?: string) {
+  async getMatrix(productId: string | undefined, actorOrganizationId: string | null) {
     const [requirements, testScenarios, testCases, testExecutions, defects] = await Promise.all([
       this.prisma.requirement.findMany({
-        where: productId ? { productId } : {},
+        where: {
+          ...(productId ? { productId } : {}),
+          ...productOrganizationScopeWhere(actorOrganizationId),
+        },
         include: REQUIREMENT_INCLUDE,
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.testScenario.findMany({
-        where: productId ? { productId } : {},
+        where: {
+          ...(productId ? { productId } : {}),
+          ...productOrganizationScopeWhere(actorOrganizationId),
+        },
         include: TEST_SCENARIO_INCLUDE,
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.testCase.findMany({
-        where: productId ? { testScenario: { productId } } : {},
+        where: {
+          ...(productId || actorOrganizationId
+            ? {
+                testScenario: {
+                  ...(productId ? { productId } : {}),
+                  ...(actorOrganizationId ? { product: { organizationId: actorOrganizationId } } : {}),
+                },
+              }
+            : {}),
+        },
         include: TEST_CASE_INCLUDE,
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.testExecution.findMany({
-        where: productId ? { testCase: { testScenario: { productId } } } : {},
+        where: {
+          ...(productId || actorOrganizationId
+            ? {
+                testCase: {
+                  testScenario: {
+                    ...(productId ? { productId } : {}),
+                    ...(actorOrganizationId ? { product: { organizationId: actorOrganizationId } } : {}),
+                  },
+                },
+              }
+            : {}),
+        },
         include: TEST_EXECUTION_INCLUDE,
         orderBy: { executedAt: 'desc' },
       }),
       this.prisma.defect.findMany({
-        where: productId ? { productId } : {},
+        where: {
+          ...(productId ? { productId } : {}),
+          ...productOrganizationScopeWhere(actorOrganizationId),
+        },
         include: DEFECT_INCLUDE,
         orderBy: { createdAt: 'desc' },
       }),

@@ -12,12 +12,16 @@ import {
 } from '@mui/material';
 import type { ApiRole } from '../../types/settings';
 import type { ApiUser } from '../../types/settings';
+import type { ApiOrganization } from '../../types/organization';
+
+const NO_ORGANIZATION = '';
 
 interface FormValues {
   email: string;
   name: string;
   password: string;
   roleId: string;
+  organizationId: string;
 }
 
 interface FieldErrors {
@@ -32,12 +36,13 @@ interface UserFormDialogProps {
   mode: 'create' | 'edit';
   user: ApiUser | null;
   roles: ApiRole[];
+  organizations: ApiOrganization[];
   onClose: () => void;
   onSubmit: (values: FormValues) => Promise<void>;
 }
 
 function emptyValues(defaultRoleId: string): FormValues {
-  return { email: '', name: '', password: '', roleId: defaultRoleId };
+  return { email: '', name: '', password: '', roleId: defaultRoleId, organizationId: NO_ORGANIZATION };
 }
 
 export function UserFormDialog({
@@ -45,6 +50,7 @@ export function UserFormDialog({
   mode,
   user,
   roles,
+  organizations,
   onClose,
   onSubmit,
 }: UserFormDialogProps) {
@@ -58,7 +64,13 @@ export function UserFormDialog({
     setSubmitError(null);
     setFieldErrors({});
     if (mode === 'edit' && user) {
-      setValues({ email: user.email, name: user.name, password: '', roleId: user.role.id });
+      setValues({
+        email: user.email,
+        name: user.name,
+        password: '',
+        roleId: user.role.id,
+        organizationId: user.organization?.id ?? NO_ORGANIZATION,
+      });
     } else {
       setValues(emptyValues(roles[0]?.id ?? ''));
     }
@@ -157,6 +169,21 @@ export function UserFormDialog({
             {roles.map((role) => (
               <MenuItem key={role.id} value={role.id}>
                 {role.name}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label="Organization"
+            value={values.organizationId}
+            onChange={(e) => setValues((v) => ({ ...v, organizationId: e.target.value }))}
+            fullWidth
+            helperText="Leave unassigned to keep this user unscoped (sees every organization)."
+          >
+            <MenuItem value={NO_ORGANIZATION}>No organization assigned</MenuItem>
+            {organizations.map((org) => (
+              <MenuItem key={org.id} value={org.id}>
+                {org.name}
               </MenuItem>
             ))}
           </TextField>

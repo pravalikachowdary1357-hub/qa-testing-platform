@@ -11,6 +11,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { ReleaseQualityService } from '../release-quality/release-quality.service';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
+import { assertSameOrganization, organizationScopeWhere } from '../common/organization-scope.util';
 import { validateRow } from '../common/import/validate-row.util';
 import type {
   ImportResult,
@@ -62,14 +63,15 @@ export class ProductsService {
     private readonly releaseQuality: ReleaseQualityService,
   ) {}
 
-  findAll() {
+  findAll(actorOrganizationId: string | null) {
     return this.prisma.product.findMany({
+      where: organizationScopeWhere(actorOrganizationId),
       include: PRODUCT_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actorOrganizationId: string | null) {
     const product = await this.prisma.product.findUnique({
       where: { id },
       include: PRODUCT_INCLUDE,
@@ -78,11 +80,47 @@ export class ProductsService {
     if (!product) {
       throw new NotFoundException(`Product ${id} not found`);
     }
+    assertSameOrganization(actorOrganizationId, product.organizationId, `Product ${id} not found`);
 
     return product;
   }
 
+  // A Product's Project, if set, must belong to the same Organization as the
+  // Product itself -- otherwise the Organization -> Project -> Product
+  // hierarchy silently breaks. Neither FK was ever cross-checked against the
+  // other before this (each was only validated independently against its
+  // own parent table), so a Product could previously be saved with an
+  // organizationId that didn't match its own project.organizationId.
+  private async assertProjectBelongsToOrganization(
+    projectId: string,
+    organizationId: string,
+  ) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { organizationId: true },
+    });
+    if (!project) {
+      throw new BadRequestException(`Project ${projectId} not found`);
+    }
+    if (project.organizationId !== organizationId) {
+      throw new BadRequestException(
+        'The selected project does not belong to this organization.',
+      );
+    }
+  }
+
   async create(dto: CreateProductDto, actor?: AuthenticatedUser) {
+    if (actor) {
+      assertSameOrganization(
+        actor.organizationId,
+        dto.organizationId,
+        `Organization ${dto.organizationId} not found`,
+      );
+    }
+    if (dto.projectId) {
+      await this.assertProjectBelongsToOrganization(dto.projectId, dto.organizationId);
+    }
+
     let created;
     try {
       created = await this.prisma.product.create({
@@ -118,6 +156,35 @@ export class ProductsService {
   }
 
   async update(id: string, dto: UpdateProductDto, actor?: AuthenticatedUser) {
+    const existing = await this.prisma.product.findUnique({
+      where: { id },
+      select: { organizationId: true, projectId: true },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Product ${id} not found`);
+    }
+    if (actor) {
+      assertSameOrganization(actor.organizationId, existing.organizationId, `Product ${id} not found`);
+      // Reassignment guard: a scoped actor editing their own product still
+      // can't move it into a DIFFERENT organization by supplying a foreign
+      // organizationId in the update body.
+      if (dto.organizationId) {
+        assertSameOrganization(
+          actor.organizationId,
+          dto.organizationId,
+          `Organization ${dto.organizationId} not found`,
+        );
+      }
+    }
+
+    if (dto.projectId || dto.organizationId) {
+      const effectiveOrganizationId = dto.organizationId ?? existing.organizationId;
+      const effectiveProjectId = dto.projectId !== undefined ? dto.projectId : existing.projectId;
+      if (effectiveProjectId) {
+        await this.assertProjectBelongsToOrganization(effectiveProjectId, effectiveOrganizationId);
+      }
+    }
+
     let updated;
     try {
       updated = await this.prisma.product.update({
@@ -165,8 +232,8 @@ export class ProductsService {
   // elsewhere (the Product form, CSV import/export) for now, but the
   // Dashboard itself never shows a hand-entered number as if it were
   // calculated.
-  async getDashboardSummary(id: string) {
-    await this.findOne(id);
+  async getDashboardSummary(id: string, actorOrganizationId: string | null) {
+    await this.findOne(id, actorOrganizationId);
 
     const eightWeeksAgo = new Date();
     eightWeeksAgo.setDate(eightWeeksAgo.getDate() - DASHBOARD_TREND_WEEKS * 7);
@@ -322,7 +389,7 @@ export class ProductsService {
       }
 
       try {
-        await this.create(result.dto);
+        await this.create(result.dto, actor);
         successCount++;
       } catch (error) {
         errors.push({
@@ -376,6 +443,9 @@ export class ProductsService {
 
     if (!product) {
       throw new NotFoundException(`Product ${id} not found`);
+    }
+    if (actor) {
+      assertSameOrganization(actor.organizationId, product.organizationId, `Product ${id} not found`);
     }
 
     const blockers: string[] = [];

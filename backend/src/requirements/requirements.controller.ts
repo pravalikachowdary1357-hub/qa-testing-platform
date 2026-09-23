@@ -50,32 +50,35 @@ export class RequirementsController {
 
   @Get()
   @RequirePermission('requirements:read')
-  findAll(@Query() query: ListRequirementsQueryDto) {
-    return this.requirementsService.findAll(query.productId);
+  findAll(
+    @Query() query: ListRequirementsQueryDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.requirementsService.findAll(query.productId, actor.organizationId);
   }
 
   @Get(':id')
   @RequirePermission('requirements:read')
-  findOne(@Param('id') id: string) {
-    return this.requirementsService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.requirementsService.findOne(id, actor.organizationId);
   }
 
   @Get(':id/activity')
   @RequirePermission('requirements:read')
-  findActivity(@Param('id') id: string) {
-    return this.requirementsService.findActivity(id);
+  findActivity(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.requirementsService.findActivity(id, actor);
   }
 
   @Get(':id/versions')
   @RequirePermission('requirements:read')
-  findVersions(@Param('id') id: string) {
-    return this.requirementsService.findVersions(id);
+  findVersions(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.requirementsService.findVersions(id, actor);
   }
 
   @Get(':id/attachments')
   @RequirePermission('requirements:read')
-  listAttachments(@Param('id') id: string) {
-    return this.requirementsService.listAttachments(id);
+  listAttachments(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.requirementsService.listAttachments(id, actor);
   }
 
   @Get(':id/attachments/:attachmentId/content')

@@ -31,8 +31,8 @@ export class SprintsController {
   constructor(private readonly sprintsService: SprintsService) {}
 
   @Get()
-  findAll(@Query() query: ListSprintsQueryDto) {
-    return this.sprintsService.findAll(query.productId);
+  findAll(@Query() query: ListSprintsQueryDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.sprintsService.findAll(query.productId, actor.organizationId);
   }
 
   @Post()

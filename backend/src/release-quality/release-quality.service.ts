@@ -5,8 +5,10 @@ import { ReleaseStatus } from '../../generated/prisma/enums.js';
 import { CreateReleaseDto } from './dto/create-release.dto';
 import { UpdateReleaseDto } from './dto/update-release.dto';
 import { SignOffReleaseDto } from './dto/sign-off-release.dto';
+import type { AuthenticatedUser } from '../auth/current-user.decorator';
+import { assertSameOrganization, productOrganizationScopeWhere } from '../common/organization-scope.util';
 
-const PRODUCT_REF = { select: { id: true, name: true } };
+const PRODUCT_REF = { select: { id: true, name: true, organizationId: true } };
 const ENVIRONMENT_REF = { select: { id: true, name: true } };
 
 const RELEASE_INCLUDE = {
@@ -195,24 +197,29 @@ function computeReadiness(gates: QualityGateResult[]): 'READY' | 'CONDITIONAL' |
 export class ReleaseQualityService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(productId?: string) {
+  async findAll(productId: string | undefined, actorOrganizationId: string | null) {
     const releases = await this.prisma.release.findMany({
-      where: productId ? { productId } : {},
+      where: {
+        ...(productId ? { productId } : {}),
+        ...productOrganizationScopeWhere(actorOrganizationId),
+      },
       include: RELEASE_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
     return Promise.all(releases.map((release) => this.attachQuality(release)));
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actorOrganizationId: string | null) {
     const release = await this.prisma.release.findUnique({ where: { id }, include: RELEASE_INCLUDE });
     if (!release) {
       throw new NotFoundException(`Release ${id} not found`);
     }
+    assertSameOrganization(actorOrganizationId, release.product.organizationId, `Release ${id} not found`);
     return this.attachQuality(release);
   }
 
-  async create(dto: CreateReleaseDto) {
+  async create(dto: CreateReleaseDto, actor: AuthenticatedUser) {
+    await this.assertProductInScope(dto.productId, actor.organizationId);
     if (dto.environmentId) {
       await this.validateEnvironmentBelongsToProduct(dto.environmentId, dto.productId);
     }
@@ -238,11 +245,15 @@ export class ReleaseQualityService {
     }
   }
 
-  async update(id: string, dto: UpdateReleaseDto) {
-    const existing = await this.prisma.release.findUnique({ where: { id } });
+  async update(id: string, dto: UpdateReleaseDto, actor: AuthenticatedUser) {
+    const existing = await this.prisma.release.findUnique({
+      where: { id },
+      include: { product: { select: { organizationId: true } } },
+    });
     if (!existing) {
       throw new NotFoundException(`Release ${id} not found`);
     }
+    assertSameOrganization(actor.organizationId, existing.product.organizationId, `Release ${id} not found`);
 
     const effectiveProductId = dto.productId ?? existing.productId;
     const effectiveEnvironmentId =
@@ -280,7 +291,16 @@ export class ReleaseQualityService {
     }
   }
 
-  async remove(id: string) {
+  async remove(id: string, actor: AuthenticatedUser) {
+    const existing = await this.prisma.release.findUnique({
+      where: { id },
+      select: { product: { select: { organizationId: true } } },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Release ${id} not found`);
+    }
+    assertSameOrganization(actor.organizationId, existing.product.organizationId, `Release ${id} not found`);
+
     try {
       await this.prisma.release.delete({ where: { id } });
     } catch (error) {
@@ -291,11 +311,15 @@ export class ReleaseQualityService {
     }
   }
 
-  async signOff(id: string, dto: SignOffReleaseDto) {
-    const existing = await this.prisma.release.findUnique({ where: { id } });
+  async signOff(id: string, dto: SignOffReleaseDto, actor: AuthenticatedUser) {
+    const existing = await this.prisma.release.findUnique({
+      where: { id },
+      include: { product: { select: { organizationId: true } } },
+    });
     if (!existing) {
       throw new NotFoundException(`Release ${id} not found`);
     }
+    assertSameOrganization(actor.organizationId, existing.product.organizationId, `Release ${id} not found`);
 
     const signable: ReleaseStatus[] = [ReleaseStatus.COMPLETED, ReleaseStatus.APPROVED, ReleaseStatus.REJECTED];
     if (!signable.includes(existing.status)) {
@@ -700,6 +724,17 @@ export class ReleaseQualityService {
       gates,
       readiness: computeReadiness(gates),
     };
+  }
+
+  private async assertProductInScope(productId: string, actorOrganizationId: string | null): Promise<void> {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { organizationId: true },
+    });
+    if (!product) {
+      throw new BadRequestException(`Product ${productId} not found`);
+    }
+    assertSameOrganization(actorOrganizationId, product.organizationId, `Product ${productId} not found`);
   }
 
   private async validateEnvironmentBelongsToProduct(environmentId: string, productId: string) {

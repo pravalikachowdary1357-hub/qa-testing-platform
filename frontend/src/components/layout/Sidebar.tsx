@@ -1,4 +1,4 @@
-import { Box, Drawer, List, Toolbar } from '@mui/material';
+import { Box, Drawer, List, Toolbar, Typography } from '@mui/material';
 import { NavItem } from './NavItem';
 import { navItems } from '../../routes/routeConfig';
 import { useAuth } from '../../context/AuthContext';
@@ -12,18 +12,27 @@ interface SidebarProps {
 }
 
 export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
-  const { hasPermission } = useAuth();
+  const { user, hasPermission } = useAuth();
   const visibleNavItems = navItems.filter((item) => !item.permission || hasPermission(item.permission));
 
   const drawerContent = (
     <Box sx={{ overflowY: 'auto', height: '100%' }}>
-      <Toolbar>
+      <Toolbar sx={{ flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', gap: 0.25, py: 1 }}>
         <Box
           component="img"
           src={testSphereLogo}
           alt="TestSphere"
           sx={{ height: 32, width: 'auto' }}
         />
+        {user?.roleName && (
+          <Typography
+            variant="caption"
+            noWrap
+            sx={{ pl: 0.25, fontSize: '0.8rem', fontWeight: 600, color: 'secondary.main' }}
+          >
+            {user.roleName}
+          </Typography>
+        )}
       </Toolbar>
       <List sx={{ px: 1 }}>
         {visibleNavItems.map((item) => (

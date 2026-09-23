@@ -22,12 +22,14 @@ const STATUS_OPTIONS: { value: ApiOrganizationStatus; label: string }[] = [
 
 interface OrganizationFormValues {
   name: string;
+  orgKey: string;
   description: string;
   status: ApiOrganizationStatus;
 }
 
 const EMPTY_VALUES: OrganizationFormValues = {
   name: '',
+  orgKey: '',
   description: '',
   status: 'ACTIVE',
 };
@@ -74,6 +76,7 @@ export function OrganizationFormDialog({
     try {
       await onSubmit({
         name: trimmedName,
+        orgKey: values.orgKey.trim().toUpperCase() || undefined,
         description: values.description.trim() || undefined,
         status: values.status,
       });
@@ -103,6 +106,13 @@ export function OrganizationFormDialog({
               setValues((prev) => ({ ...prev, name: e.target.value }));
               if (nameError) setNameError(null);
             }}
+          />
+          <TextField
+            label="Organization Key (optional)"
+            fullWidth
+            placeholder="e.g. QMICS"
+            value={values.orgKey}
+            onChange={(e) => setValues((prev) => ({ ...prev, orgKey: e.target.value.toUpperCase() }))}
           />
           <TextField
             label="Description"

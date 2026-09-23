@@ -40,33 +40,37 @@ export class TestDataController {
 
   @Get()
   @RequirePermission('test_data:read')
-  findAll(@Query() query: ListTestDataQueryDto) {
-    return this.testDataService.findAll(query.productId);
+  findAll(@Query() query: ListTestDataQueryDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.testDataService.findAll(query.productId, actor.organizationId);
   }
 
   @Get(':id')
   @RequirePermission('test_data:read')
-  findOne(@Param('id') id: string) {
-    return this.testDataService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.testDataService.findOne(id, actor.organizationId);
   }
 
   @Post()
   @RequirePermission('test_data:write')
-  create(@Body() dto: CreateTestDataDto) {
-    return this.testDataService.create(dto);
+  create(@Body() dto: CreateTestDataDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.testDataService.create(dto, actor);
   }
 
   @Patch(':id')
   @RequirePermission('test_data:write')
-  update(@Param('id') id: string, @Body() dto: UpdateTestDataDto) {
-    return this.testDataService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateTestDataDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.testDataService.update(id, dto, actor);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission('test_data:manage')
-  remove(@Param('id') id: string) {
-    return this.testDataService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.testDataService.remove(id, actor);
   }
 
   @Post('import')

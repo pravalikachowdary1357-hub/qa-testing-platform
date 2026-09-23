@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -14,8 +15,15 @@ import type {
   ImportResult,
   ImportRowError,
 } from '../common/import/import-result.interface';
+import { assertSameOrganization, organizationScopeWhere } from '../common/organization-scope.util';
 
 const ORGANIZATION_REF_SELECT = { select: { id: true, name: true } };
+const BUSINESS_UNIT_REF_SELECT = { select: { id: true, name: true } };
+const PROJECT_INCLUDE = {
+  organization: ORGANIZATION_REF_SELECT,
+  businessUnit: BUSINESS_UNIT_REF_SELECT,
+  _count: { select: { products: true } },
+};
 
 @Injectable()
 export class ProjectsService {
@@ -24,42 +32,67 @@ export class ProjectsService {
     private readonly auditLog: AuditLogService,
   ) {}
 
-  findAll() {
+  findAll(actorOrganizationId: string | null) {
     return this.prisma.project.findMany({
-      include: {
-        organization: ORGANIZATION_REF_SELECT,
-        _count: { select: { products: true } },
-      },
+      where: organizationScopeWhere(actorOrganizationId),
+      include: PROJECT_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actorOrganizationId: string | null) {
     const project = await this.prisma.project.findUnique({
       where: { id },
-      include: {
-        organization: ORGANIZATION_REF_SELECT,
-        products: true,
-        _count: { select: { products: true } },
-      },
+      include: { ...PROJECT_INCLUDE, products: true },
     });
 
     if (!project) {
       throw new NotFoundException(`Project ${id} not found`);
     }
+    assertSameOrganization(actorOrganizationId, project.organizationId, `Project ${id} not found`);
 
     return project;
   }
 
+  // A Project's Business Unit, if set, must belong to the same Organization
+  // as the Project itself -- otherwise the Organization -> Business Unit ->
+  // Project hierarchy silently breaks (a real, previously-unchecked gap on
+  // the Product/Project pairing this mirrors).
+  private async assertBusinessUnitBelongsToOrganization(
+    businessUnitId: string,
+    organizationId: string,
+  ) {
+    const businessUnit = await this.prisma.businessUnit.findUnique({
+      where: { id: businessUnitId },
+      select: { organizationId: true },
+    });
+    if (!businessUnit) {
+      throw new BadRequestException(`Business unit ${businessUnitId} not found`);
+    }
+    if (businessUnit.organizationId !== organizationId) {
+      throw new BadRequestException(
+        'The selected business unit does not belong to this organization.',
+      );
+    }
+  }
+
   async create(dto: CreateProjectDto, actor?: AuthenticatedUser) {
+    if (actor) {
+      assertSameOrganization(
+        actor.organizationId,
+        dto.organizationId,
+        `Organization ${dto.organizationId} not found`,
+      );
+    }
+    if (dto.businessUnitId) {
+      await this.assertBusinessUnitBelongsToOrganization(dto.businessUnitId, dto.organizationId);
+    }
+
     let created;
     try {
       created = await this.prisma.project.create({
         data: dto,
-        include: {
-          organization: ORGANIZATION_REF_SELECT,
-          _count: { select: { products: true } },
-        },
+        include: PROJECT_INCLUDE,
       });
     } catch (error) {
       if (
@@ -86,15 +119,38 @@ export class ProjectsService {
   }
 
   async update(id: string, dto: UpdateProjectDto, actor: AuthenticatedUser) {
+    const existing = await this.prisma.project.findUnique({
+      where: { id },
+      select: { organizationId: true },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Project ${id} not found`);
+    }
+    assertSameOrganization(actor.organizationId, existing.organizationId, `Project ${id} not found`);
+    // Reassignment guard: a scoped actor editing their own project still
+    // can't move it into a DIFFERENT organization by supplying a foreign
+    // organizationId in the update body.
+    if (dto.organizationId) {
+      assertSameOrganization(
+        actor.organizationId,
+        dto.organizationId,
+        `Organization ${dto.organizationId} not found`,
+      );
+    }
+
+    if (dto.businessUnitId || dto.organizationId) {
+      const effectiveOrganizationId = dto.organizationId ?? existing.organizationId;
+      if (dto.businessUnitId) {
+        await this.assertBusinessUnitBelongsToOrganization(dto.businessUnitId, effectiveOrganizationId);
+      }
+    }
+
     let updated;
     try {
       updated = await this.prisma.project.update({
         where: { id },
         data: dto,
-        include: {
-          organization: ORGANIZATION_REF_SELECT,
-          _count: { select: { products: true } },
-        },
+        include: PROJECT_INCLUDE,
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -160,7 +216,7 @@ export class ProjectsService {
       }
 
       try {
-        await this.create(result.dto);
+        await this.create(result.dto, actor);
         successCount++;
       } catch (error) {
         errors.push({
@@ -191,6 +247,7 @@ export class ProjectsService {
     if (!project) {
       throw new NotFoundException(`Project ${id} not found`);
     }
+    assertSameOrganization(actor.organizationId, project.organizationId, `Project ${id} not found`);
 
     if (project._count.products > 0) {
       throw new ConflictException(

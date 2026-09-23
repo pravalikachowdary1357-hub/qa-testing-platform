@@ -9,6 +9,11 @@ export interface AuthenticatedUser {
   roleName: string;
   permissions: string[];
   emailNotificationsEnabled: boolean;
+  // Null for a user with no organization assigned -- treated as unscoped
+  // (sees across every organization) everywhere organization-level data
+  // isolation is enforced, matching today's behavior for every existing
+  // user until an admin explicitly assigns one.
+  organizationId: string | null;
 }
 
 export const CurrentUser = createParamDecorator(

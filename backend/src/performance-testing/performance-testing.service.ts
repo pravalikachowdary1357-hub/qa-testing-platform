@@ -4,8 +4,10 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { HttpMethod, PerformanceRunStatus } from '../../generated/prisma/enums.js';
 import { CreatePerformanceTestDto } from './dto/create-performance-test.dto';
 import { UpdatePerformanceTestDto } from './dto/update-performance-test.dto';
+import type { AuthenticatedUser } from '../auth/current-user.decorator';
+import { assertSameOrganization, productOrganizationScopeWhere } from '../common/organization-scope.util';
 
-const PRODUCT_REF = { select: { id: true, name: true } };
+const PRODUCT_REF = { select: { id: true, name: true, organizationId: true } };
 const ENVIRONMENT_REF = { select: { id: true, name: true, baseUrl: true } };
 const RELEASE_REF = { select: { id: true, name: true, version: true } };
 
@@ -75,15 +77,18 @@ export class PerformanceTestingService {
   // limitation is surfaced honestly in the frontend rather than papered over.
   private readonly activeRuns = new Map<string, AbortController>();
 
-  findAll(productId?: string) {
+  findAll(productId: string | undefined, actorOrganizationId: string | null) {
     return this.prisma.performanceTest.findMany({
-      where: productId ? { productId } : {},
+      where: {
+        ...(productId ? { productId } : {}),
+        ...productOrganizationScopeWhere(actorOrganizationId),
+      },
       include: LIST_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actorOrganizationId: string | null) {
     const test = await this.prisma.performanceTest.findUnique({
       where: { id },
       include: DETAIL_INCLUDE,
@@ -92,11 +97,13 @@ export class PerformanceTestingService {
     if (!test) {
       throw new NotFoundException(`Performance test ${id} not found`);
     }
+    assertSameOrganization(actorOrganizationId, test.product.organizationId, `Performance test ${id} not found`);
 
     return test;
   }
 
-  async create(dto: CreatePerformanceTestDto) {
+  async create(dto: CreatePerformanceTestDto, actor: AuthenticatedUser) {
+    await this.assertProductInScope(dto.productId, actor.organizationId);
     if (dto.environmentId) {
       await this.validateEnvironmentBelongsToProduct(dto.productId, dto.environmentId);
     }
@@ -131,12 +138,16 @@ export class PerformanceTestingService {
     }
   }
 
-  async update(id: string, dto: UpdatePerformanceTestDto) {
-    const existing = await this.prisma.performanceTest.findUnique({ where: { id } });
+  async update(id: string, dto: UpdatePerformanceTestDto, actor: AuthenticatedUser) {
+    const existing = await this.prisma.performanceTest.findUnique({
+      where: { id },
+      include: { product: { select: { organizationId: true } } },
+    });
 
     if (!existing) {
       throw new NotFoundException(`Performance test ${id} not found`);
     }
+    assertSameOrganization(actor.organizationId, existing.product.organizationId, `Performance test ${id} not found`);
 
     if (this.activeRuns.has(id)) {
       throw new ConflictException('This performance test cannot be edited while a run is in progress.');
@@ -186,7 +197,16 @@ export class PerformanceTestingService {
     }
   }
 
-  async remove(id: string) {
+  async remove(id: string, actor: AuthenticatedUser) {
+    const existing = await this.prisma.performanceTest.findUnique({
+      where: { id },
+      select: { product: { select: { organizationId: true } } },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Performance test ${id} not found`);
+    }
+    assertSameOrganization(actor.organizationId, existing.product.organizationId, `Performance test ${id} not found`);
+
     if (this.activeRuns.has(id)) {
       throw new ConflictException('This performance test cannot be deleted while a run is in progress.');
     }
@@ -201,15 +221,19 @@ export class PerformanceTestingService {
     }
   }
 
-  async run(id: string) {
+  async run(id: string, actor: AuthenticatedUser) {
     const test = await this.prisma.performanceTest.findUnique({
       where: { id },
-      include: { environment: { select: { baseUrl: true } } },
+      include: {
+        environment: { select: { baseUrl: true } },
+        product: { select: { organizationId: true } },
+      },
     });
 
     if (!test) {
       throw new NotFoundException(`Performance test ${id} not found`);
     }
+    assertSameOrganization(actor.organizationId, test.product.organizationId, `Performance test ${id} not found`);
 
     if (this.activeRuns.has(id)) {
       throw new ConflictException('A run is already in progress for this performance test.');
@@ -282,7 +306,16 @@ export class PerformanceTestingService {
     }
   }
 
-  async stop(id: string) {
+  async stop(id: string, actor: AuthenticatedUser) {
+    const test = await this.prisma.performanceTest.findUnique({
+      where: { id },
+      select: { product: { select: { organizationId: true } } },
+    });
+    if (!test) {
+      throw new NotFoundException(`Performance test ${id} not found`);
+    }
+    assertSameOrganization(actor.organizationId, test.product.organizationId, `Performance test ${id} not found`);
+
     const controller = this.activeRuns.get(id);
 
     if (!controller) {
@@ -420,6 +453,17 @@ export class PerformanceTestingService {
         : null,
       thresholdsPassed: hasThresholds ? thresholdsMet : null,
     };
+  }
+
+  private async assertProductInScope(productId: string, actorOrganizationId: string | null): Promise<void> {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { organizationId: true },
+    });
+    if (!product) {
+      throw new BadRequestException(`Product ${productId} not found`);
+    }
+    assertSameOrganization(actorOrganizationId, product.organizationId, `Product ${productId} not found`);
   }
 
   private async validateEnvironmentBelongsToProduct(productId: string, environmentId: string) {

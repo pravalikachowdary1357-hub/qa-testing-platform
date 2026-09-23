@@ -33,6 +33,8 @@ import { SummaryCard } from '../components/common/SummaryCard';
 import { StatusChip } from '../components/common/StatusChip';
 import { BreakdownBar, colorForStatusLabel } from '../components/reports/BreakdownBar';
 import { MetricTrendChart } from '../components/performance/MetricTrendChart';
+import { PlatformAdminDashboard } from '../components/dashboard/PlatformAdminDashboard';
+import { useAuth } from '../context/AuthContext';
 import { useProductContext } from '../context/ProductContext';
 import { fetchProductDashboardSummary } from '../api/products';
 import { ApiError } from '../api/client';
@@ -80,6 +82,7 @@ interface Kpi {
 
 export function DashboardPage() {
   const theme = useTheme();
+  const { user } = useAuth();
   const { currentProduct, loading: productLoading, error: productError } = useProductContext();
   const [summary, setSummary] = useState<ApiProductDashboardSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -155,6 +158,18 @@ export function DashboardPage() {
   const requirementRiskDistribution = summary?.requirementRiskDistribution ?? [];
   const testExecutionTrend = summary?.trends.testExecutionsPerWeek ?? [];
   const defectsOpenedTrend = summary?.trends.defectsOpenedPerWeek ?? [];
+
+  // The Administrator administers the platform/organizations/users, not QA
+  // execution -- it gets a platform-administration overview instead of the
+  // per-product testing dashboard every other role sees.
+  if (user?.roleName === 'QMICS TestSphere Administrator') {
+    return (
+      <>
+        <PageHeader title="Dashboard" subtitle="Platform administration overview" />
+        <PlatformAdminDashboard />
+      </>
+    );
+  }
 
   return (
     <>

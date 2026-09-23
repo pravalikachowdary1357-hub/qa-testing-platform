@@ -12,10 +12,13 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { validateRow } from '../common/import/validate-row.util';
 import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
+import { assertSameOrganization } from '../common/organization-scope.util';
 
 const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
 const TEST_CASE_INCLUDE = {
-  testScenario: { select: { id: true, title: true } },
+  testScenario: {
+    select: { id: true, title: true, product: { select: { organizationId: true } } },
+  },
   release: RELEASE_REF_SELECT,
   steps: { orderBy: { stepNumber: 'asc' as const } },
 };
@@ -27,15 +30,24 @@ export class TestCasesService {
     private readonly auditLog: AuditLogService,
   ) {}
 
-  findAll(productId?: string) {
+  findAll(productId: string | undefined, actorOrganizationId: string | null) {
     return this.prisma.testCase.findMany({
-      where: productId ? { testScenario: { productId } } : {},
+      where: {
+        ...(productId || actorOrganizationId
+          ? {
+              testScenario: {
+                ...(productId ? { productId } : {}),
+                ...(actorOrganizationId ? { product: { organizationId: actorOrganizationId } } : {}),
+              },
+            }
+          : {}),
+      },
       include: TEST_CASE_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actorOrganizationId: string | null) {
     const testCase = await this.prisma.testCase.findUnique({
       where: { id },
       include: TEST_CASE_INCLUDE,
@@ -44,13 +56,35 @@ export class TestCasesService {
     if (!testCase) {
       throw new NotFoundException(`Test case ${id} not found`);
     }
+    assertSameOrganization(
+      actorOrganizationId,
+      testCase.testScenario.product.organizationId,
+      `Test case ${id} not found`,
+    );
 
     return testCase;
   }
 
-  async create(dto: CreateTestCaseDto) {
+  private async assertTestScenarioInScope(testScenarioId: string, actorOrganizationId: string | null): Promise<void> {
+    const scenario = await this.prisma.testScenario.findUnique({
+      where: { id: testScenarioId },
+      select: { product: { select: { organizationId: true } } },
+    });
+    if (!scenario) {
+      throw new BadRequestException(`Test scenario ${testScenarioId} not found`);
+    }
+    assertSameOrganization(
+      actorOrganizationId,
+      scenario.product.organizationId,
+      `Test scenario ${testScenarioId} not found`,
+    );
+  }
+
+  async create(dto: CreateTestCaseDto, actor: AuthenticatedUser) {
     const { testScenarioId, releaseId, title, description, preconditions, expectedResult, priority, status, steps } =
       dto;
+
+    await this.assertTestScenarioInScope(testScenarioId, actor.organizationId);
 
     try {
       return await this.prisma.testCase.create({
@@ -81,12 +115,20 @@ export class TestCasesService {
     }
   }
 
-  async update(id: string, dto: UpdateTestCaseDto) {
-    const existing = await this.prisma.testCase.findUnique({ where: { id } });
+  async update(id: string, dto: UpdateTestCaseDto, actor: AuthenticatedUser) {
+    const existing = await this.prisma.testCase.findUnique({
+      where: { id },
+      include: { testScenario: { select: { product: { select: { organizationId: true } } } } },
+    });
 
     if (!existing) {
       throw new NotFoundException(`Test case ${id} not found`);
     }
+    assertSameOrganization(
+      actor.organizationId,
+      existing.testScenario.product.organizationId,
+      `Test case ${id} not found`,
+    );
 
     const { testScenarioId, releaseId, title, description, preconditions, expectedResult, priority, status, steps } =
       dto;
@@ -191,7 +233,7 @@ export class TestCasesService {
       }
 
       try {
-        await this.create(result.dto);
+        await this.create(result.dto, actor);
         successCount++;
       } catch (error) {
         errors.push({
@@ -212,17 +254,23 @@ export class TestCasesService {
     return { totalRows: rows.length, successCount, errors };
   }
 
-  async remove(id: string) {
+  async remove(id: string, actor: AuthenticatedUser) {
     const testCase = await this.prisma.testCase.findUnique({
       where: { id },
       include: {
         _count: { select: { testExecutions: true, automations: true, securityTests: true } },
+        testScenario: { select: { product: { select: { organizationId: true } } } },
       },
     });
 
     if (!testCase) {
       throw new NotFoundException(`Test case ${id} not found`);
     }
+    assertSameOrganization(
+      actor.organizationId,
+      testCase.testScenario.product.organizationId,
+      `Test case ${id} not found`,
+    );
 
     const blockers: string[] = [];
     if (testCase._count.testExecutions > 0) {

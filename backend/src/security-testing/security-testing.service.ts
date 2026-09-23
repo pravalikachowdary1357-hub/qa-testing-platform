@@ -11,8 +11,10 @@ import { UpdateSecurityTestDto } from './dto/update-security-test.dto';
 import { CompleteSecurityTestDto } from './dto/complete-security-test.dto';
 import { CreateSecurityFindingDto } from './dto/create-security-finding.dto';
 import { UpdateSecurityFindingDto } from './dto/update-security-finding.dto';
+import type { AuthenticatedUser } from '../auth/current-user.decorator';
+import { assertSameOrganization, productOrganizationScopeWhere } from '../common/organization-scope.util';
 
-const PRODUCT_REF = { select: { id: true, name: true } };
+const PRODUCT_REF = { select: { id: true, name: true, organizationId: true } };
 const RELEASE_REF = { select: { id: true, name: true, version: true } };
 const ENVIRONMENT_REF = { select: { id: true, name: true } };
 const TEST_CASE_REF = { select: { id: true, title: true } };
@@ -47,16 +49,24 @@ const ALL_VULN_STATUSES: VulnerabilityStatus[] = [
 export class SecurityTestingService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(productId?: string) {
+  findAll(productId: string | undefined, actorOrganizationId: string | null) {
     return this.prisma.securityTest.findMany({
-      where: productId ? { productId } : {},
+      where: {
+        ...(productId ? { productId } : {}),
+        ...productOrganizationScopeWhere(actorOrganizationId),
+      },
       include: LIST_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async summary(productId?: string) {
-    const where = productId ? { securityTest: { productId } } : {};
+  async summary(productId: string | undefined, actorOrganizationId: string | null) {
+    const where = {
+      securityTest: {
+        ...(productId ? { productId } : {}),
+        ...productOrganizationScopeWhere(actorOrganizationId),
+      },
+    };
     const [bySeverityRaw, byStatusRaw] = await Promise.all([
       this.prisma.securityFinding.groupBy({ where, by: ['severity'], _count: { _all: true } }),
       this.prisma.securityFinding.groupBy({ where, by: ['status'], _count: { _all: true } }),
@@ -81,7 +91,21 @@ export class SecurityTestingService {
     return { bySeverity, byStatus };
   }
 
-  async findOne(id: string) {
+  // Every id-based route below is reached directly by a security test UUID,
+  // bypassing findAll's own scope filter -- so each one re-checks the test's
+  // product against the actor's organization first.
+  private async assertSecurityTestInScope(id: string, actorOrganizationId: string | null) {
+    const test = await this.prisma.securityTest.findUnique({
+      where: { id },
+      select: { product: { select: { organizationId: true } } },
+    });
+    if (!test) {
+      throw new NotFoundException(`Security test ${id} not found`);
+    }
+    assertSameOrganization(actorOrganizationId, test.product.organizationId, `Security test ${id} not found`);
+  }
+
+  async findOne(id: string, actorOrganizationId: string | null) {
     const test = await this.prisma.securityTest.findUnique({
       where: { id },
       include: DETAIL_INCLUDE,
@@ -90,12 +114,13 @@ export class SecurityTestingService {
     if (!test) {
       throw new NotFoundException(`Security test ${id} not found`);
     }
+    assertSameOrganization(actorOrganizationId, test.product.organizationId, `Security test ${id} not found`);
 
     return test;
   }
 
-  async create(dto: CreateSecurityTestDto) {
-    await this.validateRelationships(dto.productId, dto.environmentId, dto.testCaseId);
+  async create(dto: CreateSecurityTestDto, actor: AuthenticatedUser) {
+    await this.validateRelationships(dto.productId, dto.environmentId, dto.testCaseId, actor.organizationId);
 
     try {
       return await this.prisma.securityTest.create({
@@ -120,7 +145,8 @@ export class SecurityTestingService {
     }
   }
 
-  async update(id: string, dto: UpdateSecurityTestDto) {
+  async update(id: string, dto: UpdateSecurityTestDto, actor: AuthenticatedUser) {
+    await this.assertSecurityTestInScope(id, actor.organizationId);
     const existing = await this.prisma.securityTest.findUnique({ where: { id } });
 
     if (!existing) {
@@ -132,7 +158,12 @@ export class SecurityTestingService {
       dto.environmentId !== undefined ? dto.environmentId : existing.environmentId;
     const effectiveTestCaseId = dto.testCaseId !== undefined ? dto.testCaseId : existing.testCaseId;
 
-    await this.validateRelationships(effectiveProductId, effectiveEnvironmentId, effectiveTestCaseId);
+    await this.validateRelationships(
+      effectiveProductId,
+      effectiveEnvironmentId,
+      effectiveTestCaseId,
+      actor.organizationId,
+    );
 
     try {
       return await this.prisma.securityTest.update({
@@ -163,7 +194,8 @@ export class SecurityTestingService {
     }
   }
 
-  async remove(id: string) {
+  async remove(id: string, actor: AuthenticatedUser) {
+    await this.assertSecurityTestInScope(id, actor.organizationId);
     try {
       await this.prisma.securityTest.delete({ where: { id } });
     } catch (error) {
@@ -177,7 +209,8 @@ export class SecurityTestingService {
   // Marks the test as actively being worked (by a human tester or an
   // external tool run outside this app -- this deliberately performs no
   // network activity of its own; see complete() for why).
-  async execute(id: string) {
+  async execute(id: string, actor: AuthenticatedUser) {
+    await this.assertSecurityTestInScope(id, actor.organizationId);
     const existing = await this.prisma.securityTest.findUnique({ where: { id } });
 
     if (!existing) {
@@ -204,7 +237,8 @@ export class SecurityTestingService {
   // actual PASS/FAIL verdict can only come from a human recording what an
   // external tool or manual review found, never something this endpoint
   // invents on its own.
-  async complete(id: string, dto: CompleteSecurityTestDto) {
+  async complete(id: string, dto: CompleteSecurityTestDto, actor: AuthenticatedUser) {
+    await this.assertSecurityTestInScope(id, actor.organizationId);
     const existing = await this.prisma.securityTest.findUnique({ where: { id } });
 
     if (!existing) {
@@ -224,7 +258,8 @@ export class SecurityTestingService {
     });
   }
 
-  async addFinding(testId: string, dto: CreateSecurityFindingDto) {
+  async addFinding(testId: string, dto: CreateSecurityFindingDto, actor: AuthenticatedUser) {
+    await this.assertSecurityTestInScope(testId, actor.organizationId);
     const test = await this.prisma.securityTest.findUnique({ where: { id: testId } });
 
     if (!test) {
@@ -244,7 +279,13 @@ export class SecurityTestingService {
     });
   }
 
-  async updateFinding(testId: string, findingId: string, dto: UpdateSecurityFindingDto) {
+  async updateFinding(
+    testId: string,
+    findingId: string,
+    dto: UpdateSecurityFindingDto,
+    actor: AuthenticatedUser,
+  ) {
+    await this.assertSecurityTestInScope(testId, actor.organizationId);
     const finding = await this.findFindingOrThrow(testId, findingId);
 
     return this.prisma.securityFinding.update({
@@ -260,7 +301,8 @@ export class SecurityTestingService {
     });
   }
 
-  async removeFinding(testId: string, findingId: string) {
+  async removeFinding(testId: string, findingId: string, actor: AuthenticatedUser) {
+    await this.assertSecurityTestInScope(testId, actor.organizationId);
     const finding = await this.findFindingOrThrow(testId, findingId);
     await this.prisma.securityFinding.delete({ where: { id: finding.id } });
   }
@@ -277,9 +319,19 @@ export class SecurityTestingService {
 
   private async validateRelationships(
     productId: string,
-    environmentId?: string | null,
-    testCaseId?: string | null,
+    environmentId: string | null | undefined,
+    testCaseId: string | null | undefined,
+    actorOrganizationId: string | null,
   ) {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { organizationId: true },
+    });
+    if (!product) {
+      throw new BadRequestException(`Product ${productId} not found`);
+    }
+    assertSameOrganization(actorOrganizationId, product.organizationId, `Product ${productId} not found`);
+
     if (environmentId) {
       const environment = await this.prisma.environment.findUnique({
         where: { id: environmentId },

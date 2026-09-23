@@ -12,11 +12,12 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { validateRow } from '../common/import/validate-row.util';
 import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
+import { assertSameOrganization, productOrganizationScopeWhere } from '../common/organization-scope.util';
 
 const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
 
 const TEST_SCENARIO_INCLUDE = {
-  product: { select: { id: true, name: true } },
+  product: { select: { id: true, name: true, organizationId: true } },
   release: RELEASE_REF_SELECT,
   requirement: { select: { id: true, title: true } },
 };
@@ -28,15 +29,18 @@ export class TestScenariosService {
     private readonly auditLog: AuditLogService,
   ) {}
 
-  findAll(productId?: string) {
+  findAll(productId: string | undefined, actorOrganizationId: string | null) {
     return this.prisma.testScenario.findMany({
-      where: productId ? { productId } : {},
+      where: {
+        ...(productId ? { productId } : {}),
+        ...productOrganizationScopeWhere(actorOrganizationId),
+      },
       include: TEST_SCENARIO_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actorOrganizationId: string | null) {
     const scenario = await this.prisma.testScenario.findUnique({
       where: { id },
       include: TEST_SCENARIO_INCLUDE,
@@ -45,11 +49,13 @@ export class TestScenariosService {
     if (!scenario) {
       throw new NotFoundException(`Test scenario ${id} not found`);
     }
+    assertSameOrganization(actorOrganizationId, scenario.product.organizationId, `Test scenario ${id} not found`);
 
     return scenario;
   }
 
-  async create(dto: CreateTestScenarioDto) {
+  async create(dto: CreateTestScenarioDto, actor: AuthenticatedUser) {
+    await this.assertProductInScope(dto.productId, actor.organizationId);
     if (dto.requirementId) {
       await this.validateRequirementBelongsToProduct(dto.requirementId, dto.productId);
     }
@@ -67,12 +73,16 @@ export class TestScenariosService {
     }
   }
 
-  async update(id: string, dto: UpdateTestScenarioDto) {
-    const existing = await this.prisma.testScenario.findUnique({ where: { id } });
+  async update(id: string, dto: UpdateTestScenarioDto, actor: AuthenticatedUser) {
+    const existing = await this.prisma.testScenario.findUnique({
+      where: { id },
+      include: { product: { select: { organizationId: true } } },
+    });
 
     if (!existing) {
       throw new NotFoundException(`Test scenario ${id} not found`);
     }
+    assertSameOrganization(actor.organizationId, existing.product.organizationId, `Test scenario ${id} not found`);
 
     const effectiveProductId = dto.productId ?? existing.productId;
     const effectiveRequirementId =
@@ -150,7 +160,7 @@ export class TestScenariosService {
       }
 
       try {
-        await this.create(result.dto);
+        await this.create(result.dto, actor);
         successCount++;
       } catch (error) {
         errors.push({
@@ -171,15 +181,19 @@ export class TestScenariosService {
     return { totalRows: rows.length, successCount, errors };
   }
 
-  async remove(id: string) {
+  async remove(id: string, actor: AuthenticatedUser) {
     const scenario = await this.prisma.testScenario.findUnique({
       where: { id },
-      include: { _count: { select: { testCases: true } } },
+      include: {
+        _count: { select: { testCases: true } },
+        product: { select: { organizationId: true } },
+      },
     });
 
     if (!scenario) {
       throw new NotFoundException(`Test scenario ${id} not found`);
     }
+    assertSameOrganization(actor.organizationId, scenario.product.organizationId, `Test scenario ${id} not found`);
 
     if (scenario._count.testCases > 0) {
       throw new ConflictException(
@@ -200,6 +214,17 @@ export class TestScenariosService {
       }
       throw error;
     }
+  }
+
+  private async assertProductInScope(productId: string, actorOrganizationId: string | null): Promise<void> {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { organizationId: true },
+    });
+    if (!product) {
+      throw new BadRequestException(`Product ${productId} not found`);
+    }
+    assertSameOrganization(actorOrganizationId, product.organizationId, `Product ${productId} not found`);
   }
 
   private async validateRequirementBelongsToProduct(requirementId: string, productId: string) {

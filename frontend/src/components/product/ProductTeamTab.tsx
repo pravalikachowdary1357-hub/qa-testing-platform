@@ -39,9 +39,10 @@ import type { ApiUser } from '../../types/settings';
 
 interface ProductTeamTabProps {
   productId: string;
+  organizationId: string;
 }
 
-export function ProductTeamTab({ productId }: ProductTeamTabProps) {
+export function ProductTeamTab({ productId, organizationId }: ProductTeamTabProps) {
   const [members, setMembers] = useState<ApiProductTeamMember[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [users, setUsers] = useState<ApiUser[]>([]);
@@ -91,7 +92,10 @@ export function ProductTeamTab({ productId }: ProductTeamTabProps) {
         );
       });
 
-    fetchUsers()
+    // Scoped to the product's own organization so the picker only ever
+    // offers users the backend will actually accept -- see
+    // ProductTeamMembersService.create's matching organization check.
+    fetchUsers({ organizationId })
       .then((data) => {
         if (!cancelled) setUsers(data);
       })
@@ -103,7 +107,7 @@ export function ProductTeamTab({ productId }: ProductTeamTabProps) {
     return () => {
       cancelled = true;
     };
-  }, [productId]);
+  }, [productId, organizationId]);
 
   const isLoading = members === null && !error;
   const availableUsers = users.filter((u) => !members?.some((m) => m.userId === u.id));
