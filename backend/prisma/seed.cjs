@@ -121,7 +121,7 @@ const ROLE_GRANTS = {
   // AI), which live solely with Test Manager. Listing every key explicitly
   // means a newly added module is never Administrator-visible by default --
   // it takes a deliberate addition here.
-  'QMICS TestSphere Administrator': [
+  'System Administrator': [
     'users:read',
     'users:manage',
     'roles:read',
@@ -289,7 +289,7 @@ const ROLE_GRANTS = {
 };
 
 const ROLE_DESCRIPTIONS = {
-  'QMICS TestSphere Administrator': 'Platform administration: organizations, business units, teams, projects, products, users, roles/permissions, and system/audit settings. Does not include any QA testing execution, planning, or governance -- that is Test Manager\'s domain.',
+  'System Administrator': 'Platform administration: organizations, business units, teams, projects, products, users, roles/permissions, and system/audit settings. Does not include any QA testing execution, planning, or governance -- that is Test Manager\'s domain.',
   'Test Manager / Test Program Manager': 'Overall testing ownership: strategy, governance, planning, quality risk, and release readiness, with full authority across the entire testing lifecycle including automation, performance, security, UAT, release quality, and AI.',
   'Test Lead / QA Lead': 'Day-to-day testing management: test plans, scenarios, cases, data, environments, execution, and defects.',
   'Tester / Test Engineer / QA Engineer': 'Creates/executes test cases, records evidence, raises and updates defects, executes UAT, and performs assigned specialized testing (automation, API, performance, security).',
@@ -334,10 +334,11 @@ const RETIRED_ROLE_NAMES = [
 // existing user's roleId) rather than treated as retired/deleted, since
 // each of these is the SAME role continuing under a new name, not a role
 // being dropped. Checked in order so the Administrator role's full rename
-// history (Admin -> System Administrator -> this) migrates forward
+// history (Admin -> System Administrator -> QMICS TestSphere Administrator
+// -> System Administrator) migrates forward
 // correctly no matter which point in that history a given database is at.
 const ROLE_RENAME_CHAINS = {
-  'QMICS TestSphere Administrator': ['Admin', 'System Administrator'],
+  'System Administrator': ['Admin', 'QMICS TestSphere Administrator'],
   'Test Manager / Test Program Manager': ['QA Manager'],
   'Test Lead / QA Lead': ['Test Lead / Test Manager'],
   'Tester / Test Engineer / QA Engineer': ['Tester'],
@@ -388,7 +389,7 @@ async function main() {
 
   const roleIds = {};
   for (const [name, grantedKeys] of Object.entries(ROLE_GRANTS)) {
-    const role = await ensureRole(name, name === 'QMICS TestSphere Administrator', ROLE_DESCRIPTIONS[name]);
+    const role = await ensureRole(name, name === 'System Administrator', ROLE_DESCRIPTIONS[name]);
     roleIds[name] = role.id;
 
     const permissions = await prisma.permission.findMany({
@@ -414,10 +415,10 @@ async function main() {
         email: adminEmail,
         name: 'Administrator',
         passwordHash: await bcrypt.hash(adminPassword, 10),
-        roleId: roleIds['QMICS TestSphere Administrator'],
+        roleId: roleIds['System Administrator'],
       },
     });
-    console.log(`Created initial QMICS TestSphere Administrator user: ${adminEmail}`);
+    console.log(`Created initial System Administrator user: ${adminEmail}`);
     if (!process.env.SEED_ADMIN_PASSWORD) {
       console.log(
         `WARNING: no SEED_ADMIN_PASSWORD was set -- used the default dev password "${adminPassword}". Change it immediately after first login.`,

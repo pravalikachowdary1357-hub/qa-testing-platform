@@ -162,7 +162,7 @@ export function DashboardPage() {
   // The Administrator administers the platform/organizations/users, not QA
   // execution -- it gets a platform-administration overview instead of the
   // per-product testing dashboard every other role sees.
-  if (user?.roleName === 'QMICS TestSphere Administrator') {
+  if (user?.roleName === 'System Administrator') {
     return (
       <>
         <PageHeader title="Dashboard" subtitle="Platform administration overview" />

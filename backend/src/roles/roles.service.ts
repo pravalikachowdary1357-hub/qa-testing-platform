@@ -13,7 +13,7 @@ import { AuthenticatedUser } from '../auth/current-user.decorator';
 // stale at 'Admin' (the role's pre-rename name from before the 6-role
 // consolidation), which meant this guard silently never matched the real
 // admin role since that rename. Fixed here as part of the 9-role update.
-const ADMIN_ROLE_NAME = 'QMICS TestSphere Administrator';
+const ADMIN_ROLE_NAME = 'System Administrator';
 const ROLES_MANAGE_KEY = 'roles:manage';
 
 @Injectable()

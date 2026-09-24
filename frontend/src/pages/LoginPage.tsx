@@ -67,7 +67,7 @@ interface DemoAccount {
 // permissions by design, not a bug.
 const DEMO_ACCOUNTS: DemoAccount[] = [
   {
-    role: 'QMICS TestSphere Administrator',
+    role: 'System Administrator',
     email: 'admin@testsphere.local',
     description: 'Platform administration: organizations, users, roles, and system/audit settings. No QA testing execution, planning, or governance.',
     icon: AdminPanelSettingsIcon,
