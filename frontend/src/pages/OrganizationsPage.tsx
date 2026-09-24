@@ -336,6 +336,12 @@ export function OrganizationsPage() {
                 orgKey: editingOrganization.orgKey ?? '',
                 description: editingOrganization.description ?? '',
                 status: editingOrganization.status,
+                orgReferenceId: editingOrganization.orgReferenceId ?? '',
+                location: editingOrganization.location ?? '',
+                establishedYear: editingOrganization.establishedYear
+                  ? String(editingOrganization.establishedYear)
+                  : '',
+                email: editingOrganization.email ?? '',
               }
             : undefined
         }

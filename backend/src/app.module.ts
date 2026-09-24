@@ -8,6 +8,7 @@ import { TeamsModule } from './teams/teams.module';
 import { ProjectsModule } from './projects/projects.module';
 import { ProductsModule } from './products/products.module';
 import { ProductDocumentsModule } from './product-documents/product-documents.module';
+import { OrganizationDocumentsModule } from './organization-documents/organization-documents.module';
 import { ProductComponentsModule } from './product-components/product-components.module';
 import { ProductTeamMembersModule } from './product-team-members/product-team-members.module';
 import { RequirementsModule } from './requirements/requirements.module';
@@ -44,6 +45,7 @@ import { AppSettingsModule } from './app-settings/app-settings.module';
     RolesModule,
     AppSettingsModule,
     OrganizationsModule,
+    OrganizationDocumentsModule,
     BusinessUnitsModule,
     TeamsModule,
     ProjectsModule,

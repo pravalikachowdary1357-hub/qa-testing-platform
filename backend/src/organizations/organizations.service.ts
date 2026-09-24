@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -12,6 +13,36 @@ import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { validateRow } from '../common/import/validate-row.util';
 import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
 import { assertSameOrganization } from '../common/organization-scope.util';
+
+export const MAX_LOGO_FILE_SIZE_MB = 2;
+export const MAX_LOGO_FILE_SIZE_BYTES = MAX_LOGO_FILE_SIZE_MB * 1024 * 1024;
+export const ALLOWED_LOGO_MIME_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'];
+
+interface UploadedFileLike {
+  originalname: string;
+  mimetype: string;
+  size: number;
+  buffer: Buffer;
+}
+
+// Never select logoContent for list/detail responses -- it's a binary blob
+// and the frontend only fetches it via the dedicated GET .../logo route.
+// Same convention as ProductDocument's DOCUMENT_SELECT.
+const ORGANIZATION_SELECT = {
+  id: true,
+  name: true,
+  orgKey: true,
+  description: true,
+  status: true,
+  orgReferenceId: true,
+  location: true,
+  establishedYear: true,
+  email: true,
+  logoFileName: true,
+  createdAt: true,
+  updatedAt: true,
+  _count: { select: { products: true, businessUnits: true, projects: true, teams: true, users: true } },
+} satisfies Prisma.OrganizationSelect;
 
 @Injectable()
 export class OrganizationsService {
@@ -27,9 +58,7 @@ export class OrganizationsService {
   async findAll(actorOrganizationId: string | null) {
     const organizations = await this.prisma.organization.findMany({
       where: actorOrganizationId ? { id: actorOrganizationId } : {},
-      include: {
-        _count: { select: { products: true, businessUnits: true, projects: true, teams: true, users: true } },
-      },
+      select: ORGANIZATION_SELECT,
       orderBy: { createdAt: 'desc' },
     });
 
@@ -39,10 +68,7 @@ export class OrganizationsService {
   async findOne(id: string, actorOrganizationId: string | null) {
     const organization = await this.prisma.organization.findUnique({
       where: { id },
-      include: {
-        products: true,
-        _count: { select: { products: true, businessUnits: true, projects: true, teams: true, users: true } },
-      },
+      select: { ...ORGANIZATION_SELECT, products: true },
     });
 
     if (!organization) {
@@ -59,7 +85,7 @@ export class OrganizationsService {
   async create(dto: CreateOrganizationDto, actor?: AuthenticatedUser) {
     let created;
     try {
-      created = await this.prisma.organization.create({ data: dto });
+      created = await this.prisma.organization.create({ data: dto, select: ORGANIZATION_SELECT });
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -81,7 +107,7 @@ export class OrganizationsService {
         summary: `Created organization "${created.name}"`,
       });
     }
-    return created;
+    return this.toListItem(created);
   }
 
   async bulkImport(
@@ -136,6 +162,7 @@ export class OrganizationsService {
       updated = await this.prisma.organization.update({
         where: { id },
         data: dto,
+        select: ORGANIZATION_SELECT,
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -158,7 +185,7 @@ export class OrganizationsService {
       entityId: updated.id,
       summary: `Updated organization "${updated.name}"`,
     });
-    return updated;
+    return this.toListItem(updated);
   }
 
   async remove(id: string, actor: AuthenticatedUser) {
@@ -219,6 +246,11 @@ export class OrganizationsService {
     orgKey: string | null;
     description: string | null;
     status: string;
+    orgReferenceId: string | null;
+    location: string | null;
+    establishedYear: number | null;
+    email: string | null;
+    logoFileName: string | null;
     createdAt: Date;
     updatedAt: Date;
     _count: { products: number; businessUnits: number; projects: number; teams: number; users: number };
@@ -229,6 +261,11 @@ export class OrganizationsService {
       orgKey: organization.orgKey,
       description: organization.description,
       status: organization.status,
+      orgReferenceId: organization.orgReferenceId,
+      location: organization.location,
+      establishedYear: organization.establishedYear,
+      email: organization.email,
+      hasLogo: organization.logoFileName !== null,
       productCount: organization._count.products,
       projectCount: organization._count.projects,
       businessUnitCount: organization._count.businessUnits,
@@ -237,5 +274,91 @@ export class OrganizationsService {
       createdAt: organization.createdAt,
       updatedAt: organization.updatedAt,
     };
+  }
+
+  async uploadLogo(id: string, file: UploadedFileLike | undefined, actor: AuthenticatedUser) {
+    assertSameOrganization(actor.organizationId, id, `Organization ${id} not found`);
+    if (!file) {
+      throw new BadRequestException('A file is required.');
+    }
+    if (file.size === 0) {
+      throw new BadRequestException('The selected file is empty.');
+    }
+    if (!ALLOWED_LOGO_MIME_TYPES.includes(file.mimetype)) {
+      throw new BadRequestException(
+        `Unsupported file type "${file.mimetype}". Allowed types: PNG, JPEG, SVG, WebP.`,
+      );
+    }
+
+    let updated;
+    try {
+      updated = await this.prisma.organization.update({
+        where: { id },
+        data: {
+          logoContent: Uint8Array.from(file.buffer),
+          logoMimeType: file.mimetype,
+          logoFileName: file.originalname,
+          logoFileSize: file.size,
+        },
+        select: ORGANIZATION_SELECT,
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        throw new NotFoundException(`Organization ${id} not found`);
+      }
+      throw error;
+    }
+
+    await this.auditLog.record({
+      actorUserId: actor.id,
+      action: 'update',
+      entityType: 'Organization',
+      entityId: updated.id,
+      summary: `Updated logo for organization "${updated.name}"`,
+    });
+    return this.toListItem(updated);
+  }
+
+  async getLogo(id: string, actorOrganizationId: string | null) {
+    assertSameOrganization(actorOrganizationId, id, `Organization ${id} not found`);
+    const organization = await this.prisma.organization.findUnique({
+      where: { id },
+      select: { logoContent: true, logoMimeType: true, logoFileName: true, logoFileSize: true },
+    });
+    if (!organization || organization.logoContent === null) {
+      throw new NotFoundException(`Organization ${id} has no logo`);
+    }
+    return {
+      content: organization.logoContent,
+      mimeType: organization.logoMimeType ?? 'application/octet-stream',
+      fileName: organization.logoFileName ?? 'logo',
+      fileSize: organization.logoFileSize ?? organization.logoContent.length,
+    };
+  }
+
+  async removeLogo(id: string, actor: AuthenticatedUser) {
+    assertSameOrganization(actor.organizationId, id, `Organization ${id} not found`);
+    let updated;
+    try {
+      updated = await this.prisma.organization.update({
+        where: { id },
+        data: { logoContent: null, logoMimeType: null, logoFileName: null, logoFileSize: null },
+        select: ORGANIZATION_SELECT,
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        throw new NotFoundException(`Organization ${id} not found`);
+      }
+      throw error;
+    }
+
+    await this.auditLog.record({
+      actorUserId: actor.id,
+      action: 'update',
+      entityType: 'Organization',
+      entityId: updated.id,
+      summary: `Removed logo from organization "${updated.name}"`,
+    });
+    return this.toListItem(updated);
   }
 }

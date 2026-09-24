@@ -1,4 +1,4 @@
-import { apiFetch, apiUpload } from './client';
+import { apiDownload, apiFetch, apiUpload } from './client';
 import type {
   ApiOrganization,
   ApiOrganizationDetail,
@@ -42,4 +42,18 @@ export function importOrganizations(file: File): Promise<ImportResultSummary> {
   const formData = new FormData();
   formData.append('file', file);
   return apiUpload<ImportResultSummary>('/organizations/import', formData);
+}
+
+export function fetchOrganizationLogo(id: string): Promise<Blob> {
+  return apiDownload(`/organizations/${id}/logo`);
+}
+
+export function uploadOrganizationLogo(id: string, file: File): Promise<ApiOrganization> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiUpload<ApiOrganization>(`/organizations/${id}/logo`, formData);
+}
+
+export function deleteOrganizationLogo(id: string): Promise<ApiOrganization> {
+  return apiFetch<ApiOrganization>(`/organizations/${id}/logo`, { method: 'DELETE' });
 }

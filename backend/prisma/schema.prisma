@@ -339,13 +339,42 @@ model Organization {
   createdAt   DateTime           @default(now()) @map("created_at")
   updatedAt   DateTime           @updatedAt @map("updated_at")
 
+  // Optional profile fields, all nullable since the entity has shipped
+  // without them until now.
+  orgReferenceId  String? @unique @map("org_reference_id")
+  location        String?
+  establishedYear Int?    @map("established_year")
+  email           String?
+
+  logoContent  Bytes?  @map("logo_content")
+  logoMimeType String? @map("logo_mime_type")
+  logoFileName String? @map("logo_file_name")
+  logoFileSize Int?    @map("logo_file_size")
+
   products      Product[]
   projects      Project[]
   businessUnits BusinessUnit[]
   teams         Team[]
   users         User[]
+  documents     OrganizationDocument[]
 
   @@map("organizations")
+}
+
+model OrganizationDocument {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  fileName       String   @map("file_name")
+  mimeType       String   @map("mime_type")
+  fileSize       Int      @map("file_size")
+  content        Bytes
+  uploadedBy     String   @map("uploaded_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("organization_documents")
 }
 
 // Sits between Organization and Project per the QMICS TestSphere hierarchy

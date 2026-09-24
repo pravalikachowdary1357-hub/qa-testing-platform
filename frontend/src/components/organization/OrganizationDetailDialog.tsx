@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
 import {
   Alert,
   Box,
@@ -12,7 +11,6 @@ import {
   List,
   ListItem,
   ListItemText,
-  Paper,
   Stack,
   Tab,
   Tabs,
@@ -25,6 +23,7 @@ import Inventory2Icon from '@mui/icons-material/Inventory2';
 import PeopleIcon from '@mui/icons-material/People';
 import { StatusChip } from '../common/StatusChip';
 import { SummaryCard } from '../common/SummaryCard';
+import { OrganizationProfileTab } from './OrganizationProfileTab';
 import { BusinessUnitsTab } from './BusinessUnitsTab';
 import { TeamsTab } from './TeamsTab';
 import { OrganizationProjectsTab } from './OrganizationProjectsTab';
@@ -52,20 +51,6 @@ interface OrganizationDetailDialogProps {
   onClose: () => void;
 }
 
-// A labeled field within the Organization Details panel -- keeps every
-// field's label/value markup identical instead of repeating the same two
-// Typography lines for each of the six profile fields.
-function DetailField({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <Box>
-      <Typography variant="subtitle2" color="text.secondary">
-        {label}
-      </Typography>
-      <Typography variant="body2">{value}</Typography>
-    </Box>
-  );
-}
-
 export function OrganizationDetailDialog({
   organizationId,
   onClose,
@@ -73,6 +58,18 @@ export function OrganizationDetailDialog({
   const [organization, setOrganization] = useState<ApiOrganizationDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
+
+  const loadOrganization = (id: string) => {
+    fetchOrganization(id)
+      .then((data) => setOrganization(data))
+      .catch((err: unknown) => {
+        setError(
+          err instanceof ApiError
+            ? `Failed to load organization (HTTP ${err.status}).`
+            : 'Failed to load organization. Is the backend running?',
+        );
+      });
+  };
 
   useEffect(() => {
     if (!organizationId) {
@@ -105,7 +102,7 @@ export function OrganizationDetailDialog({
   }, [organizationId]);
 
   return (
-    <Dialog open={Boolean(organizationId)} onClose={onClose} fullWidth maxWidth="md">
+    <Dialog open={Boolean(organizationId)} onClose={onClose} fullWidth maxWidth="lg">
       <DialogTitle>Organization Profile</DialogTitle>
       <DialogContent>
         {!organization && !error && (
@@ -118,7 +115,7 @@ export function OrganizationDetailDialog({
 
         {organization && (
           <>
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 2 }}>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
               <Typography variant="h6">{organization.name}</Typography>
               {organization.orgKey && <Chip size="small" label={organization.orgKey} />}
               <StatusChip status={ORG_STATUS_LABELS[organization.status]} />
@@ -138,43 +135,10 @@ export function OrganizationDetailDialog({
 
             {activeTab === 0 && (
               <Stack spacing={3}>
-                <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-                    Organization Details
-                  </Typography>
-                  <Grid container spacing={2}>
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                      <DetailField label="Organization Name" value={organization.name} />
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                      <DetailField label="Organization Key" value={organization.orgKey || '—'} />
-                    </Grid>
-                    <Grid size={12}>
-                      <DetailField
-                        label="Description"
-                        value={organization.description || 'No description provided.'}
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 4 }}>
-                      <DetailField
-                        label="Status"
-                        value={<StatusChip status={ORG_STATUS_LABELS[organization.status]} />}
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 4 }}>
-                      <DetailField
-                        label="Created At"
-                        value={new Date(organization.createdAt).toLocaleString()}
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 4 }}>
-                      <DetailField
-                        label="Updated At"
-                        value={new Date(organization.updatedAt).toLocaleString()}
-                      />
-                    </Grid>
-                  </Grid>
-                </Paper>
+                <OrganizationProfileTab
+                  organization={organization}
+                  onSaved={() => loadOrganization(organization.id)}
+                />
 
                 <Box>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>

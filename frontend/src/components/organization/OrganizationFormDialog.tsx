@@ -6,6 +6,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Grid,
   MenuItem,
   Stack,
   TextField,
@@ -25,6 +26,10 @@ interface OrganizationFormValues {
   orgKey: string;
   description: string;
   status: ApiOrganizationStatus;
+  orgReferenceId: string;
+  location: string;
+  establishedYear: string;
+  email: string;
 }
 
 const EMPTY_VALUES: OrganizationFormValues = {
@@ -32,6 +37,10 @@ const EMPTY_VALUES: OrganizationFormValues = {
   orgKey: '',
   description: '',
   status: 'ACTIVE',
+  orgReferenceId: '',
+  location: '',
+  establishedYear: '',
+  email: '',
 };
 
 interface OrganizationFormDialogProps {
@@ -79,6 +88,12 @@ export function OrganizationFormDialog({
         orgKey: values.orgKey.trim().toUpperCase() || undefined,
         description: values.description.trim() || undefined,
         status: values.status,
+        orgReferenceId: values.orgReferenceId.trim() || undefined,
+        location: values.location.trim() || undefined,
+        establishedYear: values.establishedYear.trim()
+          ? Number(values.establishedYear.trim())
+          : undefined,
+        email: values.email.trim() || undefined,
       });
       onClose();
     } catch (err: unknown) {
@@ -107,13 +122,26 @@ export function OrganizationFormDialog({
               if (nameError) setNameError(null);
             }}
           />
-          <TextField
-            label="Organization Key (optional)"
-            fullWidth
-            placeholder="e.g. QMICS"
-            value={values.orgKey}
-            onChange={(e) => setValues((prev) => ({ ...prev, orgKey: e.target.value.toUpperCase() }))}
-          />
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                label="Organization ID (optional)"
+                fullWidth
+                placeholder="e.g. ORG-001"
+                value={values.orgReferenceId}
+                onChange={(e) => setValues((prev) => ({ ...prev, orgReferenceId: e.target.value }))}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                label="Organization Key (optional)"
+                fullWidth
+                placeholder="e.g. QMICS"
+                value={values.orgKey}
+                onChange={(e) => setValues((prev) => ({ ...prev, orgKey: e.target.value.toUpperCase() }))}
+              />
+            </Grid>
+          </Grid>
           <TextField
             label="Description"
             fullWidth
@@ -121,6 +149,35 @@ export function OrganizationFormDialog({
             minRows={2}
             value={values.description}
             onChange={(e) => setValues((prev) => ({ ...prev, description: e.target.value }))}
+          />
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                label="Location (optional)"
+                fullWidth
+                placeholder="e.g. Bangalore"
+                value={values.location}
+                onChange={(e) => setValues((prev) => ({ ...prev, location: e.target.value }))}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                label="Established Year (optional)"
+                fullWidth
+                type="number"
+                placeholder="e.g. 2015"
+                value={values.establishedYear}
+                onChange={(e) => setValues((prev) => ({ ...prev, establishedYear: e.target.value }))}
+              />
+            </Grid>
+          </Grid>
+          <TextField
+            label="Email (optional)"
+            fullWidth
+            type="email"
+            placeholder="e.g. info@company.com"
+            value={values.email}
+            onChange={(e) => setValues((prev) => ({ ...prev, email: e.target.value }))}
           />
           <TextField
             select
