@@ -34,6 +34,7 @@ import { AuditLogModule } from './audit-log/audit-log.module';
 import { UsersModule } from './users/users.module';
 import { RolesModule } from './roles/roles.module';
 import { AppSettingsModule } from './app-settings/app-settings.module';
+import { AdminBootstrapModule } from './admin-bootstrap/admin-bootstrap.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { AppSettingsModule } from './app-settings/app-settings.module';
     UsersModule,
     RolesModule,
     AppSettingsModule,
+    AdminBootstrapModule,
     OrganizationsModule,
     BusinessUnitsModule,
     TeamsModule,
