@@ -1,4 +1,7 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+// Falls back to '/api' (proxied to the backend by vercel.json) when the
+// build has no VITE_API_BASE_URL -- otherwise requests went to
+// "undefined/auth/login" on the frontend's own static host and failed 405.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export class ApiError extends Error {
   status: number;

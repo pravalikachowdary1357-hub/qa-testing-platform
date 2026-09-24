@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://backend-qmics2.vercel.app/$1" },
+    { "source": "/api/(.*)", "destination": "https://backend-nu-peach-99.vercel.app/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
