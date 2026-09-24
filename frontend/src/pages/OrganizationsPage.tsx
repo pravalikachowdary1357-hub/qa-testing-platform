@@ -33,9 +33,11 @@ import type { ImportResultSummary } from '../components/common/ImportResultDialo
 import { OrganizationFormDialog } from '../components/organization/OrganizationFormDialog';
 import { OrganizationDetailDialog } from '../components/organization/OrganizationDetailDialog';
 import { DeleteOrganizationDialog } from '../components/organization/DeleteOrganizationDialog';
+import { OrganizationProfileTab } from '../components/organization/OrganizationProfileTab';
 import {
   createOrganization,
   deleteOrganization,
+  fetchOrganization,
   fetchOrganizations,
   importOrganizations,
   updateOrganization,
@@ -45,6 +47,7 @@ import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
 import type {
   ApiOrganization,
+  ApiOrganizationDetail,
   ApiOrganizationStatus,
   CreateOrganizationPayload,
   OrganizationStatus,
@@ -108,6 +111,42 @@ export function OrganizationsPage() {
 
   const highlightedOrgId = currentProduct?.organizationId ?? null;
 
+  // Organization shown in the profile section at the top of the page:
+  // whichever row the user picked, else the selected product's
+  // organization, else the first one in the list.
+  const [pickedOrgId, setPickedOrgId] = useState<string | null>(null);
+  const profileOrgId =
+    (pickedOrgId && organizations?.some((o) => o.id === pickedOrgId) ? pickedOrgId : null) ??
+    (highlightedOrgId && organizations?.some((o) => o.id === highlightedOrgId) ? highlightedOrgId : null) ??
+    organizations?.[0]?.id ??
+    null;
+  const [profileOrg, setProfileOrg] = useState<ApiOrganizationDetail | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const profileTopRef = useRef<HTMLDivElement | null>(null);
+
+  const loadProfile = (id: string) => {
+    setProfileError(null);
+    return fetchOrganization(id)
+      .then(setProfileOrg)
+      .catch((err: unknown) =>
+        setProfileError(
+          err instanceof ApiError
+            ? `Failed to load organization profile (HTTP ${err.status}).`
+            : 'Failed to load organization profile.',
+        ),
+      );
+  };
+
+  useEffect(() => {
+    if (!profileOrgId) {
+      setProfileOrg(null);
+      return;
+    }
+    setProfileOrg(null);
+    void loadProfile(profileOrgId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileOrgId]);
+
   const filteredOrganizations = useMemo(() => {
     if (!organizations) return [];
     const query = searchQuery.trim().toLowerCase();
@@ -141,6 +180,7 @@ export function OrganizationsPage() {
     if (!editingOrganization) return;
     await updateOrganization(editingOrganization.id, data);
     await loadOrganizations();
+    if (editingOrganization.id === profileOrgId) void loadProfile(editingOrganization.id);
     setSnackbar({ message: 'Organization updated.', severity: 'success' });
   };
 
@@ -199,6 +239,40 @@ export function OrganizationsPage() {
         }
       />
 
+      {isLoading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+          <CircularProgress />
+        </Box>
+      )}
+
+      {error && <Alert severity="error">{error}</Alert>}
+
+      {profileOrgId && (
+        <Box ref={profileTopRef} sx={{ mb: 4 }}>
+          {profileError && <Alert severity="error">{profileError}</Alert>}
+          {!profileOrg && !profileError && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress size={28} />
+            </Box>
+          )}
+          {profileOrg && (
+            <OrganizationProfileTab
+              organization={profileOrg}
+              onSaved={() => {
+                void loadProfile(profileOrg.id);
+                void loadOrganizations();
+              }}
+            />
+          )}
+        </Box>
+      )}
+
+      {organizations && organizations.length > 0 && (
+        <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
+          All Organizations
+        </Typography>
+      )}
+
       {!isLoading && !error && (
         <TextField
           size="small"
@@ -218,13 +292,6 @@ export function OrganizationsPage() {
         />
       )}
 
-      {isLoading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-          <CircularProgress />
-        </Box>
-      )}
-
-      {error && <Alert severity="error">{error}</Alert>}
 
       {organizations && organizations.length === 0 && (
         <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
@@ -266,8 +333,12 @@ export function OrganizationsPage() {
                   key={organization.id}
                   hover
                   ref={isHighlighted ? highlightedRowRef : undefined}
-                  selected={isHighlighted}
-                  sx={isHighlighted ? { bgcolor: 'action.selected' } : undefined}
+                  selected={organization.id === profileOrgId}
+                  onClick={() => {
+                    setPickedOrgId(organization.id);
+                    profileTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  sx={{ cursor: 'pointer', ...(isHighlighted ? { bgcolor: 'action.selected' } : {}) }}
                 >
                   <TableCell>
                     <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
@@ -289,7 +360,7 @@ export function OrganizationsPage() {
                   <TableCell>
                     {new Date(organization.createdAt).toLocaleDateString()}
                   </TableCell>
-                  <TableCell align="right">
+                  <TableCell align="right" onClick={(e) => e.stopPropagation()}>
                     <Tooltip title="View">
                       <IconButton
                         size="small"
