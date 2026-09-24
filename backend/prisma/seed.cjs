@@ -112,43 +112,32 @@ function allKeys(module) {
 // mapped onto this application's actual modules per the approved role
 // analysis (not a mechanical RACI-to-CRUD conversion).
 //
-// Modules the platform Administrator does NOT get -- hands-on QA execution
-// work. The role administers the platform (organizations, users, teams,
-// roles, settings, audit) rather than doing the testing itself.
-const ADMINISTRATOR_EXCLUDED_MODULES = [
-  'test_scenarios',
-  'test_cases',
-  'test_data',
-  'environments',
-  'test_executions',
-  'defects',
-  'automation',
-  'api_testing',
-  'performance_testing',
-  'security_testing',
-  'uat',
-];
-// Testing-governance/oversight modules that now live solely with Test
-// Manager. Administrator previously also held a redundant copy of these
-// (requirements, test planning, traceability, release quality, reports,
-// AI) despite never using them for platform administration -- removed here
-// since Test Manager independently owns all of them for testing governance.
-const ADMINISTRATOR_ADDITIONAL_EXCLUDED_MODULES = [
-  'requirements',
-  'test_plans',
-  'traceability',
-  'release_quality',
-  'reports',
-  'ai',
-];
-
 const ROLE_GRANTS = {
-  'QMICS TestSphere Administrator': PERMISSIONS.map((p) => p.key).filter(
-    (key) =>
-      ![...ADMINISTRATOR_EXCLUDED_MODULES, ...ADMINISTRATOR_ADDITIONAL_EXCLUDED_MODULES].includes(
-        key.split(':')[0],
-      ),
-  ),
+  // Platform administration only -- an explicit inclusion list, not a filter
+  // over the full permission catalog. The role administers the platform
+  // (organizations, users, teams, roles, settings, audit) rather than doing
+  // hands-on QA execution or holding testing-governance/oversight modules
+  // (requirements, test planning, traceability, release quality, reports,
+  // AI), which live solely with Test Manager. Listing every key explicitly
+  // means a newly added module is never Administrator-visible by default --
+  // it takes a deliberate addition here.
+  'QMICS TestSphere Administrator': [
+    'users:read',
+    'users:manage',
+    'roles:read',
+    'roles:manage',
+    'organization:read',
+    'organization:manage',
+    'app_settings:read',
+    'app_settings:manage',
+    'audit_log:read',
+    ...allKeys('organizations'),
+    ...allKeys('business_units'),
+    ...allKeys('teams'),
+    ...allKeys('projects'),
+    ...allKeys('products'),
+    ...allKeys('product_documents'),
+  ],
 
   // Overall testing owner: strategy, governance, planning, quality, risk,
   // release readiness, and full lifecycle authority (including the
