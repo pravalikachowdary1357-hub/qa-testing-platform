@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import {
   Alert,
   Box,
@@ -7,15 +8,23 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  Grid,
   List,
   ListItem,
   ListItemText,
+  Paper,
   Stack,
   Tab,
   Tabs,
   Typography,
 } from '@mui/material';
+import ApartmentIcon from '@mui/icons-material/Apartment';
+import GroupsIcon from '@mui/icons-material/Groups';
+import FolderSpecialIcon from '@mui/icons-material/FolderSpecial';
+import Inventory2Icon from '@mui/icons-material/Inventory2';
+import PeopleIcon from '@mui/icons-material/People';
 import { StatusChip } from '../common/StatusChip';
+import { SummaryCard } from '../common/SummaryCard';
 import { BusinessUnitsTab } from './BusinessUnitsTab';
 import { TeamsTab } from './TeamsTab';
 import { OrganizationProjectsTab } from './OrganizationProjectsTab';
@@ -36,11 +45,25 @@ const PRODUCT_STATUS_LABELS: Record<string, ProductStatus> = {
   DEPRECATED: 'Deprecated',
 };
 
-const TABS = ['Overview', 'Business Units', 'Teams', 'Projects', 'Products', 'Users'] as const;
+const TABS = ['Organization Details', 'Business Units', 'Teams', 'Projects', 'Products', 'Users'] as const;
 
 interface OrganizationDetailDialogProps {
   organizationId: string | null;
   onClose: () => void;
+}
+
+// A labeled field within the Organization Details panel -- keeps every
+// field's label/value markup identical instead of repeating the same two
+// Typography lines for each of the six profile fields.
+function DetailField({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <Box>
+      <Typography variant="subtitle2" color="text.secondary">
+        {label}
+      </Typography>
+      <Typography variant="body2">{value}</Typography>
+    </Box>
+  );
 }
 
 export function OrganizationDetailDialog({
@@ -83,7 +106,7 @@ export function OrganizationDetailDialog({
 
   return (
     <Dialog open={Boolean(organizationId)} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle>Organization Workspace</DialogTitle>
+      <DialogTitle>Organization Profile</DialogTitle>
       <DialogContent>
         {!organization && !error && (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -95,7 +118,7 @@ export function OrganizationDetailDialog({
 
         {organization && (
           <>
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 2 }}>
               <Typography variant="h6">{organization.name}</Typography>
               {organization.orgKey && <Chip size="small" label={organization.orgKey} />}
               <StatusChip status={ORG_STATUS_LABELS[organization.status]} />
@@ -114,67 +137,79 @@ export function OrganizationDetailDialog({
             </Tabs>
 
             {activeTab === 0 && (
-              <Stack spacing={2}>
+              <Stack spacing={3}>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+                    Organization Details
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <DetailField label="Organization Name" value={organization.name} />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <DetailField label="Organization Key" value={organization.orgKey || '—'} />
+                    </Grid>
+                    <Grid size={12}>
+                      <DetailField
+                        label="Description"
+                        value={organization.description || 'No description provided.'}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 4 }}>
+                      <DetailField
+                        label="Status"
+                        value={<StatusChip status={ORG_STATUS_LABELS[organization.status]} />}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 4 }}>
+                      <DetailField
+                        label="Created At"
+                        value={new Date(organization.createdAt).toLocaleString()}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 4 }}>
+                      <DetailField
+                        label="Updated At"
+                        value={new Date(organization.updatedAt).toLocaleString()}
+                      />
+                    </Grid>
+                  </Grid>
+                </Paper>
+
                 <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Description
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+                    Organization Summary
                   </Typography>
-                  <Typography variant="body2">
-                    {organization.description || 'No description provided.'}
-                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                      <SummaryCard
+                        title="Business Units"
+                        value={organization.businessUnitCount}
+                        icon={ApartmentIcon}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                      <SummaryCard title="Teams" value={organization.teamCount} icon={GroupsIcon} />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                      <SummaryCard
+                        title="Projects"
+                        value={organization.projectCount}
+                        icon={FolderSpecialIcon}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                      <SummaryCard
+                        title="Products"
+                        value={organization.productCount}
+                        icon={Inventory2Icon}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                      <SummaryCard title="Users" value={organization.userCount} icon={PeopleIcon} />
+                    </Grid>
+                  </Grid>
                 </Box>
-
-                <Stack direction="row" spacing={4} sx={{ flexWrap: 'wrap' }}>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Business Units
-                    </Typography>
-                    <Typography variant="h6">{organization.businessUnitCount}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Projects
-                    </Typography>
-                    <Typography variant="h6">{organization.projectCount}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Products
-                    </Typography>
-                    <Typography variant="h6">{organization.productCount}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Teams
-                    </Typography>
-                    <Typography variant="h6">{organization.teamCount}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Users
-                    </Typography>
-                    <Typography variant="h6">{organization.userCount}</Typography>
-                  </Box>
-                </Stack>
-
-                <Stack direction="row" spacing={4}>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Created
-                    </Typography>
-                    <Typography variant="body2">
-                      {new Date(organization.createdAt).toLocaleString()}
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Updated
-                    </Typography>
-                    <Typography variant="body2">
-                      {new Date(organization.updatedAt).toLocaleString()}
-                    </Typography>
-                  </Box>
-                </Stack>
               </Stack>
             )}
 
