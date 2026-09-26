@@ -23,6 +23,7 @@ import {
   REQUIREMENT_TRACKED_FIELDS,
 } from './requirements.constants';
 import { assertSameOrganization, productOrganizationScopeWhere } from '../common/organization-scope.util';
+import { assertApprovalComment } from '../admin-config/admin-config.service';
 
 const PRODUCT_REF_SELECT = { select: { id: true, name: true, organizationId: true } };
 const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
@@ -224,6 +225,12 @@ export class RequirementsService {
         'Only a requirement that is In Review can be approved, rejected, or returned for rework.',
       );
     }
+    await assertApprovalComment(
+      this.prisma,
+      'REQUIREMENT_REVIEW',
+      dto.decision,
+      dto.comment,
+    );
 
     const { updated } = await this.persistChange(
       id,

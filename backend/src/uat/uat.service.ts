@@ -11,6 +11,7 @@ import { CreateUatExecutionDto } from './dto/create-uat-execution.dto';
 import { UpdateUatExecutionDto } from './dto/update-uat-execution.dto';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { assertSameOrganization, productOrganizationScopeWhere } from '../common/organization-scope.util';
+import { assertApprovalComment } from '../admin-config/admin-config.service';
 
 const PRODUCT_REF = { select: { id: true, name: true, organizationId: true } };
 const RELEASE_REF = { select: { id: true, name: true, version: true } };
@@ -250,6 +251,12 @@ export class UatService {
         'This UAT cycle must be COMPLETED before it can be signed off.',
       );
     }
+    await assertApprovalComment(
+      this.prisma,
+      'UAT_SIGN_OFF',
+      dto.decision,
+      dto.notes,
+    );
 
     const cycle = await this.prisma.uatCycle.update({
       where: { id },

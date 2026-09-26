@@ -13,6 +13,7 @@ import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { validateRow } from '../common/import/validate-row.util';
 import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
 import { assertSameOrganization } from '../common/organization-scope.util';
+import { assertWorkflowTransition } from '../admin-config/admin-config.service';
 
 const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
 const TEST_CASE_INCLUDE = {
@@ -132,6 +133,13 @@ export class TestCasesService {
 
     const { testScenarioId, releaseId, title, description, preconditions, expectedResult, priority, status, steps } =
       dto;
+
+    await assertWorkflowTransition(
+      this.prisma,
+      'TEST_CASE',
+      existing.status,
+      status,
+    );
 
     try {
       return await this.prisma.testCase.update({

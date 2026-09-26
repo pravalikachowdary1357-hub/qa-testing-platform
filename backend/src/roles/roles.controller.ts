@@ -1,6 +1,17 @@
-import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { RolesService } from './roles.service';
 import { UpdateRolePermissionsDto } from './dto/update-role-permissions.dto';
+import { CreateRoleDto, UpdateRoleDetailsDto } from './dto/role-details.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermission } from '../auth/require-permission.decorator';
@@ -16,6 +27,29 @@ export class RolesController {
   @RequirePermission('roles:read')
   findAll() {
     return this.rolesService.findAll();
+  }
+
+  @Post()
+  @RequirePermission('roles:manage')
+  create(@Body() dto: CreateRoleDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.rolesService.create(dto, actor);
+  }
+
+  @Patch(':id')
+  @RequirePermission('roles:manage')
+  updateDetails(
+    @Param('id') id: string,
+    @Body() dto: UpdateRoleDetailsDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.rolesService.updateDetails(id, dto, actor);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  @RequirePermission('roles:manage')
+  remove(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.rolesService.remove(id, actor);
   }
 
   @Patch(':id/permissions')

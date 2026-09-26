@@ -8,6 +8,7 @@ import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { validateRow } from '../common/import/validate-row.util';
 import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
 import { assertSameOrganization, productOrganizationScopeWhere } from '../common/organization-scope.util';
+import { assertWorkflowTransition } from '../admin-config/admin-config.service';
 
 const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
 
@@ -207,6 +208,13 @@ export class DefectsService {
       effectiveTestCaseId,
       effectiveTestExecutionId,
       actor.organizationId,
+    );
+
+    await assertWorkflowTransition(
+      this.prisma,
+      'DEFECT',
+      existing.status,
+      dto.status,
     );
 
     try {

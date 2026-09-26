@@ -23,6 +23,9 @@ import type {
 } from '../../types/testCase';
 import type { ApiTestScenario } from '../../types/testScenario';
 import type { ApiRelease } from '../../types/release';
+import type { ApiTestTemplate } from '../../types/adminConfig';
+import { fetchTestTemplates } from '../../api/adminConfig';
+import { useAuth } from '../../context/AuthContext';
 
 const PRIORITY_OPTIONS: { value: ApiTestCasePriority; label: string }[] = [
   { value: 'CRITICAL', label: 'Critical' },
@@ -100,9 +103,52 @@ export function TestCaseFormDialog({
   const [stepsError, setStepsError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const { hasPermission } = useAuth();
+  const canUseTemplates = mode === 'create' && hasPermission('test_templates:read');
+  const [templates, setTemplates] = useState<ApiTestTemplate[]>([]);
+  const [templateId, setTemplateId] = useState('');
+
+  // Only enabled templates are offered (the backend also returns only active
+  // templates to roles that cannot manage them). A template just prefills
+  // the form; nothing links the saved test case back to it.
+  useEffect(() => {
+    if (!open || !canUseTemplates) return;
+    let cancelled = false;
+    fetchTestTemplates()
+      .then((list) => {
+        if (!cancelled) setTemplates(list.filter((t) => t.isActive));
+      })
+      .catch(() => {
+        if (!cancelled) setTemplates([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, canUseTemplates]);
+
+  const applyTemplate = (id: string) => {
+    setTemplateId(id);
+    const template = templates.find((t) => t.id === id);
+    if (!template) return;
+    setValues((prev) => ({
+      ...prev,
+      description: template.description ?? prev.description,
+      preconditions: template.preconditions ?? prev.preconditions,
+      expectedResult: template.expectedResult ?? prev.expectedResult,
+      priority: template.priority,
+      steps: template.steps.length
+        ? template.steps.map((st) => ({ action: st.action, expectedResult: st.expectedResult }))
+        : prev.steps,
+    }));
+    setDescriptionError(null);
+    setExpectedResultError(null);
+    setStepErrors([]);
+    setStepsError(null);
+  };
 
   useEffect(() => {
     if (open) {
+      setTemplateId('');
       setValues(initialValues ?? emptyValues(testScenarios[0]?.id ?? ''));
       setTitleError(null);
       setDescriptionError(null);
@@ -219,6 +265,23 @@ export function TestCaseFormDialog({
             </Alert>
           ) : (
             <>
+              {canUseTemplates && templates.length > 0 && (
+                <TextField
+                  select
+                  label="Start from template (optional)"
+                  fullWidth
+                  value={templateId}
+                  onChange={(e) => applyTemplate(e.target.value)}
+                  helperText="Prefills description, preconditions, expected result, priority and steps. You can edit everything before saving."
+                >
+                  <MenuItem value="">No template</MenuItem>
+                  {templates.map((t) => (
+                    <MenuItem key={t.id} value={t.id}>
+                      {t.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
               <TextField
                 select
                 label="Test Scenario"

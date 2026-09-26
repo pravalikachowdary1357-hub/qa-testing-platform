@@ -7,6 +7,7 @@ import { UpdateReleaseDto } from './dto/update-release.dto';
 import { SignOffReleaseDto } from './dto/sign-off-release.dto';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { assertSameOrganization, productOrganizationScopeWhere } from '../common/organization-scope.util';
+import { assertApprovalComment } from '../admin-config/admin-config.service';
 
 const PRODUCT_REF = { select: { id: true, name: true, organizationId: true } };
 const ENVIRONMENT_REF = { select: { id: true, name: true } };
@@ -325,6 +326,12 @@ export class ReleaseQualityService {
     if (!signable.includes(existing.status)) {
       throw new BadRequestException('This release must be COMPLETED before it can be signed off.');
     }
+    await assertApprovalComment(
+      this.prisma,
+      'RELEASE_SIGN_OFF',
+      dto.decision,
+      dto.signOffNotes,
+    );
 
     const release = await this.prisma.release.update({
       where: { id },

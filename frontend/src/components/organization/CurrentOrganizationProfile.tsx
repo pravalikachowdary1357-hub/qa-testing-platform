@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Alert, Box, CircularProgress, Paper, Typography } from '@mui/material';
+import { Alert, Box, CircularProgress, Paper, Stack, Typography } from '@mui/material';
 import { OrganizationProfileTab } from './OrganizationProfileTab';
+import { BusinessUnitsTab } from './BusinessUnitsTab';
+import { TeamsTab } from './TeamsTab';
+import { useAuth } from '../../context/AuthContext';
 import { fetchOrganization, fetchOrganizations } from '../../api/organizations';
 import { ApiError } from '../../api/client';
 import { useProductContext } from '../../context/ProductContext';
@@ -11,6 +14,7 @@ import type { ApiOrganizationDetail } from '../../types/organization';
 // falling back to the first organization the user can see.
 export function CurrentOrganizationProfile() {
   const { currentProduct } = useProductContext();
+  const { hasPermission } = useAuth();
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [organization, setOrganization] = useState<ApiOrganizationDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -76,10 +80,32 @@ export function CurrentOrganizationProfile() {
     );
   }
 
+  // Profile + documents stay exactly as designed; Business Units and Teams
+  // reuse their existing components underneath, shown to users who can read
+  // them.
+  const sectionSx = { p: 3, borderRadius: 3, border: 1, borderColor: 'divider' } as const;
   return (
-    <OrganizationProfileTab
-      organization={organization}
-      onSaved={() => void loadOrganization(organization.id)}
-    />
+    <Stack spacing={3}>
+      <OrganizationProfileTab
+        organization={organization}
+        onSaved={() => void loadOrganization(organization.id)}
+      />
+      {hasPermission('business_units:read') && (
+        <Paper sx={sectionSx}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
+            Business Units
+          </Typography>
+          <BusinessUnitsTab organizationId={organization.id} />
+        </Paper>
+      )}
+      {hasPermission('teams:read') && (
+        <Paper sx={sectionSx}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
+            Teams
+          </Typography>
+          <TeamsTab organizationId={organization.id} />
+        </Paper>
+      )}
+    </Stack>
   );
 }

@@ -37,6 +37,8 @@ import { PlatformAdminDashboard } from '../components/dashboard/PlatformAdminDas
 import { useAuth } from '../context/AuthContext';
 import { useProductContext } from '../context/ProductContext';
 import { fetchProductDashboardSummary } from '../api/products';
+import { fetchDashboardConfig } from '../api/adminConfig';
+import type { DashboardSectionKey } from '../types/adminConfig';
 import { ApiError } from '../api/client';
 import type {
   ApiProductDashboardSummary,
@@ -87,6 +89,22 @@ export function DashboardPage() {
   const [summary, setSummary] = useState<ApiProductDashboardSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+  // Administrator-configured section visibility; if it can't be loaded,
+  // every section stays visible (the pre-configuration behaviour).
+  const [hiddenSections, setHiddenSections] = useState<DashboardSectionKey[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchDashboardConfig()
+      .then((config) => {
+        if (!cancelled) setHiddenSections(config.hiddenSections);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const show = (section: DashboardSectionKey) => !hiddenSections.includes(section);
 
   useEffect(() => {
     if (!currentProduct) {
@@ -201,6 +219,7 @@ export function DashboardPage() {
 
       {!loading && !error && currentProduct && (
         <>
+          {show('KPI_CARDS') && (
           <Grid container spacing={2} sx={{ mb: 4 }}>
             {kpis.map((kpi) => (
               <Grid key={kpi.title} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
@@ -208,7 +227,10 @@ export function DashboardPage() {
               </Grid>
             ))}
           </Grid>
+          )}
 
+          {show('PRODUCT_OVERVIEW') && (
+          <>
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
             Product Overview
           </Typography>
@@ -240,7 +262,10 @@ export function DashboardPage() {
               </TableBody>
             </Table>
           </TableContainer>
+          </>
+          )}
 
+          {show('DISTRIBUTIONS') && (
           <Grid container spacing={2} sx={{ mb: 4 }}>
             <Grid size={{ xs: 12, md: 6 }}>
               <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
@@ -275,7 +300,10 @@ export function DashboardPage() {
               </Paper>
             </Grid>
           </Grid>
+          )}
 
+          {show('TRENDS') && (
+          <>
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
             8-Week Trends
           </Typography>
@@ -293,6 +321,8 @@ export function DashboardPage() {
               formatValue={(value) => value.toLocaleString()}
             />
           </Stack>
+          </>
+          )}
         </>
       )}
     </>

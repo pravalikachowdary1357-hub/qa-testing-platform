@@ -15,3 +15,22 @@ export function updateRolePermissions(roleId: string, permissionIds: string[]): 
     body: JSON.stringify({ permissionIds }),
   });
 }
+
+export function createRole(data: {
+  name: string;
+  description?: string;
+  permissionIds: string[];
+}): Promise<ApiRole> {
+  return apiFetch<ApiRole>('/roles', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export function updateRoleDetails(
+  roleId: string,
+  data: { name?: string; description?: string },
+): Promise<ApiRole> {
+  return apiFetch<ApiRole>(`/roles/${roleId}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export function deleteRole(roleId: string): Promise<void> {
+  return apiFetch<void>(`/roles/${roleId}`, { method: 'DELETE' });
+}

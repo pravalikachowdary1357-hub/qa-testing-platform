@@ -39,6 +39,15 @@ const ADMIN_PERMISSIONS = [
   ['app_settings:read', 'View application settings'],
   ['app_settings:manage', 'Edit application settings'],
   ['audit_log:read', 'View the administrative audit log'],
+  // Platform configuration (Roles & Responsibilities: configure workflows,
+  // test templates, defect/approval workflows, dashboards, integrations).
+  // Kept in sync with migration 20260926140000_add_admin_configuration.
+  ['workflows:read', 'View test, defect and approval workflow configuration'],
+  ['workflows:manage', 'Configure test, defect and approval workflows'],
+  ['test_templates:read', 'View test case templates'],
+  ['test_templates:manage', 'Create, edit and deactivate test case templates'],
+  ['dashboards:manage', 'Configure which dashboard sections are shown'],
+  ['integrations:read', 'View the status of supported integrations'],
 ];
 
 // The 19 QA-domain modules (the other 2 of the "21 modules" -- Dashboard and
@@ -131,6 +140,12 @@ const ROLE_GRANTS = {
     'app_settings:read',
     'app_settings:manage',
     'audit_log:read',
+    'workflows:read',
+    'workflows:manage',
+    'test_templates:read',
+    'test_templates:manage',
+    'dashboards:manage',
+    'integrations:read',
     ...allKeys('organizations'),
     ...allKeys('business_units'),
     ...allKeys('teams'),
@@ -151,6 +166,7 @@ const ROLE_GRANTS = {
     ...allKeys('test_plans'),
     ...allKeys('test_scenarios'),
     ...allKeys('test_cases'),
+    'test_templates:read', // use enabled templates when creating test cases
     ...allKeys('test_data'),
     ...allKeys('environments'),
     ...allKeys('test_executions'),
@@ -178,6 +194,7 @@ const ROLE_GRANTS = {
     ...allKeys('test_plans'),
     ...allKeys('test_scenarios'),
     ...allKeys('test_cases'),
+    'test_templates:read', // use enabled templates when creating test cases
     ...allKeys('test_data'),
     ...allKeys('environments'),
     ...allKeys('test_executions'),
@@ -198,6 +215,7 @@ const ROLE_GRANTS = {
     ...keys('product_documents', 'read'),
     ...keys('test_scenarios', 'read'),
     ...keys('test_cases', 'read', 'write'),
+    'test_templates:read', // use enabled templates when creating test cases
     ...keys('test_data', 'read'),
     ...keys('environments', 'read'),
     ...keys('test_executions', 'read', 'execute'),

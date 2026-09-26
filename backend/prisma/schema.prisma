@@ -1383,3 +1383,36 @@ model AppSetting {
 
   @@map("app_settings")
 }
+
+// Administrator-managed platform configuration (workflows, approval
+// policies, dashboard layout, data-retention policy). One row per key; the
+// JSON shape of each key is validated in AdminConfigService, never trusted
+// from the client. Absent keys fall back to defaults that reproduce the
+// behaviour the app had before this configuration existed.
+model PlatformConfiguration {
+  key             String   @id
+  value           Json
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  updatedByUserId String?  @map("updated_by_user_id")
+
+  @@map("platform_configurations")
+}
+
+// Reusable test-case templates configured by the Administrator. Templates
+// are configuration only -- they never create or modify TestCase rows.
+model TestCaseTemplate {
+  id              String           @id @default(uuid())
+  name            String           @unique
+  description     String?
+  preconditions   String?
+  expectedResult  String?          @map("expected_result")
+  priority        TestCasePriority @default(MEDIUM)
+  // Ordered steps: [{ "action": string, "expectedResult": string }]
+  steps           Json             @default("[]")
+  isActive        Boolean          @default(true) @map("is_active")
+  createdByUserId String?          @map("created_by_user_id")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("test_case_templates")
+}
