@@ -1,3 +1,4 @@
+import { AuditTrail } from '../audit-log/audit-trail.interceptor';
 import {
   Body,
   Controller,
@@ -24,6 +25,7 @@ import type { AuthenticatedUser } from '../auth/current-user.decorator';
 // Creating/updating a TestExecution record IS "executing a test" in this
 // app's model -- there's no separate run endpoint -- so those two actions
 // are gated by test_executions:execute rather than a :write permission.
+@AuditTrail('TestExecution')
 @Controller('test-executions')
 @UseGuards(AuthGuard, PermissionsGuard)
 export class TestExecutionsController {

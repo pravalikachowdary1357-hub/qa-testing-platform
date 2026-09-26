@@ -59,6 +59,7 @@ import type {
   DefectSeverity,
   DefectStatus,
 } from '../types/defect';
+import { DEFECT_STATUS_LABELS, DEFECT_STATUS_ORDER } from '../types/defect';
 import type { ApiProduct } from '../types/product';
 import type { ApiRelease } from '../types/release';
 import type { ApiEnvironment } from '../types/environment';
@@ -80,13 +81,7 @@ const PRIORITY_LABELS: Record<ApiDefectPriority, DefectPriority> = {
   LOW: 'Low',
 };
 
-const STATUS_LABELS: Record<ApiDefectStatus, DefectStatus> = {
-  OPEN: 'Open',
-  IN_PROGRESS: 'In Progress',
-  RESOLVED: 'Resolved',
-  REOPENED: 'Reopened',
-  CLOSED: 'Closed',
-};
+const STATUS_LABELS: Record<ApiDefectStatus, DefectStatus> = DEFECT_STATUS_LABELS;
 
 type SortOption = 'newest' | 'oldest' | 'severity' | 'status';
 
@@ -97,13 +92,11 @@ const SEVERITY_RANK: Record<ApiDefectSeverity, number> = {
   TRIVIAL: 3,
 };
 
-const STATUS_RANK: Record<ApiDefectStatus, number> = {
-  OPEN: 0,
-  REOPENED: 1,
-  IN_PROGRESS: 2,
-  RESOLVED: 3,
-  CLOSED: 4,
-};
+// Sort by position in the defect lifecycle (New first, closed outcomes last).
+const STATUS_RANK = Object.fromEntries(DEFECT_STATUS_ORDER.map((status, index) => [status, index])) as Record<
+  ApiDefectStatus,
+  number
+>;
 
 const ALL = 'ALL' as const;
 

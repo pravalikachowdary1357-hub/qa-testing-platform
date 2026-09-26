@@ -2,9 +2,15 @@ import { useEffect, useState } from 'react';
 import { Alert, Box, Chip, CircularProgress, Paper, Stack, Typography } from '@mui/material';
 import { fetchIntegrations } from '../../../api/adminConfig';
 import type { ApiIntegration } from '../../../types/adminConfig';
+import { CommunicationIntegrations } from '../CommunicationIntegrations';
 
-const STATUS: Record<ApiIntegration['status'], { label: string; color: 'success' | 'warning' | 'default' | 'info' }> = {
+const STATUS: Record<
+  ApiIntegration['status'],
+  { label: string; color: 'success' | 'warning' | 'default' | 'info' | 'error' }
+> = {
   CONNECTED: { label: 'Connected', color: 'success' },
+  CONFIGURED: { label: 'Configured, not tested yet', color: 'info' },
+  ERROR: { label: 'Last delivery failed', color: 'error' },
   NOT_CONFIGURED: { label: 'Not configured', color: 'warning' },
   DISABLED: { label: 'Disabled', color: 'default' },
   REFERENCE_ONLY: { label: 'Reference links only', color: 'info' },
@@ -20,17 +26,18 @@ const LEVEL: Record<ApiIntegration['level'], string> = {
 const CATEGORY_ORDER = ['AI', 'Development', 'Issue tracking', 'CI/CD', 'Automation', 'Communication'];
 
 // Integration targets from the TestSphere requirements. Only genuinely
-// implemented integrations can ever show "Connected"; credentials are
-// deployment environment variables and are never shown or editable here.
+// implemented integrations can ever show "Connected" (for Teams, Slack and
+// email: only after a real delivery succeeded). Secrets are never shown.
 export function IntegrationsTab() {
   const [integrations, setIntegrations] = useState<ApiIntegration[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = () => {
     fetchIntegrations()
       .then(setIntegrations)
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load integrations.'));
-  }, []);
+  };
+  useEffect(load, []);
 
   if (error) return <Alert severity="error">{error}</Alert>;
   if (!integrations) {
@@ -73,14 +80,24 @@ export function IntegrationsTab() {
                       Products with a repository link: {i.details.productsWithRepositoryUrl}
                     </Typography>
                   )}
+                  {typeof i.details?.webhooks === 'number' && (
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      Enabled webhooks: {i.details.webhooks}
+                    </Typography>
+                  )}
                   {i.configuredVia && (
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                      Configured by the deployment: {i.configuredVia}
+                      Set up via: {i.configuredVia}
                     </Typography>
                   )}
                 </Paper>
               ))}
           </Stack>
+          {category === 'Communication' && (
+            <Box sx={{ mt: 2 }}>
+              <CommunicationIntegrations onChanged={load} />
+            </Box>
+          )}
         </Box>
       ))}
     </Stack>

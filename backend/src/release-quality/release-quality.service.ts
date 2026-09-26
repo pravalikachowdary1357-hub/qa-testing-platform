@@ -1,4 +1,13 @@
+import {
+  notifyAwaitingSignOff,
+  trackReadiness,
+} from '../notifications/notification-events';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  countDefectStatus,
+  emptyDefectStatusCounts,
+  isOpenDefectStatus,
+} from '../defects/defect-status';
 import { PrismaService } from '../prisma.service';
 import { Prisma } from '../../generated/prisma/client.js';
 import { ReleaseStatus } from '../../generated/prisma/enums.js';
@@ -273,6 +282,7 @@ export class ReleaseQualityService {
       dto.status,
     );
 
+    let updatedRelease;
     try {
       const release = await this.prisma.release.update({
         where: { id },
@@ -288,7 +298,7 @@ export class ReleaseQualityService {
         },
         include: RELEASE_INCLUDE,
       });
-      return this.attachQuality(release);
+      updatedRelease = release;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2025') {
@@ -300,6 +310,13 @@ export class ReleaseQualityService {
       }
       throw error;
     }
+    await notifyAwaitingSignOff(this.prisma, actor, 'RELEASE', existing, {
+      id: updatedRelease.id,
+      name: updatedRelease.name,
+      status: updatedRelease.status,
+      organizationId: existing.product.organizationId,
+    });
+    return this.attachQuality(updatedRelease);
   }
 
   async remove(id: string, actor: AuthenticatedUser) {
@@ -347,6 +364,7 @@ export class ReleaseQualityService {
       'RELEASE_SIGN_OFF',
       dto.decision,
       dto.signOffNotes,
+      actor,
     );
 
     const release = await this.prisma.release.update({
@@ -466,33 +484,16 @@ export class ReleaseQualityService {
     const requirementCoveragePercent = percent(coveredRequirements, totalRequirements);
 
     // ---- Defects ----
-    const openDefects = defects.filter(
-      (defect) => defect.status === 'OPEN' || defect.status === 'IN_PROGRESS' || defect.status === 'REOPENED',
+    const openDefects = defects.filter((defect) =>
+      isOpenDefectStatus(defect.status),
     );
     const openCriticalDefectCount = openDefects.filter((defect) => defect.severity === 'CRITICAL').length;
     const openCriticalMajorDefectCount = openDefects.filter(
       (defect) => defect.severity === 'CRITICAL' || defect.severity === 'MAJOR',
     ).length;
-    const defectStatusCounts = { open: 0, inProgress: 0, resolved: 0, reopened: 0, closed: 0 };
-    for (const defect of defects) {
-      switch (defect.status) {
-        case 'OPEN':
-          defectStatusCounts.open += 1;
-          break;
-        case 'IN_PROGRESS':
-          defectStatusCounts.inProgress += 1;
-          break;
-        case 'RESOLVED':
-          defectStatusCounts.resolved += 1;
-          break;
-        case 'REOPENED':
-          defectStatusCounts.reopened += 1;
-          break;
-        case 'CLOSED':
-          defectStatusCounts.closed += 1;
-          break;
-      }
-    }
+    const defectStatusCounts = emptyDefectStatusCounts();
+    for (const defect of defects)
+      countDefectStatus(defectStatusCounts, defect.status);
 
     // ---- Automation (where available) ----
     let automationSummary: {
@@ -719,6 +720,9 @@ export class ReleaseQualityService {
       failedApiTestCount,
     });
 
+    const readiness = computeReadiness(gates);
+    await trackReadiness(this.prisma, productId, readiness);
+
     return {
       testExecutionSummary: {
         totalTestCases,
@@ -745,7 +749,7 @@ export class ReleaseQualityService {
       uat: uatSummary,
       failedWithoutDefectCount,
       gates,
-      readiness: computeReadiness(gates),
+      readiness,
     };
   }
 

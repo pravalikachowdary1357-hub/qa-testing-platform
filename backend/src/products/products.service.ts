@@ -1,3 +1,4 @@
+import { OPEN_DEFECT_STATUSES } from '../defects/defect-status';
 import {
   BadRequestException,
   ConflictException,
@@ -283,7 +284,7 @@ export class ProductsService {
       this.releaseQuality.getProductQuality(id),
       this.prisma.defect.groupBy({
         by: ['severity'],
-        where: { productId: id, status: { notIn: ['RESOLVED', 'CLOSED'] } },
+        where: { productId: id, status: { in: OPEN_DEFECT_STATUSES } },
         _count: { _all: true },
       }),
       this.prisma.requirement.groupBy({

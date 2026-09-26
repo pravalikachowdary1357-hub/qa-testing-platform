@@ -28,6 +28,8 @@ import { TestTemplatesTab } from '../components/settings/tabs/TestTemplatesTab';
 import { DashboardConfigTab } from '../components/settings/tabs/DashboardConfigTab';
 import { IntegrationsTab } from '../components/settings/tabs/IntegrationsTab';
 import { DataRetentionTab } from '../components/settings/tabs/DataRetentionTab';
+import { OrganizationsAdminTab } from '../components/settings/tabs/OrganizationsAdminTab';
+import CorporateFareIcon from '@mui/icons-material/CorporateFare';
 import { useAuth } from '../context/AuthContext';
 
 interface SettingsTab {
@@ -44,6 +46,7 @@ interface SettingsTab {
 const TABS: SettingsTab[] = [
   { label: 'Profile', icon: PersonIcon, content: <ProfileTab /> },
   { label: 'Organization', icon: BusinessIcon, permission: 'organizations:read', content: <OrganizationTab /> },
+  { label: 'Organizations', icon: CorporateFareIcon, permission: 'organizations:write', hideWithoutPermission: true, content: <OrganizationsAdminTab /> },
   { label: 'Products', icon: Inventory2Icon, permission: 'organization:read', content: <ProductConfigTab /> },
   { label: 'Users', icon: GroupIcon, permission: 'users:read', content: <UsersTab /> },
   { label: 'Roles & Permissions', icon: AdminPanelSettingsIcon, permission: 'roles:read', content: <RolesTab /> },

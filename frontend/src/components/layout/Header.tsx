@@ -3,7 +3,6 @@ import type { MouseEvent } from 'react';
 import {
   AppBar,
   Avatar,
-  Badge,
   Box,
   Divider,
   IconButton,
@@ -16,7 +15,7 @@ import { alpha } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import MenuIcon from '@mui/icons-material/Menu';
 import SearchIcon from '@mui/icons-material/Search';
-import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
+import { NotificationBell } from './NotificationBell';
 import { ProductSwitcher } from '../product/ProductSwitcher';
 import { DRAWER_WIDTH } from './Sidebar';
 import { useAuth } from '../../context/AuthContext';
@@ -89,11 +88,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           <InputBase placeholder="Search..." fullWidth sx={{ fontSize: 14 }} />
         </Box>
 
-        <IconButton color="inherit" aria-label="Notifications">
-          <Badge color="error" variant="dot">
-            <NotificationsNoneIcon />
-          </Badge>
-        </IconButton>
+        <NotificationBell />
 
         <IconButton onClick={handleAvatarClick} size="small" aria-label="User menu">
           <Avatar sx={{ width: 32, height: 32 }}>{initial}</Avatar>

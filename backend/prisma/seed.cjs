@@ -48,6 +48,7 @@ const ADMIN_PERMISSIONS = [
   ['test_templates:manage', 'Create, edit and deactivate test case templates'],
   ['dashboards:manage', 'Configure which dashboard sections are shown'],
   ['integrations:read', 'View the status of supported integrations'],
+  ['integrations:manage', 'Configure Teams/Slack webhooks and send integration test messages'],
 ];
 
 // The 19 QA-domain modules (the other 2 of the "21 modules" -- Dashboard and
@@ -146,6 +147,7 @@ const ROLE_GRANTS = {
     'test_templates:manage',
     'dashboards:manage',
     'integrations:read',
+    'integrations:manage',
     ...allKeys('organizations'),
     ...allKeys('business_units'),
     ...allKeys('teams'),

@@ -1,3 +1,4 @@
+import { notifyExecutionFailure } from '../notifications/notification-events';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { Prisma } from '../../generated/prisma/client.js';
@@ -73,8 +74,9 @@ export class TestExecutionsService {
   async create(dto: CreateTestExecutionDto, actor: AuthenticatedUser) {
     await this.validateRelationships(dto.testCaseId, dto.environmentId, dto.testDataId, actor.organizationId);
 
+    let created;
     try {
-      return await this.prisma.testExecution.create({
+      created = await this.prisma.testExecution.create({
         data: {
           testCaseId: dto.testCaseId,
           environmentId: dto.environmentId,
@@ -94,6 +96,8 @@ export class TestExecutionsService {
       }
       throw error;
     }
+    await notifyExecutionFailure(this.prisma, actor, null, created);
+    return created;
   }
 
   async update(id: string, dto: UpdateTestExecutionDto, actor: AuthenticatedUser) {
@@ -132,8 +136,9 @@ export class TestExecutionsService {
       dto.status,
     );
 
+    let updated;
     try {
-      return await this.prisma.testExecution.update({
+      updated = await this.prisma.testExecution.update({
         where: { id },
         data: {
           testCaseId: dto.testCaseId,
@@ -159,6 +164,8 @@ export class TestExecutionsService {
       }
       throw error;
     }
+    await notifyExecutionFailure(this.prisma, actor, existing, updated);
+    return updated;
   }
 
   async remove(id: string, actor: AuthenticatedUser) {

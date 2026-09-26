@@ -1,4 +1,8 @@
 import {
+  AuditTrail,
+  SkipAuditTrail,
+} from '../audit-log/audit-trail.interceptor';
+import {
   BadRequestException,
   Body,
   Controller,
@@ -34,6 +38,7 @@ const IMPORT_INTERCEPTOR = FileInterceptor('file', {
   limits: { fileSize: MAX_IMPORT_FILE_SIZE_BYTES },
 });
 
+@AuditTrail('TestPlan')
 @Controller('test-plans')
 @UseGuards(AuthGuard, PermissionsGuard)
 export class TestPlansController {
@@ -78,6 +83,7 @@ export class TestPlansController {
   }
 
   @Post('import')
+  @SkipAuditTrail()
   @RequirePermission('test_plans:write')
   @UseInterceptors(IMPORT_INTERCEPTOR)
   bulkImport(

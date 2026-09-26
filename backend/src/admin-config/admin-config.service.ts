@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -21,6 +22,7 @@ import {
   WORKFLOW_LABELS,
   WORKFLOW_STATUSES,
   defaultApproval,
+  APPROVAL_PERMISSION,
   defaultWorkflow,
 } from './admin-config.constants';
 import type {
@@ -37,11 +39,18 @@ import { UpdateDashboardConfigDto } from './dto/update-dashboard-config.dto';
 import { UpdateDataRetentionDto } from './dto/update-data-retention.dto';
 import { UpdateNotificationConfigDto } from './dto/update-notification-config.dto';
 import {
+  readEmailStatus,
+  readNotificationConfig,
+  readWebhooks,
+  smtpConfigured,
+} from '../notifications/notification-delivery';
+import {
   DEFAULT_NOTIFICATIONS,
   NOTIFICATION_CHANNELS,
   NOTIFICATION_CHANNEL_LABELS,
   NOTIFICATION_EVENTS,
   NOTIFICATION_EVENT_LABELS,
+  NOTIFICATION_DEFAULT_RECIPIENTS,
 } from './admin-config.constants';
 import type { NotificationConfig } from './admin-config.constants';
 
@@ -75,8 +84,16 @@ export async function assertWorkflowTransition(
     defaultWorkflow(key),
   );
   if (!config.enforced) return;
+  // A defect workflow saved before the "New" status existed has no
+  // transitions for it; new defects then follow the rules for OPEN (the
+  // status "New" replaced as the starting point), so they are not stuck.
+  const mentionsNew = config.transitions.some(
+    (t) => t.from === 'NEW' || t.to === 'NEW',
+  );
+  const effectiveFrom =
+    key === 'DEFECT' && from === 'NEW' && !mentionsNew ? 'OPEN' : from;
   const allowed = config.transitions.some(
-    (t) => t.from === from && t.to === to,
+    (t) => t.from === effectiveFrom && t.to === to,
   );
   if (!allowed) {
     throw new BadRequestException(
@@ -85,17 +102,31 @@ export async function assertWorkflowTransition(
   }
 }
 
+// Enforces the configured approval rules for one decision: the actor's role
+// must be an allowed approver (when approver roles are configured) and a
+// comment must be present when the policy requires it.
 export async function assertApprovalComment(
   prisma: PrismaLike,
   key: ApprovalKey,
   decision: string,
   comment: string | null | undefined,
+  actor?: { roleId: string },
 ): Promise<void> {
   const policy = await readConfig(
     prisma,
     CONFIG_KEYS.approval(key),
     defaultApproval(key),
   );
+  const approverRoleIds = policy.approverRoleIds ?? [];
+  if (
+    actor &&
+    approverRoleIds.length > 0 &&
+    !approverRoleIds.includes(actor.roleId)
+  ) {
+    throw new ForbiddenException(
+      `${APPROVAL_LABELS[key]}: your role is not an approver for this decision.`,
+    );
+  }
   const approving = decision === 'APPROVED';
   const required = approving
     ? policy.requireCommentOnApprove
@@ -213,6 +244,7 @@ export class AdminConfigService {
         key,
         label: APPROVAL_LABELS[key],
         rejectCommentLocked: APPROVAL_LOCKED_REJECT_COMMENT[key],
+        permission: APPROVAL_PERMISSION[key],
         ...(await readConfig<ApprovalPolicy>(
           this.prisma,
           CONFIG_KEYS.approval(key),
@@ -239,9 +271,38 @@ export class AdminConfigService {
         `${APPROVAL_LABELS[approvalKey]} always requires a comment when rejecting.`,
       );
     }
+    const approverRoleIds = [...new Set(dto.approverRoleIds ?? [])];
+    if (approverRoleIds.length > 0) {
+      const permissionKey = APPROVAL_PERMISSION[approvalKey];
+      const roles = await this.prisma.role.findMany({
+        where: { id: { in: approverRoleIds } },
+        select: {
+          id: true,
+          name: true,
+          rolePermissions: {
+            select: { permission: { select: { key: true } } },
+          },
+        },
+      });
+      if (roles.length !== approverRoleIds.length) {
+        throw new BadRequestException(
+          'One or more approver roles do not exist.',
+        );
+      }
+      const lacking = roles.filter(
+        (r) =>
+          !r.rolePermissions.some((rp) => rp.permission.key === permissionKey),
+      );
+      if (lacking.length > 0) {
+        throw new BadRequestException(
+          `${lacking.map((r) => r.name).join(', ')} cannot approve: the role lacks the "${permissionKey}" permission.`,
+        );
+      }
+    }
     const value: ApprovalPolicy = {
       requireCommentOnApprove: dto.requireCommentOnApprove,
       requireCommentOnReject: dto.requireCommentOnReject,
+      approverRoleIds,
     };
     await this.save(
       CONFIG_KEYS.approval(approvalKey),
@@ -340,25 +401,55 @@ export class AdminConfigService {
     return this.getDashboardConfig(actor);
   }
 
-  // ---------------- Notifications (configuration only) ----------------
+  // ---------------- Notifications ----------------
 
   async getNotificationConfig() {
-    const config = await readConfig<NotificationConfig>(
-      this.prisma,
-      CONFIG_KEYS.notifications,
-      DEFAULT_NOTIFICATIONS,
-    );
+    const config = await readNotificationConfig(this.prisma);
+    const webhooks = await readWebhooks(this.prisma);
+    const enabledWebhooks = webhooks.filter((w) => w.enabled).length;
+    // Delivery is implemented for every channel; `available` says whether a
+    // channel can deliver right now (email needs SMTP settings, Teams/Slack
+    // needs at least one enabled webhook).
+    const availability: Record<string, { available: boolean; detail: string }> =
+      {
+        IN_APP: { available: true, detail: 'Shown in the notification bell.' },
+        EMAIL: smtpConfigured()
+          ? {
+              available: true,
+              detail: `Sent from ${process.env.SMTP_FROM} to users who allow email notifications.`,
+            }
+          : {
+              available: false,
+              detail:
+                'Not configured: set SMTP_HOST and SMTP_FROM in the backend environment.',
+            },
+        TEAMS_SLACK:
+          enabledWebhooks > 0
+            ? {
+                available: true,
+                detail: `${enabledWebhooks} enabled webhook(s) under Settings > Integrations.`,
+              }
+            : {
+                available: false,
+                detail:
+                  'No enabled webhook: add one under Settings > Integrations.',
+              },
+      };
     return {
       ...config,
-      routing: { ...DEFAULT_NOTIFICATIONS.routing, ...(config.routing ?? {}) },
-      deliveryImplemented: false,
+      deliveryImplemented: true,
+      // The daily reminder run (Vercel Cron) only works once CRON_SECRET is
+      // set; without it the cron endpoint refuses to run.
+      dailyScheduleEnabled: Boolean(process.env.CRON_SECRET),
       channels: NOTIFICATION_CHANNELS.map((key) => ({
         key,
         label: NOTIFICATION_CHANNEL_LABELS[key],
+        ...availability[key],
       })),
       events: NOTIFICATION_EVENTS.map((key) => ({
         key,
         label: NOTIFICATION_EVENT_LABELS[key],
+        defaultRecipients: NOTIFICATION_DEFAULT_RECIPIENTS[key],
       })),
     };
   }
@@ -380,8 +471,35 @@ export class AdminConfigService {
       }
       routing[event as keyof typeof routing] = [...new Set(channels)] as never;
     }
+    const recipientRoleIds: NotificationConfig['recipientRoleIds'] = {};
+    const requestedRoles = dto.recipientRoleIds ?? {};
+    const allRoleIds = [...new Set(Object.values(requestedRoles).flat())];
+    if (allRoleIds.length > 0) {
+      const found = await this.prisma.role.count({
+        where: { id: { in: allRoleIds } },
+      });
+      if (found !== allRoleIds.length) {
+        throw new BadRequestException(
+          'One or more recipient roles do not exist.',
+        );
+      }
+    }
+    for (const [event, roleIds] of Object.entries(requestedRoles)) {
+      if (!NOTIFICATION_EVENTS.includes(event as never)) {
+        throw new BadRequestException(`Unknown notification event ${event}.`);
+      }
+      if (event === 'ASSIGNMENT') continue; // always the assigned person
+      if (!Array.isArray(roleIds))
+        throw new BadRequestException(`Invalid recipients for ${event}.`);
+      if (roleIds.length > 0) {
+        recipientRoleIds[event as keyof typeof recipientRoleIds] = [
+          ...new Set(roleIds),
+        ];
+      }
+    }
     const value: NotificationConfig = {
       routing,
+      recipientRoleIds,
       escalationAfterDays: dto.escalationAfterDays ?? null,
       reminderDaysBeforeDue: dto.reminderDaysBeforeDue ?? null,
     };
@@ -389,12 +507,85 @@ export class AdminConfigService {
       CONFIG_KEYS.notifications,
       value,
       actor,
-      'Updated notification configuration (configuration only; no delivery).',
+      'Updated notification configuration.',
     );
     return this.getNotificationConfig();
   }
 
-  // ---------------- Integrations (read-only status) ----------------
+  // Communication integrations are real: their status comes from actual
+  // deliveries, so "Connected" only ever appears after a message was
+  // really delivered (a test message or a notification).
+  private async communicationIntegrations() {
+    const webhooks = await readWebhooks(this.prisma);
+    const webhookStatus = (provider: 'TEAMS' | 'SLACK') => {
+      const mine = webhooks.filter((w) => w.provider === provider && w.enabled);
+      if (mine.length === 0)
+        return { status: 'NOT_CONFIGURED' as const, count: 0 };
+      // Connected only when every enabled webhook's last delivery succeeded.
+      if (mine.some((w) => w.lastStatus === 'FAILED'))
+        return { status: 'ERROR' as const, count: mine.length };
+      if (mine.every((w) => w.lastStatus === 'OK'))
+        return { status: 'CONNECTED' as const, count: mine.length };
+      return { status: 'CONFIGURED' as const, count: mine.length };
+    };
+    const email = await readEmailStatus(this.prisma);
+    const emailStatus = !smtpConfigured()
+      ? ('NOT_CONFIGURED' as const)
+      : !email
+        ? ('CONFIGURED' as const)
+        : email.lastStatus === 'OK'
+          ? ('CONNECTED' as const)
+          : ('ERROR' as const);
+    const teams = webhookStatus('TEAMS');
+    const slack = webhookStatus('SLACK');
+    return [
+      {
+        key: 'IN_APP_NOTIFICATIONS',
+        category: 'Communication',
+        name: 'In-app notifications',
+        level: 'IMPLEMENTED' as const,
+        status: 'CONNECTED' as const,
+        description:
+          'Notifications appear in the bell in the header for each recipient.',
+      },
+      {
+        key: 'COMMUNICATION_MICROSOFT_TEAMS',
+        category: 'Communication',
+        name: 'Microsoft Teams',
+        level: 'IMPLEMENTED' as const,
+        status: teams.status,
+        description:
+          'Posts notifications to Teams channels through incoming / Workflows webhooks.',
+        details: { webhooks: teams.count },
+        configuredVia: 'Settings > Integrations > Teams / Slack webhooks',
+      },
+      {
+        key: 'COMMUNICATION_SLACK',
+        category: 'Communication',
+        name: 'Slack',
+        level: 'IMPLEMENTED' as const,
+        status: slack.status,
+        description:
+          'Posts notifications to Slack channels through incoming webhooks.',
+        details: { webhooks: slack.count },
+        configuredVia: 'Settings > Integrations > Teams / Slack webhooks',
+      },
+      {
+        key: 'COMMUNICATION_EMAIL',
+        category: 'Communication',
+        name: 'Email (SMTP)',
+        level: 'IMPLEMENTED' as const,
+        status: emailStatus,
+        description:
+          'Sends notification emails to users who allow email notifications.',
+        details: email?.lastError ? { lastError: email.lastError } : undefined,
+        configuredVia:
+          'Environment variables SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, SMTP_SECURE',
+      },
+    ];
+  }
+
+  // ---------------- Integrations (status) ----------------
 
   // Only integrations the codebase genuinely implements are listed. Their
   // secrets live in deployment environment variables and are never exposed
@@ -464,7 +655,7 @@ export class AdminConfigService {
         'GitLab CI/CD',
         'Azure Pipelines',
       ]),
-      ...future('Communication', ['Microsoft Teams', 'Slack', 'Email']),
+      ...(await this.communicationIntegrations()),
       ...future('Automation', [
         'Selenium',
         'Playwright',

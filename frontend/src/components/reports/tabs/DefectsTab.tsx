@@ -233,6 +233,7 @@ export function DefectsTab({ products, environments }: DefectsTabProps) {
                   { key: 'resolved', label: 'Resolved', value: data.summary.statusCounts.resolved, color: colorForStatusLabel('Resolved', theme) },
                   { key: 'reopened', label: 'Reopened', value: data.summary.statusCounts.reopened, color: colorForStatusLabel('Reopened', theme) },
                   { key: 'closed', label: 'Closed', value: data.summary.statusCounts.closed, color: colorForStatusLabel('Closed', theme) },
+                  { key: 'deferred', label: 'Deferred', value: data.summary.statusCounts.deferred ?? 0, color: colorForStatusLabel('Deferred', theme) },
                 ]}
               />
             </Grid>

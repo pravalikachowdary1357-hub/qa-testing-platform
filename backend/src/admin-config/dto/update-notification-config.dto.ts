@@ -13,6 +13,11 @@ export class UpdateNotificationConfigDto {
   @IsObject()
   routing: Record<string, string[]>;
 
+  // { EVENT: [roleId, ...] } -- empty / missing = default recipients.
+  @IsOptional()
+  @IsObject()
+  recipientRoleIds?: Record<string, string[]>;
+
   @IsOptional()
   @ValidateIf((_, value) => value !== null)
   @IsInt()

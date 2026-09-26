@@ -1,3 +1,4 @@
+import { AuditTrail } from '../audit-log/audit-trail.interceptor';
 import {
   Body,
   Controller,
@@ -21,6 +22,7 @@ import { RequirePermission } from '../auth/require-permission.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
 
+@AuditTrail('ApiTestRequest')
 @Controller('api-testing')
 @UseGuards(AuthGuard, PermissionsGuard)
 export class ApiTestingController {

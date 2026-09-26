@@ -5,12 +5,62 @@ import type { ApiReleaseRef } from './release';
 // Human-readable labels rendered by StatusChip.
 export type DefectSeverity = 'Critical' | 'Major' | 'Minor' | 'Trivial';
 export type DefectPriority = 'Critical' | 'High' | 'Medium' | 'Low';
-export type DefectStatus = 'Open' | 'In Progress' | 'Resolved' | 'Reopened' | 'Closed';
+export type DefectStatus =
+  | 'New'
+  | 'Open'
+  | 'Assigned'
+  | 'In Progress'
+  | 'Fixed'
+  | 'Ready for Retest'
+  | 'Retested'
+  | 'Resolved'
+  | 'Reopened'
+  | 'Closed'
+  | 'Rejected'
+  | 'Duplicate'
+  | 'Deferred'
+  | 'Cannot Reproduce';
 
 // Raw Prisma enum values as returned by the backend.
 export type ApiDefectSeverity = 'CRITICAL' | 'MAJOR' | 'MINOR' | 'TRIVIAL';
 export type ApiDefectPriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-export type ApiDefectStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'REOPENED' | 'CLOSED';
+export type ApiDefectStatus =
+  | 'NEW'
+  | 'OPEN'
+  | 'ASSIGNED'
+  | 'IN_PROGRESS'
+  | 'FIXED'
+  | 'READY_FOR_RETEST'
+  | 'RETESTED'
+  | 'RESOLVED'
+  | 'REOPENED'
+  | 'CLOSED'
+  | 'REJECTED'
+  | 'DUPLICATE'
+  | 'DEFERRED'
+  | 'CANNOT_REPRODUCE';
+
+// Source lifecycle order: New -> Assigned -> In Progress -> Fixed -> Ready
+// for Retest -> Retested -> Closed, then the alternate outcomes. OPEN and
+// RESOLVED are kept for existing records.
+export const DEFECT_STATUS_LABELS: Record<ApiDefectStatus, DefectStatus> = {
+  NEW: 'New',
+  OPEN: 'Open',
+  ASSIGNED: 'Assigned',
+  IN_PROGRESS: 'In Progress',
+  FIXED: 'Fixed',
+  READY_FOR_RETEST: 'Ready for Retest',
+  RETESTED: 'Retested',
+  RESOLVED: 'Resolved',
+  REOPENED: 'Reopened',
+  CLOSED: 'Closed',
+  REJECTED: 'Rejected',
+  DUPLICATE: 'Duplicate',
+  DEFERRED: 'Deferred',
+  CANNOT_REPRODUCE: 'Cannot Reproduce',
+};
+
+export const DEFECT_STATUS_ORDER = Object.keys(DEFECT_STATUS_LABELS) as ApiDefectStatus[];
 
 export interface ApiDefectProductRef {
   id: string;

@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { Prisma } from '../../generated/prisma/client.js';
@@ -83,6 +84,15 @@ export class OrganizationsService {
   }
 
   async create(dto: CreateOrganizationDto, actor?: AuthenticatedUser) {
+    // A user who belongs to an organization can only ever see that one
+    // organization (see findAll), so letting them create another would
+    // produce an organization nobody in their tenant can see or manage.
+    // Creating organizations is a platform-level (unscoped) action.
+    if (actor?.organizationId) {
+      throw new ForbiddenException(
+        'Only a platform-level administrator (not assigned to an organization) can create organizations.',
+      );
+    }
     let created;
     try {
       created = await this.prisma.organization.create({ data: dto, select: ORGANIZATION_SELECT });
@@ -114,6 +124,11 @@ export class OrganizationsService {
     rows: Record<string, string>[],
     actor: AuthenticatedUser,
   ): Promise<ImportResult> {
+    if (actor.organizationId) {
+      throw new ForbiddenException(
+        'Only a platform-level administrator (not assigned to an organization) can create organizations.',
+      );
+    }
     const errors: ImportRowError[] = [];
     let successCount = 0;
 

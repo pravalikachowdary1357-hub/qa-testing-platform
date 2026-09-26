@@ -1,4 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ALL_DEFECT_STATUSES,
+  OPEN_DEFECT_STATUSES,
+  countDefectStatus,
+  emptyDefectStatusCounts,
+} from '../defects/defect-status';
 import { PrismaService } from '../prisma.service';
 import { ReleaseQualityService } from '../release-quality/release-quality.service';
 import { ReportFilterDto } from './dto/report-filter.dto';
@@ -182,7 +188,7 @@ export class ReportsService {
     const totalTestCases = testCases.length;
     const executedTestCases = totalTestCases - resultCounts.notRun;
 
-    const openStatuses = new Set(['OPEN', 'IN_PROGRESS', 'REOPENED']);
+    const openStatuses = new Set<string>(OPEN_DEFECT_STATUSES);
     const openDefects = defects.filter((defect) => openStatuses.has(defect.status));
     const criticalOpenCount = openDefects.filter((defect) => defect.severity === 'CRITICAL').length;
 
@@ -617,7 +623,7 @@ export class ReportsService {
     await this.validateFilter(filter, actorOrganizationId);
     const validStatus = validateEnumParam(
       status,
-      ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'REOPENED', 'CLOSED'] as const,
+      ALL_DEFECT_STATUSES,
       'status',
     );
     const validSeverity = validateEnumParam(severity, ['CRITICAL', 'MAJOR', 'MINOR', 'TRIVIAL'] as const, 'severity');
@@ -638,27 +644,11 @@ export class ReportsService {
       },
     });
 
-    const statusCounts = { open: 0, inProgress: 0, resolved: 0, reopened: 0, closed: 0 };
+    const statusCounts = emptyDefectStatusCounts();
     const severityCounts = { critical: 0, major: 0, minor: 0, trivial: 0 };
     const priorityCounts = { critical: 0, high: 0, medium: 0, low: 0 };
     for (const d of defects) {
-      switch (d.status) {
-        case 'OPEN':
-          statusCounts.open += 1;
-          break;
-        case 'IN_PROGRESS':
-          statusCounts.inProgress += 1;
-          break;
-        case 'RESOLVED':
-          statusCounts.resolved += 1;
-          break;
-        case 'REOPENED':
-          statusCounts.reopened += 1;
-          break;
-        case 'CLOSED':
-          statusCounts.closed += 1;
-          break;
-      }
+      countDefectStatus(statusCounts, d.status);
       switch (d.severity) {
         case 'CRITICAL':
           severityCounts.critical += 1;
@@ -688,7 +678,7 @@ export class ReportsService {
           break;
       }
     }
-    const openStatuses = new Set(['OPEN', 'IN_PROGRESS', 'REOPENED']);
+    const openStatuses = new Set<string>(OPEN_DEFECT_STATUSES);
     const openCount = defects.filter((d) => openStatuses.has(d.status)).length;
     const criticalOpenCount = defects.filter((d) => openStatuses.has(d.status) && d.severity === 'CRITICAL').length;
 

@@ -78,7 +78,7 @@ export interface DefectQualitySummary {
   openCount: number;
   criticalOpenCount: number;
   criticalMajorOpenCount: number;
-  statusCounts: { open: number; inProgress: number; resolved: number; reopened: number; closed: number };
+  statusCounts: { open: number; inProgress: number; resolved: number; reopened: number; closed: number; deferred?: number };
 }
 
 export interface AutomationQualitySummary {

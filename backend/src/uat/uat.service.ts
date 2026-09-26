@@ -1,3 +1,4 @@
+import { notifyAwaitingSignOff } from '../notifications/notification-events';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { Prisma } from '../../generated/prisma/client.js';
@@ -191,6 +192,7 @@ export class UatService {
       dto.status,
     );
 
+    let updatedCycle;
     try {
       const cycle = await this.prisma.uatCycle.update({
         where: { id },
@@ -203,7 +205,7 @@ export class UatService {
         },
         include: CYCLE_LIST_SELECT_EXTRA,
       });
-      return summarize(cycle);
+      updatedCycle = cycle;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2025') {
@@ -215,6 +217,17 @@ export class UatService {
       }
       throw error;
     }
+    const product = await this.prisma.product.findUnique({
+      where: { id: updatedCycle.productId },
+      select: { organizationId: true },
+    });
+    await notifyAwaitingSignOff(this.prisma, actor, 'UAT', existing, {
+      id: updatedCycle.id,
+      name: updatedCycle.name,
+      status: updatedCycle.status,
+      organizationId: product?.organizationId ?? null,
+    });
+    return summarize(updatedCycle);
   }
 
   async remove(id: string, actor: AuthenticatedUser) {
@@ -272,6 +285,7 @@ export class UatService {
       'UAT_SIGN_OFF',
       dto.decision,
       dto.notes,
+      actor,
     );
 
     const cycle = await this.prisma.uatCycle.update({

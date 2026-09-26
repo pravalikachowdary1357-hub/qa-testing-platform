@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { DEFECT_STATUS_LABELS } from '../types/defect';
+import type { ApiDefectStatus } from '../types/defect';
 import {
   Alert,
   Box,
@@ -670,15 +672,7 @@ export function TraceabilityPage() {
                           </TableCell>
                           <TableCell>
                             <StatusChip
-                              status={
-                                {
-                                  OPEN: 'Open',
-                                  IN_PROGRESS: 'In Progress',
-                                  RESOLVED: 'Resolved',
-                                  REOPENED: 'Reopened',
-                                  CLOSED: 'Closed',
-                                }[defect.status]
-                              }
+                              status={DEFECT_STATUS_LABELS[defect.status as ApiDefectStatus] ?? defect.status}
                             />
                           </TableCell>
                           <TableCell align="right">

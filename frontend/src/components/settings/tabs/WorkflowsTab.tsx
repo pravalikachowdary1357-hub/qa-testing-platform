@@ -10,6 +10,7 @@ import {
   Checkbox,
   CircularProgress,
   FormControlLabel,
+  MenuItem,
   Paper,
   Snackbar,
   Stack,
@@ -20,6 +21,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -30,8 +32,10 @@ import {
   updateApprovalPolicy,
   updateWorkflow,
 } from '../../../api/adminConfig';
+import { fetchRoles } from '../../../api/roles';
 import { useAuth } from '../../../context/AuthContext';
 import type { ApiApprovalPolicy, ApiWorkflow } from '../../../types/adminConfig';
+import type { ApiRole } from '../../../types/settings';
 
 const label = (status: string) =>
   status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, ' ');
@@ -168,25 +172,27 @@ function WorkflowEditor({
 
 function ApprovalPolicies({
   policies,
+  roles,
   canManage,
   onSaved,
   onMessage,
 }: {
   policies: ApiApprovalPolicy[];
+  roles: ApiRole[];
   canManage: boolean;
   onSaved: (p: ApiApprovalPolicy) => void;
   onMessage: (m: { text: string; error?: boolean }) => void;
 }) {
   const change = async (
     policy: ApiApprovalPolicy,
-    field: 'requireCommentOnApprove' | 'requireCommentOnReject',
-    value: boolean,
+    patch: Partial<Pick<ApiApprovalPolicy, 'requireCommentOnApprove' | 'requireCommentOnReject' | 'approverRoleIds'>>,
   ) => {
     try {
       const updated = await updateApprovalPolicy(policy.key, {
         requireCommentOnApprove: policy.requireCommentOnApprove,
         requireCommentOnReject: policy.requireCommentOnReject,
-        [field]: value,
+        approverRoleIds: policy.approverRoleIds ?? [],
+        ...patch,
       });
       onSaved(updated);
       onMessage({ text: `${policy.label} rules saved.` });
@@ -201,7 +207,8 @@ function ApprovalPolicies({
         Approval workflows
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Rules applied when a requirement is reviewed or a UAT cycle / release is signed off.
+        Rules applied when a requirement is reviewed or a UAT cycle / release is signed off. Approver roles limit who
+        may decide; leave empty to allow every role that holds the approval permission.
       </Typography>
       <Table size="small">
         <TableHead>
@@ -209,6 +216,7 @@ function ApprovalPolicies({
             <TableCell>Approval</TableCell>
             <TableCell align="center">Comment required to approve</TableCell>
             <TableCell align="center">Comment required to reject</TableCell>
+            <TableCell sx={{ minWidth: 260 }}>Approver roles</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -219,7 +227,7 @@ function ApprovalPolicies({
                 <Switch
                   checked={policy.requireCommentOnApprove}
                   disabled={!canManage}
-                  onChange={(e) => void change(policy, 'requireCommentOnApprove', e.target.checked)}
+                  onChange={(e) => void change(policy, { requireCommentOnApprove: e.target.checked })}
                 />
               </TableCell>
               <TableCell align="center">
@@ -233,9 +241,17 @@ function ApprovalPolicies({
                   <Switch
                     checked={policy.requireCommentOnReject}
                     disabled={!canManage}
-                    onChange={(e) => void change(policy, 'requireCommentOnReject', e.target.checked)}
+                    onChange={(e) => void change(policy, { requireCommentOnReject: e.target.checked })}
                   />
                 )}
+              </TableCell>
+              <TableCell>
+                <ApproverRolesSelect
+                  policy={policy}
+                  roles={roles}
+                  disabled={!canManage}
+                  onChange={(approverRoleIds) => void change(policy, { approverRoleIds })}
+                />
               </TableCell>
             </TableRow>
           ))}
@@ -245,11 +261,66 @@ function ApprovalPolicies({
   );
 }
 
+// Only roles that already hold the approval permission are offered: any
+// other role could never reach the approval endpoint anyway.
+function ApproverRolesSelect({
+  policy,
+  roles,
+  disabled,
+  onChange,
+}: {
+  policy: ApiApprovalPolicy;
+  roles: ApiRole[];
+  disabled: boolean;
+  onChange: (roleIds: string[]) => void;
+}) {
+  const eligible = roles.filter((r) => r.permissions.some((p) => p.key === policy.permission));
+  const selected = policy.approverRoleIds ?? [];
+  return (
+    <TextField
+      select
+      size="small"
+      fullWidth
+      disabled={disabled}
+      value={selected}
+      slotProps={{
+        select: {
+          multiple: true,
+          displayEmpty: true,
+          renderValue: (value) => {
+            const ids = value as string[];
+            if (ids.length === 0) return <em>Any role with approval permission</em>;
+            return ids.map((id) => roles.find((r) => r.id === id)?.name ?? id).join(', ');
+          },
+        },
+        htmlInput: { 'aria-label': `${policy.label} approver roles` },
+      }}
+      onChange={(e) => {
+        const value = e.target.value as unknown as string[] | string;
+        onChange(typeof value === 'string' ? value.split(',') : value);
+      }}
+    >
+      {eligible.map((role) => (
+        <MenuItem key={role.id} value={role.id}>
+          <Checkbox size="small" checked={selected.includes(role.id)} />
+          {role.name}
+        </MenuItem>
+      ))}
+      {eligible.length === 0 && (
+        <MenuItem disabled value="">
+          No role holds {policy.permission}
+        </MenuItem>
+      )}
+    </TextField>
+  );
+}
+
 export function WorkflowsTab() {
   const { hasPermission } = useAuth();
   const canManage = hasPermission('workflows:manage');
   const [workflows, setWorkflows] = useState<ApiWorkflow[] | null>(null);
   const [policies, setPolicies] = useState<ApiApprovalPolicy[]>([]);
+  const [roles, setRoles] = useState<ApiRole[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
 
@@ -260,6 +331,10 @@ export function WorkflowsTab() {
         setPolicies(p);
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load workflows.'));
+    // Roles feed the approver picker only; without roles:read it stays empty.
+    fetchRoles()
+      .then(setRoles)
+      .catch(() => setRoles([]));
   }, []);
 
   if (error) return <Alert severity="error">{error}</Alert>;
@@ -305,6 +380,7 @@ export function WorkflowsTab() {
       </Box>
       <ApprovalPolicies
         policies={policies}
+        roles={roles}
         canManage={canManage}
         onMessage={setMessage}
         onSaved={(updated) => setPolicies((prev) => prev.map((p) => (p.key === updated.key ? updated : p)))}

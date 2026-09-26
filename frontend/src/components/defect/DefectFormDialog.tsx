@@ -16,6 +16,7 @@ import type {
   ApiDefectStatus,
   CreateDefectPayload,
 } from '../../types/defect';
+import { DEFECT_STATUS_LABELS, DEFECT_STATUS_ORDER } from '../../types/defect';
 import type { ApiProduct } from '../../types/product';
 import type { ApiRelease } from '../../types/release';
 import type { ApiEnvironment } from '../../types/environment';
@@ -37,13 +38,10 @@ const PRIORITY_OPTIONS: { value: ApiDefectPriority; label: string }[] = [
   { value: 'LOW', label: 'Low' },
 ];
 
-const STATUS_OPTIONS: { value: ApiDefectStatus; label: string }[] = [
-  { value: 'OPEN', label: 'Open' },
-  { value: 'IN_PROGRESS', label: 'In Progress' },
-  { value: 'RESOLVED', label: 'Resolved' },
-  { value: 'REOPENED', label: 'Reopened' },
-  { value: 'CLOSED', label: 'Closed' },
-];
+const STATUS_OPTIONS: { value: ApiDefectStatus; label: string }[] = DEFECT_STATUS_ORDER.map((value) => ({
+  value,
+  label: DEFECT_STATUS_LABELS[value],
+}));
 
 const NONE = '' as const;
 
@@ -86,7 +84,7 @@ function emptyValues(defaultProductId: string): DefectFormValues {
     actualResult: '',
     severity: 'MAJOR',
     priority: 'MEDIUM',
-    status: 'OPEN',
+    status: 'NEW',
     assignedTo: '',
   };
 }

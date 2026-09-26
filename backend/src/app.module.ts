@@ -36,6 +36,7 @@ import { UsersModule } from './users/users.module';
 import { RolesModule } from './roles/roles.module';
 import { AppSettingsModule } from './app-settings/app-settings.module';
 import { AdminConfigModule } from './admin-config/admin-config.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { TestTemplatesModule } from './test-templates/test-templates.module';
 
 @Module({
@@ -47,6 +48,7 @@ import { TestTemplatesModule } from './test-templates/test-templates.module';
     RolesModule,
     AppSettingsModule,
     AdminConfigModule,
+    NotificationsModule,
     TestTemplatesModule,
     OrganizationsModule,
     OrganizationDocumentsModule,

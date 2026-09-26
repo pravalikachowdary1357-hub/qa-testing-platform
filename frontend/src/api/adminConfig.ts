@@ -23,7 +23,7 @@ export const updateWorkflow = (key: string, enforced: boolean, transitions: Work
 export const fetchApprovalPolicies = () => apiFetch<ApiApprovalPolicy[]>('/approval-policies');
 export const updateApprovalPolicy = (
   key: string,
-  data: Pick<ApiApprovalPolicy, 'requireCommentOnApprove' | 'requireCommentOnReject'>,
+  data: Pick<ApiApprovalPolicy, 'requireCommentOnApprove' | 'requireCommentOnReject' | 'approverRoleIds'>,
 ) => put<ApiApprovalPolicy>(`/approval-policies/${key}`, data);
 
 export const fetchDashboardConfig = () => apiFetch<ApiDashboardConfig>('/dashboard-config');
@@ -34,7 +34,7 @@ export const clearDashboardRoleOverride = (roleId: string) =>
 
 export const fetchNotificationConfig = () => apiFetch<ApiNotificationConfig>('/notification-config');
 export const updateNotificationConfig = (
-  data: Pick<ApiNotificationConfig, 'routing' | 'escalationAfterDays' | 'reminderDaysBeforeDue'>,
+  data: Pick<ApiNotificationConfig, 'routing' | 'recipientRoleIds' | 'escalationAfterDays' | 'reminderDaysBeforeDue'>,
 ) => put<ApiNotificationConfig>('/notification-config', data);
 
 export const fetchIntegrations = () => apiFetch<ApiIntegration[]>('/integrations');

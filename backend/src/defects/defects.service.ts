@@ -1,3 +1,4 @@
+import { notifyDefectChange } from '../notifications/notification-events';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { Prisma } from '../../generated/prisma/client.js';
@@ -52,7 +53,11 @@ export class DefectsService {
     return defect;
   }
 
-  async create(dto: CreateDefectDto, actor: AuthenticatedUser) {
+  async create(
+    dto: CreateDefectDto,
+    actor: AuthenticatedUser,
+    options: { notify?: boolean } = {},
+  ) {
     await this.validateRelationships(
       dto.productId,
       dto.environmentId,
@@ -61,8 +66,9 @@ export class DefectsService {
       actor.organizationId,
     );
 
+    let created;
     try {
-      return await this.prisma.defect.create({
+      created = await this.prisma.defect.create({
         data: {
           productId: dto.productId,
           releaseId: dto.releaseId,
@@ -87,6 +93,12 @@ export class DefectsService {
       }
       throw error;
     }
+    // CSV imports pass notify: false so a large import does not send one
+    // notification (and email / webhook post) per row.
+    if (options.notify !== false) {
+      await notifyDefectChange(this.prisma, actor, null, created);
+    }
+    return created;
   }
 
   async bulkImport(
@@ -163,7 +175,7 @@ export class DefectsService {
       }
 
       try {
-        await this.create(result.dto, actor);
+        await this.create(result.dto, actor, { notify: false });
         successCount++;
       } catch (error) {
         errors.push({
@@ -217,8 +229,9 @@ export class DefectsService {
       dto.status,
     );
 
+    let updated;
     try {
-      return await this.prisma.defect.update({
+      updated = await this.prisma.defect.update({
         where: { id },
         data: {
           productId: dto.productId,
@@ -249,6 +262,8 @@ export class DefectsService {
       }
       throw error;
     }
+    await notifyDefectChange(this.prisma, actor, existing, updated);
+    return updated;
   }
 
   async remove(id: string, actor: AuthenticatedUser) {

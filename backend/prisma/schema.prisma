@@ -174,11 +174,20 @@ enum DefectPriority {
 }
 
 enum DefectStatus {
+  NEW
   OPEN
+  ASSIGNED
   IN_PROGRESS
+  FIXED
+  READY_FOR_RETEST
+  RETESTED
   RESOLVED
   REOPENED
   CLOSED
+  REJECTED
+  DUPLICATE
+  DEFERRED
+  CANNOT_REPRODUCE
 }
 
 enum AutomationType {
@@ -849,7 +858,7 @@ model Defect {
   actualResult     String         @map("actual_result")
   severity         DefectSeverity @default(MAJOR)
   priority         DefectPriority @default(MEDIUM)
-  status           DefectStatus   @default(OPEN)
+  status           DefectStatus   @default(NEW)
   assignedTo       String?        @map("assigned_to")
   createdAt        DateTime       @default(now()) @map("created_at")
   updatedAt        DateTime       @updatedAt @map("updated_at")
@@ -1323,6 +1332,7 @@ model User {
   requirementsOwned         Requirement[]        @relation("RequirementOwner")
   requirementReviews        Requirement[]        @relation("RequirementReviewedBy")
   requirementVersionChanges RequirementVersion[] @relation("RequirementVersionChangedBy")
+  notifications             Notification[]
 
   @@index([roleId])
   @@index([organizationId])
@@ -1415,4 +1425,28 @@ model TestCaseTemplate {
   updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@map("test_case_templates")
+}
+
+// In-app notifications (Requirements section 24). One row per recipient.
+// dedupeKey stops scheduled reminders from repeating for the same item on
+// the same day.
+model Notification {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  event      String
+  title      String
+  message    String
+  link       String?
+  entityType String?   @map("entity_type")
+  entityId   String?   @map("entity_id")
+  dedupeKey  String?   @map("dedupe_key")
+  readAt     DateTime? @map("read_at") @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, readAt])
+  @@index([createdAt])
+  @@map("notifications")
 }

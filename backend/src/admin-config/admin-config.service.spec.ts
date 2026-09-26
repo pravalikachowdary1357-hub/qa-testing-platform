@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
   assertApprovalComment,
   assertWorkflowTransition,
@@ -19,7 +19,8 @@ describe('workflow enforcement', () => {
   it('default workflow allows every transition and is not enforced', () => {
     const wf = defaultWorkflow('DEFECT');
     expect(wf.enforced).toBe(false);
-    expect(wf.transitions).toHaveLength(5 * 4);
+    // 14 defect statuses (source lifecycle + the original 5): every ordered pair.
+    expect(wf.transitions).toHaveLength(14 * 13);
   });
 
   it('is a no-op when nothing is configured', async () => {
@@ -69,10 +70,12 @@ describe('approval comment rules', () => {
     expect(defaultApproval('REQUIREMENT_REVIEW')).toEqual({
       requireCommentOnApprove: false,
       requireCommentOnReject: true,
+      approverRoleIds: [],
     });
     expect(defaultApproval('RELEASE_SIGN_OFF')).toEqual({
       requireCommentOnApprove: false,
       requireCommentOnReject: false,
+      approverRoleIds: [],
     });
   });
 
@@ -126,5 +129,37 @@ describe('source-aligned workflow coverage', () => {
         assertWorkflowTransition(prismaWith(undefined), key, 'X', 'Y'),
       ).resolves.toBeUndefined();
     }
+  });
+});
+
+describe('approver roles', () => {
+  it('allows any role when no approver roles are configured', async () => {
+    const prisma = prismaWith({
+      requireCommentOnApprove: false,
+      requireCommentOnReject: false,
+    });
+    await expect(
+      assertApprovalComment(prisma, 'RELEASE_SIGN_OFF', 'APPROVED', undefined, {
+        roleId: 'any',
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('rejects a role that is not a configured approver', async () => {
+    const prisma = prismaWith({
+      requireCommentOnApprove: false,
+      requireCommentOnReject: false,
+      approverRoleIds: ['role-po'],
+    });
+    await expect(
+      assertApprovalComment(prisma, 'RELEASE_SIGN_OFF', 'APPROVED', undefined, {
+        roleId: 'role-tm',
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      assertApprovalComment(prisma, 'RELEASE_SIGN_OFF', 'APPROVED', undefined, {
+        roleId: 'role-po',
+      }),
+    ).resolves.toBeUndefined();
   });
 });

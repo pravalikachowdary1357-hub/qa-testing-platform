@@ -93,7 +93,18 @@ export interface WorkflowConfig {
 export interface ApprovalPolicy {
   requireCommentOnApprove: boolean;
   requireCommentOnReject: boolean;
+  // Roles allowed to make this decision. Empty = every role that holds the
+  // approval permission (the behaviour before this setting existed).
+  approverRoleIds: string[];
 }
+
+// The permission that already gates each approval endpoint. An approver
+// role must hold it, otherwise selecting it would have no effect.
+export const APPROVAL_PERMISSION: Record<ApprovalKey, string> = {
+  REQUIREMENT_REVIEW: 'requirements:approve',
+  UAT_SIGN_OFF: 'uat:approve',
+  RELEASE_SIGN_OFF: 'release_quality:approve',
+};
 
 export interface DashboardConfig {
   hiddenSections: DashboardSection[];
@@ -103,9 +114,10 @@ export interface DashboardConfig {
 }
 
 // Notification configuration (Requirements section 24). Delivery channels
-// and event categories exactly as listed in the source. This is
-// configuration only: TestSphere has no delivery infrastructure yet, so
-// saving it never sends anything.
+// and event categories exactly as listed in the source. Delivery is real:
+// IN_APP writes to the notifications table (header bell), EMAIL goes out
+// over SMTP when SMTP_* variables are set, TEAMS_SLACK posts to the
+// webhooks configured under Settings > Integrations.
 export const NOTIFICATION_CHANNELS = [
   'EMAIL',
   'IN_APP',
@@ -125,6 +137,8 @@ export const NOTIFICATION_EVENTS = [
   'APPROVAL_REMINDER',
   'ESCALATION',
   'OVERDUE_ALERT',
+  // Driven by the existing "Notify when release readiness changes" setting.
+  'RELEASE_READINESS',
 ] as const;
 export type NotificationEvent = (typeof NOTIFICATION_EVENTS)[number];
 export const NOTIFICATION_EVENT_LABELS: Record<NotificationEvent, string> = {
@@ -134,24 +148,52 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEvent, string> = {
   APPROVAL_REMINDER: 'Approval reminders',
   ESCALATION: 'Escalations',
   OVERDUE_ALERT: 'Overdue alerts',
+  RELEASE_READINESS: 'Release readiness changes',
 };
 export interface NotificationConfig {
-  // event -> channels it should go to once delivery exists
+  // event -> channels it is delivered to
   routing: Record<NotificationEvent, NotificationChannel[]>;
+  // event -> roles that receive it. Empty = the default recipients for that
+  // event (see NOTIFICATION_DEFAULT_RECIPIENTS). Assignment notifications
+  // always go to the assigned person only.
+  recipientRoleIds: Partial<Record<NotificationEvent, string[]>>;
   escalationAfterDays: number | null;
   reminderDaysBeforeDue: number | null;
 }
 export const DEFAULT_NOTIFICATIONS: NotificationConfig = {
+  // In-app is on by default for every event; email and Teams/Slack are
+  // opt-in because they need outside configuration.
   routing: {
-    ASSIGNMENT: [],
-    DEFECT: [],
-    TEST_CYCLE_REMINDER: [],
-    APPROVAL_REMINDER: [],
-    ESCALATION: [],
-    OVERDUE_ALERT: [],
+    ASSIGNMENT: ['IN_APP'],
+    DEFECT: ['IN_APP'],
+    TEST_CYCLE_REMINDER: ['IN_APP'],
+    APPROVAL_REMINDER: ['IN_APP'],
+    ESCALATION: ['IN_APP'],
+    OVERDUE_ALERT: ['IN_APP'],
+    RELEASE_READINESS: ['IN_APP'],
   },
-  escalationAfterDays: null,
-  reminderDaysBeforeDue: null,
+  recipientRoleIds: {},
+  escalationAfterDays: 3,
+  reminderDaysBeforeDue: 2,
+};
+
+// Who receives each event when no roles are configured, described in terms
+// of the permission a role must hold.
+export const NOTIFICATION_DEFAULT_RECIPIENTS: Record<
+  NotificationEvent,
+  string
+> = {
+  ASSIGNMENT: 'The assigned person',
+  DEFECT:
+    'Roles with defects:manage (new defects, defects raised to critical/major, reopened defects, failed test executions)',
+  TEST_CYCLE_REMINDER:
+    'Roles with test_plans:manage (test plans) or release_quality:manage (releases)',
+  APPROVAL_REMINDER:
+    'The configured approver roles, or roles holding the approval permission',
+  ESCALATION: 'Roles with release_quality:approve',
+  OVERDUE_ALERT:
+    'Roles with test_plans:manage (test plans) or release_quality:manage (releases)',
+  RELEASE_READINESS: 'Roles with release_quality:manage',
 };
 
 export interface DataRetentionConfig {
@@ -179,6 +221,7 @@ export function defaultApproval(key: ApprovalKey): ApprovalPolicy {
   return {
     requireCommentOnApprove: false,
     requireCommentOnReject: APPROVAL_LOCKED_REJECT_COMMENT[key],
+    approverRoleIds: [],
   };
 }
 

@@ -7,6 +7,8 @@ export interface ApiCurrentUser {
   roleName: string;
   permissions: string[];
   emailNotificationsEnabled: boolean;
+  // null for a platform-level user who is not assigned to an organization.
+  organizationId: string | null;
 }
 
 export interface LoginResponse {

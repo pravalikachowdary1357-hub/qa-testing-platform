@@ -17,6 +17,9 @@ export interface ApiApprovalPolicy {
   rejectCommentLocked: boolean;
   requireCommentOnApprove: boolean;
   requireCommentOnReject: boolean;
+  // Empty = any role holding `permission`.
+  approverRoleIds: string[];
+  permission: string;
 }
 
 export type DashboardSectionKey = 'KPI_CARDS' | 'PRODUCT_OVERVIEW' | 'DISTRIBUTIONS' | 'TRENDS';
@@ -36,18 +39,64 @@ export interface ApiIntegration {
   name: string;
   level: 'IMPLEMENTED' | 'FOUNDATION' | 'FUTURE';
   description: string;
-  status: 'CONNECTED' | 'NOT_CONFIGURED' | 'DISABLED' | 'REFERENCE_ONLY' | 'NOT_AVAILABLE';
+  // CONNECTED only after a real, successful delivery / live configuration;
+  // CONFIGURED = set up but not yet proven; ERROR = the last delivery failed.
+  status:
+    | 'CONNECTED'
+    | 'CONFIGURED'
+    | 'ERROR'
+    | 'NOT_CONFIGURED'
+    | 'DISABLED'
+    | 'REFERENCE_ONLY'
+    | 'NOT_AVAILABLE';
   details?: Record<string, unknown>;
   configuredVia?: string;
 }
 
 export interface ApiNotificationConfig {
   routing: Record<string, string[]>;
+  recipientRoleIds: Record<string, string[]>;
   escalationAfterDays: number | null;
   reminderDaysBeforeDue: number | null;
   deliveryImplemented: boolean;
-  channels: { key: string; label: string }[];
-  events: { key: string; label: string }[];
+  dailyScheduleEnabled: boolean;
+  channels: { key: string; label: string; available: boolean; detail: string }[];
+  events: { key: string; label: string; defaultRecipients: string }[];
+}
+
+export type WebhookProvider = 'TEAMS' | 'SLACK';
+
+export interface ApiWebhook {
+  id: string;
+  provider: WebhookProvider;
+  name: string;
+  // Host plus the last characters of the path; the full URL is never sent back.
+  urlHint: string;
+  events: string[];
+  enabled: boolean;
+  lastStatus: 'OK' | 'FAILED' | null;
+  lastError: string | null;
+  lastDeliveredAt: string | null;
+}
+
+export interface ApiEmailStatus {
+  configured: boolean;
+  host: string | null;
+  from: string | null;
+  last: { lastStatus: 'OK' | 'FAILED'; lastError: string | null; lastDeliveredAt: string } | null;
+  requiredVariables: string[];
+}
+
+export interface ApiNotification {
+  id: string;
+  event: string;
+  title: string;
+  message: string;
+  link: string | null;
+  entityType: string | null;
+  entityId: string | null;
+  readAt: string | null;
+  createdAt: string;
 }
 
 export interface ApiDataRetention {

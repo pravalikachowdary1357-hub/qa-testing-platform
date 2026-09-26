@@ -32,9 +32,25 @@ export class AuthService {
     });
 
     if (!user || !(await comparePassword(dto.password, user.passwordHash))) {
+      // Security logging: a failed attempt against a real account is
+      // recorded on that account. Unknown emails have no user to attach
+      // the entry to, and the password is never logged.
+      if (user)
+        await this.recordSignIn(
+          user.id,
+          'login-failed',
+          'Failed sign-in (wrong password)',
+          userAgent,
+        );
       throw new UnauthorizedException('Invalid email or password.');
     }
     if (user.status !== 'ACTIVE') {
+      await this.recordSignIn(
+        user.id,
+        'login-failed',
+        'Failed sign-in (account deactivated)',
+        userAgent,
+      );
       throw new UnauthorizedException('This account has been deactivated.');
     }
 
@@ -51,6 +67,12 @@ export class AuthService {
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     });
+    await this.recordSignIn(
+      user.id,
+      'login',
+      `Signed in: ${user.name}`,
+      userAgent,
+    );
 
     return {
       token,
@@ -59,7 +81,44 @@ export class AuthService {
   }
 
   async logout(sessionId: string) {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: { userId: true, user: { select: { name: true } } },
+    });
     await this.prisma.session.deleteMany({ where: { id: sessionId } });
+    if (session)
+      await this.recordSignIn(
+        session.userId,
+        'logout',
+        `Signed out: ${session.user.name}`,
+        undefined,
+      );
+  }
+
+  // Sign-in activity for the audit trail (user activity tracking). Written
+  // directly so a failure here never blocks signing in or out.
+  private async recordSignIn(
+    userId: string,
+    action: string,
+    summary: string,
+    userAgent: string | undefined,
+  ) {
+    try {
+      await this.prisma.auditLog.create({
+        data: {
+          actorUserId: userId,
+          action,
+          entityType: 'Session',
+          entityId: userId,
+          summary,
+          metadata: userAgent
+            ? JSON.stringify({ userAgent: userAgent.slice(0, 300) })
+            : null,
+        },
+      });
+    } catch {
+      // Best effort only.
+    }
   }
 
   async listSessions(userId: string, currentSessionId: string) {

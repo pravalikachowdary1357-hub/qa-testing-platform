@@ -170,7 +170,7 @@ export interface DefectReport {
     total: number;
     openCount: number;
     criticalOpenCount: number;
-    statusCounts: { open: number; inProgress: number; resolved: number; reopened: number; closed: number };
+    statusCounts: { open: number; inProgress: number; resolved: number; reopened: number; closed: number; deferred?: number };
     severityCounts: { critical: number; major: number; minor: number; trivial: number };
     priorityCounts: { critical: number; high: number; medium: number; low: number };
   };

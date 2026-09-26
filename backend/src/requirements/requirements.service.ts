@@ -1,3 +1,4 @@
+import { notifyRequirementChange } from '../notifications/notification-events';
 import {
   BadRequestException,
   Injectable,
@@ -171,6 +172,7 @@ export class RequirementsService {
       entityId: created.id,
       summary: `Created requirement "${created.title}"`,
     });
+    await notifyRequirementChange(this.prisma, actor, null, created);
 
     return created;
   }
@@ -191,7 +193,7 @@ export class RequirementsService {
 
     const before = await this.prisma.requirement.findUnique({
       where: { id },
-      select: { status: true },
+      select: { status: true, ownerId: true },
     });
     if (before) {
       await assertWorkflowTransition(
@@ -219,6 +221,7 @@ export class RequirementsService {
           ? `Updated requirement "${updated.title}": ${summaryParts.join('; ')}`
           : `Updated requirement "${updated.title}"`,
     });
+    await notifyRequirementChange(this.prisma, actor, before, updated);
 
     return updated;
   }
@@ -252,6 +255,7 @@ export class RequirementsService {
       'REQUIREMENT_REVIEW',
       dto.decision,
       dto.comment,
+      actor,
     );
 
     const { updated } = await this.persistChange(

@@ -20,6 +20,7 @@ import type {
   DefectSeverity,
   DefectStatus,
 } from '../../types/defect';
+import { DEFECT_STATUS_LABELS } from '../../types/defect';
 
 const SEVERITY_LABELS: Record<string, DefectSeverity> = {
   CRITICAL: 'Critical',
@@ -35,13 +36,7 @@ const PRIORITY_LABELS: Record<string, DefectPriority> = {
   LOW: 'Low',
 };
 
-const STATUS_LABELS: Record<string, DefectStatus> = {
-  OPEN: 'Open',
-  IN_PROGRESS: 'In Progress',
-  RESOLVED: 'Resolved',
-  REOPENED: 'Reopened',
-  CLOSED: 'Closed',
-};
+const STATUS_LABELS: Record<string, DefectStatus> = DEFECT_STATUS_LABELS;
 
 interface DefectDetailDialogProps {
   defectId: string | null;

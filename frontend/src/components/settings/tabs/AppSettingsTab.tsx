@@ -209,6 +209,9 @@ export function AppSettingsTab() {
           <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
             Notification Preferences
           </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Turn these event types on or off. Channels and recipients are set in Notification configuration below.
+          </Typography>
           <FormControlLabel
             control={
               <Switch
