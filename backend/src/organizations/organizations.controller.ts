@@ -110,7 +110,7 @@ export class OrganizationsController {
       'Content-Length': logo.fileSize.toString(),
       'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="${encodeURIComponent(logo.fileName)}"`,
     });
-    res.send(logo.content);
+    res.send(Buffer.from(logo.content)); // Prisma returns Uint8Array; send raw bytes, not JSON
   }
 
   @Post(':id/logo')

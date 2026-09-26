@@ -100,7 +100,7 @@ export class RequirementsController {
       'Content-Length': attachment.fileSize.toString(),
       'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="${encodeURIComponent(attachment.fileName)}"`,
     });
-    res.send(attachment.content);
+    res.send(Buffer.from(attachment.content)); // Prisma returns Uint8Array; send raw bytes, not JSON
   }
 
   @Post()

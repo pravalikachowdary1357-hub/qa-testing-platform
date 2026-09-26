@@ -71,7 +71,7 @@ export class ProductDocumentsController {
       'Content-Length': document.fileSize.toString(),
       'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="${encodeURIComponent(document.fileName)}"`,
     });
-    res.send(document.content);
+    res.send(Buffer.from(document.content)); // Prisma returns Uint8Array; send raw bytes, not JSON
   }
 
   @Get(':id/versions/:versionId/content')
@@ -89,7 +89,7 @@ export class ProductDocumentsController {
       'Content-Length': version.fileSize.toString(),
       'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="${encodeURIComponent(version.fileName)}"`,
     });
-    res.send(version.content);
+    res.send(Buffer.from(version.content)); // Prisma returns Uint8Array; send raw bytes, not JSON
   }
 
   @Post()

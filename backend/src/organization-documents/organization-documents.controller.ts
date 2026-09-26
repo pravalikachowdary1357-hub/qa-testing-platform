@@ -56,7 +56,7 @@ export class OrganizationDocumentsController {
       'Content-Length': document.fileSize.toString(),
       'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="${encodeURIComponent(document.fileName)}"`,
     });
-    res.send(document.content);
+    res.send(Buffer.from(document.content)); // Prisma returns Uint8Array; send raw bytes, not JSON
   }
 
   @Post()

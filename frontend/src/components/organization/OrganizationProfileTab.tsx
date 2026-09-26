@@ -30,6 +30,7 @@ import {
   uploadOrganizationDocument,
 } from '../../api/organizationDocuments';
 import { useAuth } from '../../context/AuthContext';
+import qmicsOrgLogo from '../../assets/qmics-org-logo.svg';
 import type {
   ApiOrganizationDetail,
   ApiOrganizationDocument,
@@ -357,6 +358,10 @@ export function OrganizationProfileTab({ organization, onSaved }: OrganizationPr
     .filter(Boolean)
     .join(' · ');
 
+  // QMICS shows its official logo by default until a custom one is uploaded.
+  const isQmics = /qmics/i.test(`${organization.name} ${organization.orgKey ?? ''}`);
+  const displayLogo = logoUrl ?? (isQmics ? qmicsOrgLogo : null);
+
   const visibleDocs = (documents ?? []).filter((d) => !pendingRemovals.has(d.id));
 
   return (
@@ -374,8 +379,8 @@ export function OrganizationProfileTab({ organization, onSaved }: OrganizationPr
           <Stack direction="row" spacing={3} sx={{ alignItems: 'center', minWidth: 0 }}>
             <Box
               sx={{
-                width: 120,
-                height: 120,
+                width: 140,
+                height: 140,
                 flexShrink: 0,
                 borderRadius: 3,
                 border: 1,
@@ -389,10 +394,10 @@ export function OrganizationProfileTab({ organization, onSaved }: OrganizationPr
             >
               {logoBusy ? (
                 <CircularProgress size={24} />
-              ) : logoUrl ? (
+              ) : displayLogo ? (
                 <Box
                   component="img"
-                  src={logoUrl}
+                  src={displayLogo}
                   alt={`${organization.name} logo`}
                   sx={{ maxWidth: '90%', maxHeight: '90%', objectFit: 'contain' }}
                 />
