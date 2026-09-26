@@ -93,7 +93,7 @@ const TARGET_ROLES = [
     permissionKeys: [],
   },
   {
-    name: 'UAT Coordinator / Business Tester',
+    name: 'UAT Coordinator',
     description:
       'Coordinates and executes User Acceptance Testing: prepares UAT test cases, manages UAT execution, records business-user feedback. Does not hold final UAT approval authority.',
     permissionKeys: [
@@ -122,9 +122,9 @@ const TARGET_USERS = [
     passwordEnvVar: 'DATABASE_ENGINEER_PASSWORD',
   },
   {
-    role: 'UAT Coordinator / Business Tester',
+    role: 'UAT Coordinator',
     email: 'uat.coordinator@testsphere.local',
-    name: 'UAT Coordinator / Business Tester',
+    name: 'UAT Coordinator',
     passwordEnvVar: 'UAT_COORDINATOR_PASSWORD',
   },
 ];

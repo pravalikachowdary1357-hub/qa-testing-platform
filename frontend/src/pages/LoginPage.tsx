@@ -60,8 +60,8 @@ interface DemoAccount {
 // Mirrors the 9 real seeded roles/users in backend/prisma/seed.cjs -- same
 // emails, same default password, same role descriptions. These are genuine
 // accounts in this database, not placeholders. Evolved from the earlier
-// 6-role model: Automation Engineer and UAT Coordinator / Business Tester
-// are newly split out (from Tester and Business/Release Approver
+// 6-role model: Automation Engineer and UAT Coordinator are newly split
+// out (from Tester and the old Business/Release Approver
 // respectively), and Database Test Engineer is reserved for a future
 // database-testing module -- that account currently has zero granted
 // permissions by design, not a bug.
@@ -74,21 +74,21 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     color: '#0F4C81',
   },
   {
-    role: 'Test Manager / Test Program Manager',
+    role: 'Test Manager',
     email: 'qa.manager@testsphere.local',
     description: 'Overall testing owner: full authority across the whole testing lifecycle, including automation, performance, security, UAT, release quality, and AI.',
     icon: AssignmentIndIcon,
     color: '#5E35B1',
   },
   {
-    role: 'Test Lead / QA Lead',
+    role: 'Test Lead',
     email: 'test.manager@testsphere.local',
     description: 'Day-to-day testing management: test plans, scenarios, cases, data, environments, execution, and defects.',
     icon: AssignmentTurnedInIcon,
     color: '#EF6C00',
   },
   {
-    role: 'Tester / Test Engineer / QA Engineer',
+    role: 'Tester',
     email: 'tester@testsphere.local',
     description: 'Creates/executes test cases, records evidence, raises and updates defects, executes UAT, and performs assigned specialized testing.',
     icon: ScienceIcon,
@@ -116,14 +116,14 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     color: '#D84315',
   },
   {
-    role: 'UAT Coordinator / Business Tester',
+    role: 'UAT Coordinator',
     email: 'uat.coordinator@testsphere.local',
     description: 'Coordinates and executes User Acceptance Testing; records business-user feedback. Does not hold final UAT approval authority.',
     icon: HowToRegIcon,
     color: '#AD1457',
   },
   {
-    role: 'Product Owner / Release Approver',
+    role: 'Product Owner',
     email: 'business.approver@testsphere.local',
     description: 'Business acceptance and release decision authority: owns requirements, approves UAT results, and approves release readiness.',
     icon: FlagCircleIcon,

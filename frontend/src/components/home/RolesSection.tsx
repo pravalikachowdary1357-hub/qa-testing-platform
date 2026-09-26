@@ -5,34 +5,49 @@ import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import ScienceIcon from '@mui/icons-material/Science';
 import CodeIcon from '@mui/icons-material/Code';
 import FlagCircleIcon from '@mui/icons-material/FlagCircle';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+import StorageIcon from '@mui/icons-material/Storage';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
 
-// Mirrors the 6 real seeded roles in backend/prisma/seed.cjs (see also
+// Mirrors the 9 real seeded roles in backend/prisma/seed.cjs (see also
 // DEMO_ACCOUNTS in LoginPage.tsx) -- names, descriptions, and colors stay in
 // sync with what a visitor will actually see after signing in.
 const ROLES = [
   {
     role: 'System Administrator',
-    description: 'Full administrative access to every module and all platform settings.',
+    description: 'Platform administration: organizations, users, roles, and system/audit settings.',
     icon: AdminPanelSettingsIcon,
     color: '#0F4C81',
   },
   {
-    role: 'QA Manager',
-    description: 'Overall QA owner: full authority across the whole testing lifecycle, including automation, performance, security, UAT, release quality, and AI.',
+    role: 'Test Manager',
+    description: 'Overall testing owner: full authority across the whole testing lifecycle, including automation, performance, security, UAT, release quality, and AI.',
     icon: AssignmentIndIcon,
     color: '#5E35B1',
   },
   {
-    role: 'Test Lead / Test Manager',
+    role: 'Test Lead',
     description: 'Day-to-day testing management: test plans, scenarios, cases, data, environments, execution, and defects.',
     icon: AssignmentTurnedInIcon,
     color: '#EF6C00',
   },
   {
     role: 'Tester',
-    description: 'Creates/executes test cases, records results, raises and updates defects, executes UAT.',
+    description: 'Creates/executes test cases, records evidence, raises and updates defects, executes UAT.',
     icon: ScienceIcon,
     color: '#2E7D32',
+  },
+  {
+    role: 'Automation Engineer',
+    description: 'Owns test automation: frameworks, scripts, automated regression runs, and failure analysis.',
+    icon: SmartToyIcon,
+    color: '#00838F',
+  },
+  {
+    role: 'Database Test Engineer',
+    description: 'Reserved for the upcoming database-testing capability: schema, data integrity, ETL, and stored procedures.',
+    icon: StorageIcon,
+    color: '#6D4C41',
   },
   {
     role: 'Developer',
@@ -41,8 +56,14 @@ const ROLES = [
     color: '#D84315',
   },
   {
-    role: 'Business/Release Approver',
-    description: 'Business acceptance and release decision authority: owns requirements, UAT sign-off, and release readiness approval.',
+    role: 'UAT Coordinator',
+    description: 'Coordinates and executes User Acceptance Testing and records business-user feedback.',
+    icon: HowToRegIcon,
+    color: '#AD1457',
+  },
+  {
+    role: 'Product Owner',
+    description: 'Business acceptance and release decision authority: owns requirements, approves UAT results and release readiness.',
     icon: FlagCircleIcon,
     color: '#C9A227',
   },

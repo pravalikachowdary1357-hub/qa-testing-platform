@@ -145,7 +145,7 @@ const ROLE_GRANTS = {
   // automation/performance/security for the same reason it always has
   // been: leaving out just one lifecycle module for the broadest testing
   // role would be an inconsistent, almost certainly unintended gap.
-  'Test Manager / Test Program Manager': [
+  'Test Manager': [
     ...allKeys('requirements'),
     ...allKeys('product_documents'),
     ...allKeys('test_plans'),
@@ -172,7 +172,7 @@ const ROLE_GRANTS = {
   // release quality, or AI, which stay with Test Manager. Requirements
   // access is read-only (needed to build test plans against them, not
   // listed as an owned module).
-  'Test Lead / QA Lead': [
+  'Test Lead': [
     ...keys('requirements', 'read'),
     ...keys('product_documents', 'read'),
     ...allKeys('test_plans'),
@@ -193,7 +193,7 @@ const ROLE_GRANTS = {
   // responsibility areas -- read/write/execute only, no `manage` (framework/
   // deletion authority stays with Test Manager or, for automation
   // specifically, the dedicated Automation Engineer role below).
-  'Tester / Test Engineer / QA Engineer': [
+  'Tester': [
     ...keys('requirements', 'read'),
     ...keys('product_documents', 'read'),
     ...keys('test_scenarios', 'read'),
@@ -261,10 +261,10 @@ const ROLE_GRANTS = {
   // NEW -- split out of the old "Business/Release Approver" for
   // segregation of duties: this role EXECUTES UAT (coordinates business
   // users, prepares UAT test cases, manages UAT execution, records
-  // feedback), while "Product Owner / Release Approver" below APPROVES it.
+  // feedback), while "Product Owner" below APPROVES it.
   // The same account no longer does both. Deliberately no uat:approve or
   // uat:manage.
-  'UAT Coordinator / Business Tester': [
+  'UAT Coordinator': [
     ...keys('uat', 'read', 'write', 'execute'),
     ...keys('requirements', 'read'),
     ...keys('test_cases', 'read'),
@@ -277,7 +277,7 @@ const ROLE_GRANTS = {
   // does NOT get test planning/scenarios/cases visibility -- scopes to
   // requirements + UAT + release, approving based on results rather than
   // test-case-level detail.
-  'Product Owner / Release Approver': [
+  'Product Owner': [
     ...keys('requirements', 'read', 'write', 'manage', 'approve'),
     ...allKeys('product_documents'),
     ...keys('defects', 'read'),
@@ -290,25 +290,25 @@ const ROLE_GRANTS = {
 
 const ROLE_DESCRIPTIONS = {
   'System Administrator': 'Platform administration: organizations, business units, teams, projects, products, users, roles/permissions, and system/audit settings. Does not include any QA testing execution, planning, or governance -- that is Test Manager\'s domain.',
-  'Test Manager / Test Program Manager': 'Overall testing ownership: strategy, governance, planning, quality risk, and release readiness, with full authority across the entire testing lifecycle including automation, performance, security, UAT, release quality, and AI.',
-  'Test Lead / QA Lead': 'Day-to-day testing management: test plans, scenarios, cases, data, environments, execution, and defects.',
-  'Tester / Test Engineer / QA Engineer': 'Creates/executes test cases, records evidence, raises and updates defects, executes UAT, and performs assigned specialized testing (automation, API, performance, security).',
+  'Test Manager': 'Overall testing ownership: strategy, governance, planning, quality risk, and release readiness, with full authority across the entire testing lifecycle including automation, performance, security, UAT, release quality, and AI.',
+  'Test Lead': 'Day-to-day testing management: test plans, scenarios, cases, data, environments, execution, and defects.',
+  'Tester': 'Creates/executes test cases, records evidence, raises and updates defects, executes UAT, and performs assigned specialized testing (automation, API, performance, security).',
   'Automation Engineer': 'Owns test automation: develops/maintains automation frameworks, scripts, and repositories; executes automated regression; analyzes failures. Read-only on manual test cases/scenarios/execution history.',
   'Database Test Engineer': 'Reserved for a future database-testing capability (schema validation, data integrity, ETL, stored procedures). No TestSphere module exists for this yet, so this role currently has no granted permissions.',
   Developer: 'Investigates and fixes defects (root cause, corrective action, ready-for-retest); views requirements, test results, UAT, and release status.',
-  'UAT Coordinator / Business Tester': 'Coordinates and executes User Acceptance Testing: prepares UAT test cases, manages UAT execution, records business-user feedback. Does not hold final UAT approval authority.',
-  'Product Owner / Release Approver': 'Business acceptance and release decision authority: owns requirements, approves UAT results, and approves release readiness. Does not execute UAT directly.',
+  'UAT Coordinator': 'Coordinates and executes User Acceptance Testing: prepares UAT test cases, manages UAT execution, records business-user feedback. Does not hold final UAT approval authority.',
+  'Product Owner': 'Business acceptance and release decision authority: owns requirements, approves UAT results, and approves release readiness. Does not execute UAT directly.',
 };
 
 const ROLE_USERS = [
-  { role: 'Test Manager / Test Program Manager', email: 'qa.manager@testsphere.local', name: 'Test Manager / Test Program Manager' },
-  { role: 'Test Lead / QA Lead', email: 'test.manager@testsphere.local', name: 'Test Lead / QA Lead' },
-  { role: 'Tester / Test Engineer / QA Engineer', email: 'tester@testsphere.local', name: 'Tester / Test Engineer / QA Engineer' },
+  { role: 'Test Manager', email: 'qa.manager@testsphere.local', name: 'Test Manager' },
+  { role: 'Test Lead', email: 'test.manager@testsphere.local', name: 'Test Lead' },
+  { role: 'Tester', email: 'tester@testsphere.local', name: 'Tester' },
   { role: 'Developer', email: 'developer@testsphere.local', name: 'Developer' },
-  { role: 'Product Owner / Release Approver', email: 'business.approver@testsphere.local', name: 'Product Owner / Release Approver' },
+  { role: 'Product Owner', email: 'business.approver@testsphere.local', name: 'Product Owner' },
   { role: 'Automation Engineer', email: 'automation.engineer@testsphere.local', name: 'Automation Engineer' },
   { role: 'Database Test Engineer', email: 'database.engineer@testsphere.local', name: 'Database Test Engineer' },
-  { role: 'UAT Coordinator / Business Tester', email: 'uat.coordinator@testsphere.local', name: 'UAT Coordinator / Business Tester' },
+  { role: 'UAT Coordinator', email: 'uat.coordinator@testsphere.local', name: 'UAT Coordinator' },
 ];
 
 // Roles superseded by this consolidation (10 roles -> 6). "Manager"/"Member"
@@ -318,13 +318,13 @@ const ROLE_USERS = [
 // rather than only-if-unused, unlike a role a real customer might have
 // actually assigned. Their permission grants live on in the merged roles
 // above; only the redundant role rows and demo user accounts go away.
+// 'Test Manager', 'Test Lead' and 'Product Owner' used to be listed here
+// (leftovers of the old 10-role table) but are now the CURRENT short names
+// of live roles, so they must never be retired/deleted.
 const RETIRED_ROLE_NAMES = [
   'Manager',
   'Member',
-  'Test Manager',
-  'Test Lead',
   'Business Analyst',
-  'Product Owner',
   'Auditor',
   'Management',
 ];
@@ -339,10 +339,11 @@ const RETIRED_ROLE_NAMES = [
 // correctly no matter which point in that history a given database is at.
 const ROLE_RENAME_CHAINS = {
   'System Administrator': ['Admin', 'QMICS TestSphere Administrator'],
-  'Test Manager / Test Program Manager': ['QA Manager'],
-  'Test Lead / QA Lead': ['Test Lead / Test Manager'],
-  'Tester / Test Engineer / QA Engineer': ['Tester'],
-  'Product Owner / Release Approver': ['Business/Release Approver'],
+  'Test Manager': ['QA Manager', 'Test Manager / Test Program Manager'],
+  'Test Lead': ['Test Lead / Test Manager', 'Test Lead / QA Lead'],
+  Tester: ['Tester / Test Engineer / QA Engineer'],
+  'UAT Coordinator': ['UAT Coordinator / Business Tester'],
+  'Product Owner': ['Business/Release Approver', 'Product Owner / Release Approver'],
 };
 
 async function ensureRole(name, isSystem, description) {
