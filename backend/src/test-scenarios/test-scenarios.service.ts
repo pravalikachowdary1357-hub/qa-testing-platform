@@ -13,6 +13,7 @@ import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { validateRow } from '../common/import/validate-row.util';
 import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
 import { assertSameOrganization, productOrganizationScopeWhere } from '../common/organization-scope.util';
+import { assertWorkflowTransition } from '../admin-config/admin-config.service';
 
 const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
 
@@ -91,6 +92,13 @@ export class TestScenariosService {
     if (effectiveRequirementId) {
       await this.validateRequirementBelongsToProduct(effectiveRequirementId, effectiveProductId);
     }
+
+    await assertWorkflowTransition(
+      this.prisma,
+      'TEST_SCENARIO',
+      existing.status,
+      dto.status,
+    );
 
     try {
       return await this.prisma.testScenario.update({

@@ -20,6 +20,7 @@ const FIELDS: { key: Field; label: string; min: number; countKey: keyof ApiDataR
   { key: 'auditLogRetentionDays', label: 'Audit log', min: 365, countKey: 'auditLog' },
   { key: 'aiHistoryRetentionDays', label: 'AI suggestion history', min: 7, countKey: 'aiHistory' },
   { key: 'expiredSessionRetentionDays', label: 'Expired sign-in sessions', min: 7, countKey: 'expiredSessions' },
+  { key: 'documentRetentionDays', label: 'Documents & evidence', min: 365, countKey: 'documents' },
 ];
 
 const toText = (v: number | null) => (v === null ? '' : String(v));
@@ -32,6 +33,7 @@ export function DataRetentionTab() {
     auditLogRetentionDays: '',
     aiHistoryRetentionDays: '',
     expiredSessionRetentionDays: '',
+    documentRetentionDays: '',
   });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -43,6 +45,7 @@ export function DataRetentionTab() {
       auditLogRetentionDays: toText(d.auditLogRetentionDays),
       aiHistoryRetentionDays: toText(d.aiHistoryRetentionDays),
       expiredSessionRetentionDays: toText(d.expiredSessionRetentionDays),
+      documentRetentionDays: toText(d.documentRetentionDays),
     });
   };
 
@@ -90,8 +93,8 @@ export function DataRetentionTab() {
         How long each kind of record should be kept. Leave blank to keep forever.
       </Typography>
       <Alert severity="info" sx={{ mb: 3 }}>
-        Automatic deletion is not enabled. This policy is recorded and shows how many records are past it; nothing
-        is deleted.
+        Retention policy configured; automatic deletion not enabled. The policy shows how many records are past it;
+        nothing is deleted.
       </Alert>
       <Stack spacing={2.5}>
         {FIELDS.map(({ key, label, min, countKey }) => (

@@ -5,6 +5,7 @@ import { CreateTestExecutionDto } from './dto/create-test-execution.dto';
 import { UpdateTestExecutionDto } from './dto/update-test-execution.dto';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { assertSameOrganization } from '../common/organization-scope.util';
+import { assertWorkflowTransition } from '../admin-config/admin-config.service';
 
 const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
 
@@ -122,6 +123,13 @@ export class TestExecutionsService {
       effectiveEnvironmentId,
       effectiveTestDataId,
       actor.organizationId,
+    );
+
+    await assertWorkflowTransition(
+      this.prisma,
+      'TEST_EXECUTION',
+      existing.status,
+      dto.status,
     );
 
     try {

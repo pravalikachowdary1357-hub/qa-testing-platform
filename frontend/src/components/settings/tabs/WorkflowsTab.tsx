@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
+  Chip,
   Button,
   Checkbox,
   CircularProgress,
@@ -19,6 +23,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
   fetchApprovalPolicies,
   fetchWorkflows,
@@ -268,15 +273,36 @@ export function WorkflowsTab() {
 
   return (
     <Stack spacing={3}>
-      {workflows.map((workflow) => (
-        <WorkflowEditor
-          key={workflow.key}
-          workflow={workflow}
-          canManage={canManage}
-          onMessage={setMessage}
-          onSaved={(updated) => setWorkflows((prev) => prev?.map((w) => (w.key === updated.key ? updated : w)) ?? prev)}
-        />
-      ))}
+      <Typography variant="body2" color="text.secondary">
+        Status workflows for every lifecycle in TestSphere. A workflow only restricts status changes once it is
+        switched to Enforced; until then existing behaviour is unchanged.
+      </Typography>
+      <Box>
+        {workflows.map((workflow) => (
+          <Accordion key={workflow.key} disableGutters variant="outlined">
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                <Typography sx={{ fontWeight: 600 }}>{workflow.label}</Typography>
+                <Chip
+                  size="small"
+                  label={workflow.enforced ? 'Enforced' : 'Not enforced'}
+                  color={workflow.enforced ? 'primary' : 'default'}
+                />
+              </Stack>
+            </AccordionSummary>
+            <AccordionDetails>
+              <WorkflowEditor
+                workflow={workflow}
+                canManage={canManage}
+                onMessage={setMessage}
+                onSaved={(updated) =>
+                  setWorkflows((prev) => prev?.map((w) => (w.key === updated.key ? updated : w)) ?? prev)
+                }
+              />
+            </AccordionDetails>
+          </Accordion>
+        ))}
+      </Box>
       <ApprovalPolicies
         policies={policies}
         canManage={canManage}

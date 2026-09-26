@@ -21,6 +21,7 @@ import { ImportResultDialog } from '../../common/ImportResultDialog';
 import type { ImportResultSummary } from '../../common/ImportResultDialog';
 import { exportToCsvWithAudit } from '../../../utils/csvExport';
 import { ApiError } from '../../../api/client';
+import { NotificationConfigSection } from '../NotificationConfigSection';
 
 const ENVIRONMENT_TYPES = ['DEVELOPMENT', 'QA', 'STAGING', 'UAT', 'PRODUCTION'];
 const TEST_CASE_PRIORITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
@@ -250,6 +251,10 @@ export function AppSettingsTab() {
           </Box>
         </Stack>
       </Paper>
+
+      <Box sx={{ mt: 3 }}>
+        <NotificationConfigSection />
+      </Box>
 
       <ImportResultDialog result={importResult} onClose={() => setImportResult(null)} />
 

@@ -1,19 +1,42 @@
-import { DefectStatus, TestCaseStatus } from '../../generated/prisma/enums.js';
+import {
+  DefectStatus,
+  ReleaseStatus,
+  RequirementStatus,
+  TestCaseStatus,
+  TestExecutionStatus,
+  TestPlanStatus,
+  TestScenarioStatus,
+  UatCycleStatus,
+} from '../../generated/prisma/enums.js';
 
 // Workflows whose status transitions the Administrator can configure. The
 // statuses are the existing Prisma enums -- configuration can only restrict
 // transitions between them, never invent new statuses.
+// Covers every workflow listed in Requirements section 23 (Workflow &
+// Approval Management) that has a status lifecycle in TestSphere.
 export const WORKFLOW_STATUSES = {
+  REQUIREMENT: Object.values(RequirementStatus) as string[],
+  TEST_PLAN: Object.values(TestPlanStatus) as string[],
+  TEST_SCENARIO: Object.values(TestScenarioStatus) as string[],
   TEST_CASE: Object.values(TestCaseStatus) as string[],
+  TEST_EXECUTION: Object.values(TestExecutionStatus) as string[],
   DEFECT: Object.values(DefectStatus) as string[],
+  UAT_CYCLE: Object.values(UatCycleStatus) as string[],
+  RELEASE: Object.values(ReleaseStatus) as string[],
 } as const;
 
 export type WorkflowKey = keyof typeof WORKFLOW_STATUSES;
 export const WORKFLOW_KEYS = Object.keys(WORKFLOW_STATUSES) as WorkflowKey[];
 
 export const WORKFLOW_LABELS: Record<WorkflowKey, string> = {
-  TEST_CASE: 'Test case workflow',
-  DEFECT: 'Defect workflow',
+  REQUIREMENT: 'Requirement workflow (incl. approval)',
+  TEST_PLAN: 'Test plan workflow (incl. approval)',
+  TEST_SCENARIO: 'Test scenario workflow',
+  TEST_CASE: 'Test case review & approval workflow',
+  TEST_EXECUTION: 'Test execution result rules',
+  DEFECT: 'Defect workflow (incl. approval & closure)',
+  UAT_CYCLE: 'UAT workflow (incl. approval)',
+  RELEASE: 'Release approval workflow',
 };
 
 // The approval points that already exist in TestSphere.
@@ -58,6 +81,7 @@ export const CONFIG_KEYS = {
   workflow: (key: WorkflowKey) => `workflow.${key}`,
   approval: (key: ApprovalKey) => `approval.${key}`,
   dashboard: 'dashboard.layout',
+  notifications: 'notifications',
   retention: 'data_retention',
 } as const;
 
@@ -73,12 +97,69 @@ export interface ApprovalPolicy {
 
 export interface DashboardConfig {
   hiddenSections: DashboardSection[];
+  // Optional per-role override (role id -> hidden sections). A role with an
+  // override uses it instead of the global hiddenSections.
+  roleOverrides: Record<string, DashboardSection[]>;
 }
+
+// Notification configuration (Requirements section 24). Delivery channels
+// and event categories exactly as listed in the source. This is
+// configuration only: TestSphere has no delivery infrastructure yet, so
+// saving it never sends anything.
+export const NOTIFICATION_CHANNELS = [
+  'EMAIL',
+  'IN_APP',
+  'TEAMS_SLACK',
+] as const;
+export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
+export const NOTIFICATION_CHANNEL_LABELS: Record<NotificationChannel, string> =
+  {
+    EMAIL: 'Email',
+    IN_APP: 'In-app',
+    TEAMS_SLACK: 'Teams / Slack',
+  };
+export const NOTIFICATION_EVENTS = [
+  'ASSIGNMENT',
+  'DEFECT',
+  'TEST_CYCLE_REMINDER',
+  'APPROVAL_REMINDER',
+  'ESCALATION',
+  'OVERDUE_ALERT',
+] as const;
+export type NotificationEvent = (typeof NOTIFICATION_EVENTS)[number];
+export const NOTIFICATION_EVENT_LABELS: Record<NotificationEvent, string> = {
+  ASSIGNMENT: 'Assignment notifications',
+  DEFECT: 'Defect notifications',
+  TEST_CYCLE_REMINDER: 'Test cycle reminders',
+  APPROVAL_REMINDER: 'Approval reminders',
+  ESCALATION: 'Escalations',
+  OVERDUE_ALERT: 'Overdue alerts',
+};
+export interface NotificationConfig {
+  // event -> channels it should go to once delivery exists
+  routing: Record<NotificationEvent, NotificationChannel[]>;
+  escalationAfterDays: number | null;
+  reminderDaysBeforeDue: number | null;
+}
+export const DEFAULT_NOTIFICATIONS: NotificationConfig = {
+  routing: {
+    ASSIGNMENT: [],
+    DEFECT: [],
+    TEST_CYCLE_REMINDER: [],
+    APPROVAL_REMINDER: [],
+    ESCALATION: [],
+    OVERDUE_ALERT: [],
+  },
+  escalationAfterDays: null,
+  reminderDaysBeforeDue: null,
+};
 
 export interface DataRetentionConfig {
   auditLogRetentionDays: number | null;
   aiHistoryRetentionDays: number | null;
   expiredSessionRetentionDays: number | null;
+  // Requirements section 25: documents & evidence retention.
+  documentRetentionDays: number | null;
 }
 
 // Defaults reproduce pre-configuration behaviour exactly: every transition
@@ -101,12 +182,16 @@ export function defaultApproval(key: ApprovalKey): ApprovalPolicy {
   };
 }
 
-export const DEFAULT_DASHBOARD: DashboardConfig = { hiddenSections: [] };
+export const DEFAULT_DASHBOARD: DashboardConfig = {
+  hiddenSections: [],
+  roleOverrides: {},
+};
 
 export const DEFAULT_RETENTION: DataRetentionConfig = {
   auditLogRetentionDays: null,
   aiHistoryRetentionDays: null,
   expiredSessionRetentionDays: null,
+  documentRetentionDays: null,
 };
 
 // The audit trail is a compliance record, so its retention window has a

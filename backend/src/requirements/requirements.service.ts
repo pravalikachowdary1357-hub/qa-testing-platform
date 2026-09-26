@@ -23,7 +23,10 @@ import {
   REQUIREMENT_TRACKED_FIELDS,
 } from './requirements.constants';
 import { assertSameOrganization, productOrganizationScopeWhere } from '../common/organization-scope.util';
-import { assertApprovalComment } from '../admin-config/admin-config.service';
+import {
+  assertApprovalComment,
+  assertWorkflowTransition,
+} from '../admin-config/admin-config.service';
 
 const PRODUCT_REF_SELECT = { select: { id: true, name: true, organizationId: true } };
 const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
@@ -186,6 +189,19 @@ export class RequirementsService {
       );
     }
 
+    const before = await this.prisma.requirement.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+    if (before) {
+      await assertWorkflowTransition(
+        this.prisma,
+        'REQUIREMENT',
+        before.status,
+        dto.status,
+      );
+    }
+
     const { updated, changes, criteriaChanged } = await this.persistChange(
       id,
       dto,
@@ -225,6 +241,12 @@ export class RequirementsService {
         'Only a requirement that is In Review can be approved, rejected, or returned for rework.',
       );
     }
+    await assertWorkflowTransition(
+      this.prisma,
+      'REQUIREMENT',
+      current.status,
+      REVIEW_STATUS_MAP[dto.decision],
+    );
     await assertApprovalComment(
       this.prisma,
       'REQUIREMENT_REVIEW',

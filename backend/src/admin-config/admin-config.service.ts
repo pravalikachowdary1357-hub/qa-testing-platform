@@ -35,6 +35,15 @@ import { UpdateWorkflowDto } from './dto/update-workflow.dto';
 import { UpdateApprovalPolicyDto } from './dto/update-approval-policy.dto';
 import { UpdateDashboardConfigDto } from './dto/update-dashboard-config.dto';
 import { UpdateDataRetentionDto } from './dto/update-data-retention.dto';
+import { UpdateNotificationConfigDto } from './dto/update-notification-config.dto';
+import {
+  DEFAULT_NOTIFICATIONS,
+  NOTIFICATION_CHANNELS,
+  NOTIFICATION_CHANNEL_LABELS,
+  NOTIFICATION_EVENTS,
+  NOTIFICATION_EVENT_LABELS,
+} from './admin-config.constants';
+import type { NotificationConfig } from './admin-config.constants';
 
 type PrismaLike = Pick<PrismaService, 'platformConfiguration'>;
 
@@ -247,14 +256,26 @@ export class AdminConfigService {
 
   // ---------------- Dashboard ----------------
 
-  async getDashboardConfig() {
+  // Every signed-in user gets the effective layout for their own role;
+  // administrators (dashboards:manage) also get the global layout and every
+  // per-role override so they can edit them.
+  async getDashboardConfig(actor: AuthenticatedUser) {
     const config = await readConfig<DashboardConfig>(
       this.prisma,
       CONFIG_KEYS.dashboard,
       DEFAULT_DASHBOARD,
     );
+    const overrides = config.roleOverrides ?? {};
+    const effective = overrides[actor.roleId] ?? config.hiddenSections;
+    const canManage = actor.permissions.includes('dashboards:manage');
     return {
-      ...config,
+      hiddenSections: effective,
+      ...(canManage
+        ? {
+            globalHiddenSections: config.hiddenSections,
+            roleOverrides: overrides,
+          }
+        : {}),
       sections: DASHBOARD_SECTIONS.map((key) => ({
         key,
         label: DASHBOARD_SECTION_LABELS[key],
@@ -266,13 +287,111 @@ export class AdminConfigService {
     dto: UpdateDashboardConfigDto,
     actor: AuthenticatedUser,
   ) {
+    const current = await readConfig<DashboardConfig>(
+      this.prisma,
+      CONFIG_KEYS.dashboard,
+      DEFAULT_DASHBOARD,
+    );
+    let roleName: string | null = null;
+    if (dto.roleId) {
+      const role = await this.prisma.role.findUnique({
+        where: { id: dto.roleId },
+      });
+      if (!role) throw new NotFoundException(`Role ${dto.roleId} not found`);
+      roleName = role.name;
+    }
+    const value: DashboardConfig = dto.roleId
+      ? {
+          hiddenSections: current.hiddenSections,
+          roleOverrides: {
+            ...(current.roleOverrides ?? {}),
+            [dto.roleId]: dto.hiddenSections,
+          },
+        }
+      : {
+          hiddenSections: dto.hiddenSections,
+          roleOverrides: current.roleOverrides ?? {},
+        };
     await this.save(
       CONFIG_KEYS.dashboard,
-      { hiddenSections: dto.hiddenSections },
+      value,
       actor,
-      `Updated dashboard layout (${dto.hiddenSections.length} section(s) hidden).`,
+      roleName
+        ? `Updated dashboard layout for role "${roleName}" (${dto.hiddenSections.length} section(s) hidden).`
+        : `Updated default dashboard layout (${dto.hiddenSections.length} section(s) hidden).`,
     );
-    return this.getDashboardConfig();
+    return this.getDashboardConfig(actor);
+  }
+
+  async clearDashboardRoleOverride(roleId: string, actor: AuthenticatedUser) {
+    const current = await readConfig<DashboardConfig>(
+      this.prisma,
+      CONFIG_KEYS.dashboard,
+      DEFAULT_DASHBOARD,
+    );
+    const overrides = { ...(current.roleOverrides ?? {}) };
+    delete overrides[roleId];
+    await this.save(
+      CONFIG_KEYS.dashboard,
+      { hiddenSections: current.hiddenSections, roleOverrides: overrides },
+      actor,
+      'Removed a role-specific dashboard layout.',
+    );
+    return this.getDashboardConfig(actor);
+  }
+
+  // ---------------- Notifications (configuration only) ----------------
+
+  async getNotificationConfig() {
+    const config = await readConfig<NotificationConfig>(
+      this.prisma,
+      CONFIG_KEYS.notifications,
+      DEFAULT_NOTIFICATIONS,
+    );
+    return {
+      ...config,
+      routing: { ...DEFAULT_NOTIFICATIONS.routing, ...(config.routing ?? {}) },
+      deliveryImplemented: false,
+      channels: NOTIFICATION_CHANNELS.map((key) => ({
+        key,
+        label: NOTIFICATION_CHANNEL_LABELS[key],
+      })),
+      events: NOTIFICATION_EVENTS.map((key) => ({
+        key,
+        label: NOTIFICATION_EVENT_LABELS[key],
+      })),
+    };
+  }
+
+  async updateNotificationConfig(
+    dto: UpdateNotificationConfigDto,
+    actor: AuthenticatedUser,
+  ) {
+    const routing = { ...DEFAULT_NOTIFICATIONS.routing };
+    for (const [event, channels] of Object.entries(dto.routing ?? {})) {
+      if (!NOTIFICATION_EVENTS.includes(event as never)) {
+        throw new BadRequestException(`Unknown notification event ${event}.`);
+      }
+      if (
+        !Array.isArray(channels) ||
+        channels.some((c) => !NOTIFICATION_CHANNELS.includes(c as never))
+      ) {
+        throw new BadRequestException(`Invalid channels for ${event}.`);
+      }
+      routing[event as keyof typeof routing] = [...new Set(channels)] as never;
+    }
+    const value: NotificationConfig = {
+      routing,
+      escalationAfterDays: dto.escalationAfterDays ?? null,
+      reminderDaysBeforeDue: dto.reminderDaysBeforeDue ?? null,
+    };
+    await this.save(
+      CONFIG_KEYS.notifications,
+      value,
+      actor,
+      'Updated notification configuration (configuration only; no delivery).',
+    );
+    return this.getNotificationConfig();
   }
 
   // ---------------- Integrations (read-only status) ----------------
@@ -280,21 +399,41 @@ export class AdminConfigService {
   // Only integrations the codebase genuinely implements are listed. Their
   // secrets live in deployment environment variables and are never exposed
   // or editable here.
-  listIntegrations() {
+  // Integration targets from Requirements section 27. Only the AI assistant
+  // is implemented; the Development category additionally has a reference
+  // link foundation (Product.repositoryUrl, a stored URL only -- no API
+  // calls). Everything else is reported as a future integration; nothing is
+  // ever shown as connected unless it really is.
+  async listIntegrations() {
     const aiEnabled =
       (process.env.AI_FEATURES_ENABLED ?? 'true').toLowerCase() !== 'false';
     const configured = this.aiProvider.isConfigured();
+    const productsWithRepo = await this.prisma.product.count({
+      where: { repositoryUrl: { not: null } },
+    });
+    const future = (category: string, names: string[]) =>
+      names.map((name) => ({
+        key: `${category}_${name}`.toUpperCase().replace(/[^A-Z0-9]+/g, '_'),
+        category,
+        name,
+        level: 'FUTURE' as const,
+        status: 'NOT_AVAILABLE' as const,
+        description:
+          'Listed in the TestSphere requirements; no connector exists yet.',
+      }));
     return [
       {
         key: 'AI_PROVIDER',
+        category: 'AI',
         name: 'AI assistant (Anthropic Claude)',
+        level: 'IMPLEMENTED' as const,
         description:
           'Powers AI test-scenario / test-case generation, defect assistance and insights.',
         status: !aiEnabled
-          ? 'DISABLED'
+          ? ('DISABLED' as const)
           : configured
-            ? 'CONNECTED'
-            : 'NOT_CONFIGURED',
+            ? ('CONNECTED' as const)
+            : ('NOT_CONFIGURED' as const),
         details: {
           model: this.aiProvider.getModelName(),
           featuresEnabled: aiEnabled,
@@ -302,6 +441,38 @@ export class AdminConfigService {
         configuredVia:
           'Environment variables ANTHROPIC_API_KEY, ANTHROPIC_MODEL, AI_FEATURES_ENABLED',
       },
+      {
+        key: 'REPOSITORY_LINKS',
+        category: 'Development',
+        name: 'Product repository links',
+        level: 'FOUNDATION' as const,
+        status: 'REFERENCE_ONLY' as const,
+        description:
+          'Each product can store its source repository URL (Products > edit). It is a link only; TestSphere does not call the repository.',
+        details: { productsWithRepositoryUrl: productsWithRepo },
+      },
+      ...future('Development', [
+        'GitHub',
+        'GitLab',
+        'Bitbucket',
+        'Azure DevOps',
+      ]),
+      ...future('Issue tracking', ['Jira']),
+      ...future('CI/CD', [
+        'Jenkins',
+        'GitHub Actions',
+        'GitLab CI/CD',
+        'Azure Pipelines',
+      ]),
+      ...future('Communication', ['Microsoft Teams', 'Slack', 'Email']),
+      ...future('Automation', [
+        'Selenium',
+        'Playwright',
+        'Cypress',
+        'Appium',
+        'Postman/Newman',
+        'JMeter',
+      ]),
     ];
   }
 
@@ -318,6 +489,17 @@ export class AdminConfigService {
     const auditCutoff = olderThan(config.auditLogRetentionDays);
     const aiCutoff = olderThan(config.aiHistoryRetentionDays);
     const sessionCutoff = olderThan(config.expiredSessionRetentionDays);
+    const documentCutoff = olderThan(config.documentRetentionDays ?? null);
+    const docWhere = documentCutoff
+      ? { createdAt: { lt: documentCutoff } }
+      : null;
+    const documentCounts = docWhere
+      ? await Promise.all([
+          this.prisma.productDocument.count({ where: docWhere }),
+          this.prisma.organizationDocument.count({ where: docWhere }),
+          this.prisma.requirementAttachment.count({ where: docWhere }),
+        ])
+      : [0, 0, 0];
     const [auditOverdue, aiOverdue, sessionsOverdue] = await Promise.all([
       auditCutoff
         ? this.prisma.auditLog.count({
@@ -342,7 +524,9 @@ export class AdminConfigService {
         auditLog: auditOverdue,
         aiHistory: aiOverdue,
         expiredSessions: sessionsOverdue,
+        documents: documentCounts.reduce((a, b) => a + b, 0),
       },
+      documentRetentionDays: config.documentRetentionDays ?? null,
     };
   }
 
@@ -354,6 +538,7 @@ export class AdminConfigService {
       auditLogRetentionDays: dto.auditLogRetentionDays ?? null,
       aiHistoryRetentionDays: dto.aiHistoryRetentionDays ?? null,
       expiredSessionRetentionDays: dto.expiredSessionRetentionDays ?? null,
+      documentRetentionDays: dto.documentRetentionDays ?? null,
     };
     await this.save(
       CONFIG_KEYS.retention,

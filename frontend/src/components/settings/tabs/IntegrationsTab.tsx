@@ -3,14 +3,25 @@ import { Alert, Box, Chip, CircularProgress, Paper, Stack, Typography } from '@m
 import { fetchIntegrations } from '../../../api/adminConfig';
 import type { ApiIntegration } from '../../../types/adminConfig';
 
-const STATUS: Record<ApiIntegration['status'], { label: string; color: 'success' | 'warning' | 'default' }> = {
+const STATUS: Record<ApiIntegration['status'], { label: string; color: 'success' | 'warning' | 'default' | 'info' }> = {
   CONNECTED: { label: 'Connected', color: 'success' },
   NOT_CONFIGURED: { label: 'Not configured', color: 'warning' },
   DISABLED: { label: 'Disabled', color: 'default' },
+  REFERENCE_ONLY: { label: 'Reference links only', color: 'info' },
+  NOT_AVAILABLE: { label: 'Not available yet', color: 'default' },
 };
 
-// Lists only integrations TestSphere actually implements. Their credentials
-// are deployment environment variables and are never shown or editable here.
+const LEVEL: Record<ApiIntegration['level'], string> = {
+  IMPLEMENTED: 'Implemented integration',
+  FOUNDATION: 'Configuration foundation',
+  FUTURE: 'Future integration',
+};
+
+const CATEGORY_ORDER = ['AI', 'Development', 'Issue tracking', 'CI/CD', 'Automation', 'Communication'];
+
+// Integration targets from the TestSphere requirements. Only genuinely
+// implemented integrations can ever show "Connected"; credentials are
+// deployment environment variables and are never shown or editable here.
 export function IntegrationsTab() {
   const [integrations, setIntegrations] = useState<ApiIntegration[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -30,32 +41,48 @@ export function IntegrationsTab() {
     );
   }
 
+  const categories = CATEGORY_ORDER.filter((c) => integrations.some((i) => i.category === c));
+
   return (
-    <Stack spacing={2}>
-      {integrations.map((i) => (
-        <Paper key={i.key} variant="outlined" sx={{ p: 3 }}>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-              {i.name}
-            </Typography>
-            <Chip size="small" label={STATUS[i.status].label} color={STATUS[i.status].color} />
+    <Stack spacing={3}>
+      {categories.map((category) => (
+        <Box key={category}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+            {category}
+          </Typography>
+          <Stack spacing={1.5}>
+            {integrations
+              .filter((i) => i.category === category)
+              .map((i) => (
+                <Paper key={i.key} variant="outlined" sx={{ p: 2 }}>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                    <Typography sx={{ fontWeight: 600 }}>{i.name}</Typography>
+                    <Chip size="small" label={STATUS[i.status].label} color={STATUS[i.status].color} />
+                    <Chip size="small" variant="outlined" label={LEVEL[i.level]} />
+                  </Stack>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    {i.description}
+                  </Typography>
+                  {typeof i.details?.model === 'string' && (
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      Model: {i.details.model}
+                    </Typography>
+                  )}
+                  {typeof i.details?.productsWithRepositoryUrl === 'number' && (
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      Products with a repository link: {i.details.productsWithRepositoryUrl}
+                    </Typography>
+                  )}
+                  {i.configuredVia && (
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                      Configured by the deployment: {i.configuredVia}
+                    </Typography>
+                  )}
+                </Paper>
+              ))}
           </Stack>
-          <Typography variant="body2" color="text.secondary">
-            {i.description}
-          </Typography>
-          {typeof i.details.model === 'string' && (
-            <Typography variant="body2" sx={{ mt: 1 }}>
-              Model: {i.details.model}
-            </Typography>
-          )}
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-            Configured by the deployment: {i.configuredVia}
-          </Typography>
-        </Paper>
+        </Box>
       ))}
-      <Alert severity="info">
-        Other integrations (for example CI/CD or issue trackers) are not built into TestSphere yet.
-      </Alert>
     </Stack>
   );
 }

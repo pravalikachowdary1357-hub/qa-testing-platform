@@ -4,6 +4,7 @@ import type {
   ApiDashboardConfig,
   ApiDataRetention,
   ApiIntegration,
+  ApiNotificationConfig,
   ApiTestTemplate,
   ApiWorkflow,
   DashboardSectionKey,
@@ -26,8 +27,15 @@ export const updateApprovalPolicy = (
 ) => put<ApiApprovalPolicy>(`/approval-policies/${key}`, data);
 
 export const fetchDashboardConfig = () => apiFetch<ApiDashboardConfig>('/dashboard-config');
-export const updateDashboardConfig = (hiddenSections: DashboardSectionKey[]) =>
-  put<ApiDashboardConfig>('/dashboard-config', { hiddenSections });
+export const updateDashboardConfig = (hiddenSections: DashboardSectionKey[], roleId?: string) =>
+  put<ApiDashboardConfig>('/dashboard-config', { hiddenSections, ...(roleId ? { roleId } : {}) });
+export const clearDashboardRoleOverride = (roleId: string) =>
+  apiFetch<ApiDashboardConfig>(`/dashboard-config/roles/${roleId}`, { method: 'DELETE' });
+
+export const fetchNotificationConfig = () => apiFetch<ApiNotificationConfig>('/notification-config');
+export const updateNotificationConfig = (
+  data: Pick<ApiNotificationConfig, 'routing' | 'escalationAfterDays' | 'reminderDaysBeforeDue'>,
+) => put<ApiNotificationConfig>('/notification-config', data);
 
 export const fetchIntegrations = () => apiFetch<ApiIntegration[]>('/integrations');
 

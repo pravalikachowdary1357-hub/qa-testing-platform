@@ -27,4 +27,13 @@ export class UpdateDataRetentionDto {
   @Min(MIN_OTHER_RETENTION_DAYS)
   @Max(MAX_RETENTION_DAYS)
   expiredSessionRetentionDays: number | null;
+
+  // Documents & evidence (Requirements section 25) are compliance records,
+  // so they share the audit-log floor.
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsInt()
+  @Min(MIN_AUDIT_RETENTION_DAYS)
+  @Max(MAX_RETENTION_DAYS)
+  documentRetentionDays: number | null;
 }

@@ -92,3 +92,39 @@ describe('approval comment rules', () => {
     ).resolves.toBeUndefined();
   });
 });
+
+describe('source-aligned workflow coverage', () => {
+  it('covers every Requirements section 23 lifecycle', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { WORKFLOW_KEYS } = require('./admin-config.constants') as {
+      WORKFLOW_KEYS: string[];
+    };
+    expect(WORKFLOW_KEYS.sort()).toEqual(
+      [
+        'DEFECT',
+        'RELEASE',
+        'REQUIREMENT',
+        'TEST_CASE',
+        'TEST_EXECUTION',
+        'TEST_PLAN',
+        'TEST_SCENARIO',
+        'UAT_CYCLE',
+      ].sort(),
+    );
+  });
+
+  it('new workflows are not enforced by default (no behaviour change)', async () => {
+    for (const key of [
+      'REQUIREMENT',
+      'TEST_PLAN',
+      'TEST_SCENARIO',
+      'TEST_EXECUTION',
+      'UAT_CYCLE',
+      'RELEASE',
+    ] as const) {
+      await expect(
+        assertWorkflowTransition(prismaWith(undefined), key, 'X', 'Y'),
+      ).resolves.toBeUndefined();
+    }
+  });
+});

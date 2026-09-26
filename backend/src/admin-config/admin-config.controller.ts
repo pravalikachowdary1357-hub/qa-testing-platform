@@ -1,9 +1,19 @@
-import { Body, Controller, Get, Param, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
 import { AdminConfigService } from './admin-config.service';
 import { UpdateWorkflowDto } from './dto/update-workflow.dto';
 import { UpdateApprovalPolicyDto } from './dto/update-approval-policy.dto';
 import { UpdateDashboardConfigDto } from './dto/update-dashboard-config.dto';
 import { UpdateDataRetentionDto } from './dto/update-data-retention.dto';
+import { UpdateNotificationConfigDto } from './dto/update-notification-config.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermission } from '../auth/require-permission.decorator';
@@ -50,8 +60,8 @@ export class AdminConfigController {
   // Every signed-in role renders the dashboard, so reading its layout only
   // requires authentication; changing it requires dashboards:manage.
   @Get('dashboard-config')
-  getDashboardConfig() {
-    return this.service.getDashboardConfig();
+  getDashboardConfig(@CurrentUser() actor: AuthenticatedUser) {
+    return this.service.getDashboardConfig(actor);
   }
 
   @Put('dashboard-config')
@@ -61,6 +71,32 @@ export class AdminConfigController {
     @CurrentUser() actor: AuthenticatedUser,
   ) {
     return this.service.updateDashboardConfig(dto, actor);
+  }
+
+  @Delete('dashboard-config/roles/:roleId')
+  @RequirePermission('dashboards:manage')
+  clearDashboardRoleOverride(
+    @Param('roleId', ParseUUIDPipe) roleId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.service.clearDashboardRoleOverride(roleId, actor);
+  }
+
+  // Notification configuration is part of Application Settings, so it
+  // reuses the app_settings permissions. Configuration only -- no delivery.
+  @Get('notification-config')
+  @RequirePermission('app_settings:read')
+  getNotificationConfig() {
+    return this.service.getNotificationConfig();
+  }
+
+  @Put('notification-config')
+  @RequirePermission('app_settings:manage')
+  updateNotificationConfig(
+    @Body() dto: UpdateNotificationConfigDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.service.updateNotificationConfig(dto, actor);
   }
 
   @Get('integrations')

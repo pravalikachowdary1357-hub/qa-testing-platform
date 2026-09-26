@@ -11,7 +11,10 @@ import { CreateUatExecutionDto } from './dto/create-uat-execution.dto';
 import { UpdateUatExecutionDto } from './dto/update-uat-execution.dto';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { assertSameOrganization, productOrganizationScopeWhere } from '../common/organization-scope.util';
-import { assertApprovalComment } from '../admin-config/admin-config.service';
+import {
+  assertApprovalComment,
+  assertWorkflowTransition,
+} from '../admin-config/admin-config.service';
 
 const PRODUCT_REF = { select: { id: true, name: true, organizationId: true } };
 const RELEASE_REF = { select: { id: true, name: true, version: true } };
@@ -181,6 +184,13 @@ export class UatService {
       throw new NotFoundException(`UAT cycle ${id} not found`);
     }
 
+    await assertWorkflowTransition(
+      this.prisma,
+      'UAT_CYCLE',
+      existing.status,
+      dto.status,
+    );
+
     try {
       const cycle = await this.prisma.uatCycle.update({
         where: { id },
@@ -251,6 +261,12 @@ export class UatService {
         'This UAT cycle must be COMPLETED before it can be signed off.',
       );
     }
+    await assertWorkflowTransition(
+      this.prisma,
+      'UAT_CYCLE',
+      existing.status,
+      dto.decision,
+    );
     await assertApprovalComment(
       this.prisma,
       'UAT_SIGN_OFF',

@@ -16,7 +16,14 @@ export class AuditLogController {
   @Get()
   @RequirePermission('audit_log:read')
   findAll(@Query() query: ListAuditLogQueryDto) {
-    return this.auditLogService.findAll(query.entityType);
+    const { entityType, ...filters } = query;
+    return this.auditLogService.findAll(entityType, undefined, filters);
+  }
+
+  @Get('facets')
+  @RequirePermission('audit_log:read')
+  facets() {
+    return this.auditLogService.facets();
   }
 
   // No @RequirePermission -- any authenticated user may log their own
