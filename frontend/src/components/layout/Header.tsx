@@ -10,6 +10,7 @@ import {
   Menu,
   MenuItem,
   Toolbar,
+  Typography,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
@@ -90,9 +91,33 @@ export function Header({ onMenuClick }: HeaderProps) {
 
         <NotificationBell />
 
-        <IconButton onClick={handleAvatarClick} size="small" aria-label="User menu">
-          <Avatar sx={{ width: 32, height: 32 }}>{initial}</Avatar>
-        </IconButton>
+        <Box
+          component="button"
+          type="button"
+          onClick={handleAvatarClick}
+          aria-label="User menu"
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            border: 0,
+            bgcolor: 'transparent',
+            cursor: 'pointer',
+            p: 0.5,
+            borderRadius: 2,
+            '&:hover': { bgcolor: (theme) => alpha(theme.palette.text.primary, 0.04) },
+          }}
+        >
+          <Avatar sx={{ width: 34, height: 34, bgcolor: '#F5B800', color: '#0A2A57', fontSize: 15, fontWeight: 700 }}>{initial}</Avatar>
+          <Box sx={{ display: { xs: 'none', md: 'block' }, textAlign: 'left' }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+              {user?.name}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2 }}>
+              {user?.roleName}
+            </Typography>
+          </Box>
+        </Box>
         <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
           <MenuItem disabled>{user?.email ?? 'Not signed in'}</MenuItem>
           <Divider />

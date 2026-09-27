@@ -3,10 +3,11 @@ import { AuthModule } from '../auth/auth.module';
 import { ReleaseQualityModule } from '../release-quality/release-quality.module';
 import { MyWorkController } from './my-work.controller';
 import { MyWorkService } from './my-work.service';
+import { ModuleStatsService } from './module-stats.service';
 
 @Module({
   imports: [AuthModule, ReleaseQualityModule],
   controllers: [MyWorkController],
-  providers: [MyWorkService],
+  providers: [MyWorkService, ModuleStatsService],
 })
 export class MyWorkModule {}

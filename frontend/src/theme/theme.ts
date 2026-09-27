@@ -3,9 +3,10 @@ import { createTheme } from '@mui/material/styles';
 export const theme = createTheme({
   palette: {
     mode: 'light',
-    primary: { main: '#0F4C81' },
-    secondary: { main: '#00897B' },
-    background: { default: '#F4F6F8', paper: '#FFFFFF' },
+    primary: { main: '#1454A6', dark: '#0A2A57' },
+    // TestSphere gold (logo)
+    secondary: { main: '#C99400', light: '#F5B800', contrastText: '#0A2A57' },
+    background: { default: '#F1F4FA', paper: '#FFFFFF' },
   },
   shape: {
     borderRadius: 8,
@@ -19,6 +20,15 @@ export const theme = createTheme({
     },
     MuiPaper: {
       defaultProps: { elevation: 0 },
+    },
+    // Button labels never wrap onto two lines (e.g. "Import Products").
+    MuiButton: {
+      styleOverrides: {
+        root: { whiteSpace: 'nowrap', textTransform: 'none', fontWeight: 600, borderRadius: 8 },
+      },
+    },
+    MuiCard: {
+      styleOverrides: { root: { borderRadius: 12 } },
     },
   },
 });
