@@ -59,7 +59,11 @@ export class ProductsController {
   // Unguarded for the same reason as the GET above: this is what the
   // Dashboard renders once it's scoped to a product, and the Dashboard
   // itself carries no permission gate today.
+  // The product-wide testing overview (KPIs, trends) is reporting data, so
+  // it now requires reports:read -- a role without it (e.g. Database Test
+  // Engineer) no longer sees every product's testing figures.
   @Get(':id/dashboard-summary')
+  @RequirePermission('reports:read')
   getDashboardSummary(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
     return this.productsService.getDashboardSummary(id, actor.organizationId);
   }

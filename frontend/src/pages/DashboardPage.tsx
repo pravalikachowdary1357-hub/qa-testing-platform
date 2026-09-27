@@ -34,6 +34,7 @@ import { StatusChip } from '../components/common/StatusChip';
 import { BreakdownBar, colorForStatusLabel } from '../components/reports/BreakdownBar';
 import { MetricTrendChart } from '../components/performance/MetricTrendChart';
 import { PlatformAdminDashboard } from '../components/dashboard/PlatformAdminDashboard';
+import { RoleDashboard } from '../components/dashboard/RoleDashboard';
 import { useAuth } from '../context/AuthContext';
 import { useProductContext } from '../context/ProductContext';
 import { fetchProductDashboardSummary } from '../api/products';
@@ -84,7 +85,13 @@ interface Kpi {
 
 export function DashboardPage() {
   const theme = useTheme();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
+  // Each role opens to its own "My Work" dashboard. The product-wide quality
+  // overview (KPIs, distributions, trends) is kept below it only for the
+  // test-management roles (and custom roles) that hold reports:read.
+  const STANDARD_ROLES = ['Tester', 'Automation Engineer', 'Database Test Engineer', 'Developer', 'UAT Coordinator', 'Product Owner'];
+  const showOverview =
+    hasPermission('reports:read') && !STANDARD_ROLES.includes(user?.roleName ?? '');
   const { currentProduct, loading: productLoading, error: productError } = useProductContext();
   const [summary, setSummary] = useState<ApiProductDashboardSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -107,7 +114,7 @@ export function DashboardPage() {
   const show = (section: DashboardSectionKey) => !hiddenSections.includes(section);
 
   useEffect(() => {
-    if (!currentProduct) {
+    if (!currentProduct || !showOverview) {
       setSummary(null);
       setSummaryError(null);
       return;
@@ -137,7 +144,7 @@ export function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [currentProduct?.id]);
+  }, [currentProduct?.id, showOverview]);
 
   const loading = productLoading || summaryLoading;
   const error = productError ?? summaryError;
@@ -195,11 +202,18 @@ export function DashboardPage() {
         title="Dashboard"
         subtitle={
           currentProduct
-            ? `Testing overview for ${currentProduct.name}`
-            : 'Select a product to see its testing overview'
+            ? `${user?.roleName ?? 'My'} dashboard for ${currentProduct.name}`
+            : 'Select a product to see your dashboard'
         }
       />
 
+      {!productLoading && <RoleDashboard productId={currentProduct?.id} />}
+
+      {showOverview && (
+      <>
+      <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+        Product quality overview
+      </Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {loading && (
@@ -324,6 +338,8 @@ export function DashboardPage() {
           </>
           )}
         </>
+      )}
+      </>
       )}
     </>
   );
