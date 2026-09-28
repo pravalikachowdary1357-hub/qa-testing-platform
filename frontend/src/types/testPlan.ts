@@ -138,6 +138,7 @@ export interface TestPlanSummaryReport {
   defects: {
     total: number;
     open: number;
+    reopened: number;
     openBySeverity: Record<string, number>;
     criticalOpen: { id: string; title: string; severity: string; status: string }[];
   };

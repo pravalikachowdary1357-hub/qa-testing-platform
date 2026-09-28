@@ -496,6 +496,7 @@ export class TestPlansService {
       orderBy: { createdAt: 'asc' },
     });
     const open = defects.filter((d) => OPEN_DEFECT_STATUSES.includes(d.status));
+    const reopenedCount = defects.filter((d) => d.status === 'REOPENED').length;
     const bySeverity: Record<string, number> = {};
     for (const d of open) bySeverity[d.severity] = (bySeverity[d.severity] ?? 0) + 1;
     const milestones = (Array.isArray(plan.milestones) ? plan.milestones : []) as {
@@ -526,6 +527,7 @@ export class TestPlansService {
       defects: {
         total: defects.length,
         open: open.length,
+        reopened: reopenedCount,
         openBySeverity: bySeverity,
         criticalOpen: (canReadDefects ? open : [])
           .filter((d) => d.severity === 'CRITICAL' || d.severity === 'MAJOR')

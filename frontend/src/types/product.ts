@@ -121,6 +121,27 @@ export interface ApiDashboardTrendPoint {
   count: number;
 }
 
+export interface ApiQualityCommandCenter {
+  product: { id: string; name: string };
+  generatedAt: string;
+  qualityHealthScore: { score: number; band: 'HEALTHY' | 'AT_RISK' | 'CRITICAL' };
+  testingCoverage: {
+    testCoveragePercent: number;
+    requirementCoveragePercent: number;
+    passRatePercent: number;
+  };
+  defectRisk: {
+    openCount: number;
+    criticalOpenCount: number;
+    averageAgeDays: number;
+    trend: 'RISING' | 'FALLING' | 'STABLE';
+  };
+  releaseReadiness: ApiReleaseReadiness;
+  aiPredictedRiskAreas: string[];
+  regressionRecommendations: string[];
+  managementActions: string[];
+}
+
 export interface ApiProductDashboardSummary {
   requirements: number;
   activeTestPlans: number;

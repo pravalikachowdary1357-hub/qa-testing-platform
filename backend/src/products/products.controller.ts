@@ -62,6 +62,12 @@ export class ProductsController {
   // The product-wide testing overview (KPIs, trends) is reporting data, so
   // it now requires reports:read -- a role without it (e.g. Database Test
   // Engineer) no longer sees every product's testing figures.
+  @Get(':id/quality-command-center')
+  @RequirePermission('reports:read')
+  qualityCommandCenter(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.productsService.getQualityCommandCenter(id, actor.organizationId);
+  }
+
   @Get(':id/dashboard-summary')
   @RequirePermission('reports:read')
   getDashboardSummary(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {

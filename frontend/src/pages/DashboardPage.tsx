@@ -35,6 +35,7 @@ import { BreakdownBar, colorForStatusLabel } from '../components/reports/Breakdo
 import { MetricTrendChart } from '../components/performance/MetricTrendChart';
 import { PlatformAdminDashboard } from '../components/dashboard/PlatformAdminDashboard';
 import { RoleDashboard } from '../components/dashboard/RoleDashboard';
+import { QualityCommandCenter } from '../components/dashboard/QualityCommandCenter';
 import { useAuth } from '../context/AuthContext';
 import { useProductContext } from '../context/ProductContext';
 import { fetchProductDashboardSummary } from '../api/products';
@@ -233,6 +234,11 @@ export function DashboardPage() {
 
       {!loading && !error && currentProduct && (
         <>
+          {hasPermission('test_plans:approve') && (
+            <Box sx={{ mb: 4 }}>
+              <QualityCommandCenter productId={currentProduct.id} />
+            </Box>
+          )}
           {show('KPI_CARDS') && (
           <Grid container spacing={2} sx={{ mb: 4 }}>
             {kpis.map((kpi) => (

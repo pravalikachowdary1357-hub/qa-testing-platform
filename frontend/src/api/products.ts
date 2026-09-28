@@ -3,6 +3,7 @@ import type {
   ApiProduct,
   ApiProductComponent,
   ApiProductDashboardSummary,
+  ApiQualityCommandCenter,
   ApiProductTeamMember,
   CreateProductComponentPayload,
   CreateProductPayload,
@@ -23,6 +24,10 @@ export function fetchProductDashboardSummary(
   id: string,
 ): Promise<ApiProductDashboardSummary> {
   return apiFetch<ApiProductDashboardSummary>(`/products/${id}/dashboard-summary`);
+}
+
+export function fetchQualityCommandCenter(id: string): Promise<ApiQualityCommandCenter> {
+  return apiFetch<ApiQualityCommandCenter>(`/products/${id}/quality-command-center`);
 }
 
 export function createProduct(data: CreateProductPayload): Promise<ApiProduct> {

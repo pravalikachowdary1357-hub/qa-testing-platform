@@ -344,6 +344,147 @@ export class ProductsService {
     };
   }
 
+  // Quality Command Center (Roles & Responsibilities section 27): a single
+  // testing-health view for the Test Manager. Every figure is computed
+  // deterministically from real records (the same quality gates the release
+  // sign-off uses) -- there is no AI/LLM call in this endpoint, so it always
+  // works and never depends on ANTHROPIC_API_KEY. "AI-predicted" risk areas
+  // and regression recommendations are a transparent rules engine over that
+  // same data, labelled as such rather than claiming a model generated them.
+  async getQualityCommandCenter(id: string, actorOrganizationId: string | null) {
+    const product = await this.findOne(id, actorOrganizationId);
+
+    const eightWeeksAgo = new Date();
+    eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 7 * DASHBOARD_TREND_WEEKS);
+    const fourWeeksAgo = new Date();
+    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+
+    const [quality, openDefects, recentDefects, plansInReview, casesReady, activePlans] =
+      await Promise.all([
+        this.releaseQuality.getProductQuality(id),
+        this.prisma.defect.findMany({
+          where: { productId: id, status: { in: OPEN_DEFECT_STATUSES } },
+          select: { id: true, title: true, severity: true, status: true, createdAt: true },
+        }),
+        this.prisma.defect.findMany({
+          where: { productId: id, createdAt: { gte: eightWeeksAgo } },
+          select: { createdAt: true },
+        }),
+        this.prisma.testPlan.count({ where: { productId: id, status: 'IN_REVIEW' } }),
+        this.prisma.testCase.count({
+          where: { testScenario: { productId: id }, status: 'READY' },
+        }),
+        this.prisma.testPlan.findMany({
+          where: { productId: id, status: { in: ['APPROVED', 'ACTIVE'] } },
+          select: { name: true, endDate: true },
+        }),
+      ]);
+
+    // ---- Quality Health Score: a single 0-100 composite ----
+    const { testExecutionSummary, requirementCoverage, defects, readiness } = quality;
+    const readinessScore = { READY: 100, CONDITIONAL: 60, NOT_READY: 20 }[readiness];
+    const healthScore = Math.round(
+      testExecutionSummary.passRatePercent * 0.3 +
+        testExecutionSummary.testCoveragePercent * 0.2 +
+        requirementCoverage.requirementCoveragePercent * 0.15 +
+        readinessScore * 0.25 +
+        Math.max(0, 100 - defects.criticalOpenCount * 15) * 0.1,
+    );
+    const healthBand =
+      healthScore >= 80 ? 'HEALTHY' : healthScore >= 55 ? 'AT_RISK' : 'CRITICAL';
+
+    // ---- Defect risk: is the open-defect trend rising or falling? ----
+    const recentCreated = recentDefects.map((d) => d.createdAt);
+    const last4w = recentCreated.filter((d) => d >= fourWeeksAgo).length;
+    const prev4w = recentCreated.filter((d) => d < fourWeeksAgo).length;
+    const trend: 'RISING' | 'FALLING' | 'STABLE' =
+      last4w > prev4w * 1.2 ? 'RISING' : last4w < prev4w * 0.8 ? 'FALLING' : 'STABLE';
+    const avgAgeDays = openDefects.length
+      ? Math.round(
+          openDefects.reduce(
+            (sum, d) => sum + Math.round((Date.now() - d.createdAt.getTime()) / 86400000),
+            0,
+          ) / openDefects.length,
+        )
+      : 0;
+
+    // ---- AI-predicted risk areas (rule-based) ----
+    const riskAreas: string[] = [];
+    if (defects.criticalOpenCount > 0)
+      riskAreas.push(
+        `${defects.criticalOpenCount} critical defect(s) still open -- highest risk to release.`,
+      );
+    if (testExecutionSummary.testCoveragePercent < 80)
+      riskAreas.push(
+        `Test coverage is ${testExecutionSummary.testCoveragePercent}%, below the 80% guideline.`,
+      );
+    if (requirementCoverage.requirementCoveragePercent < 80)
+      riskAreas.push(
+        `${requirementCoverage.totalRequirements - requirementCoverage.coveredRequirements} requirement(s) have no test coverage yet.`,
+      );
+    if (trend === 'RISING') riskAreas.push('New defects are being opened faster than the last 4 weeks.');
+    if (avgAgeDays > 14) riskAreas.push(`Open defects are aging: ${avgAgeDays} day(s) average.`);
+    if (testExecutionSummary.resultCounts.fail > 0)
+      riskAreas.push(`${testExecutionSummary.resultCounts.fail} test case(s) currently failing.`);
+
+    // ---- Regression recommendations (rule-based) ----
+    const regressionRecommendations: string[] = [];
+    if (testExecutionSummary.resultCounts.fail > 0)
+      regressionRecommendations.push(
+        'Re-run the failing test cases after the next fix and confirm with a full regression pass.',
+      );
+    if (defects.criticalOpenCount > 0 || defects.criticalMajorOpenCount > defects.criticalOpenCount)
+      regressionRecommendations.push(
+        'Prioritize regression around modules with critical/major defects before the next release candidate.',
+      );
+    if (testExecutionSummary.resultCounts.notRun > 0)
+      regressionRecommendations.push(
+        `${testExecutionSummary.resultCounts.notRun} test case(s) have never been executed -- run them at least once before sign-off.`,
+      );
+    if (regressionRecommendations.length === 0)
+      regressionRecommendations.push('No regression risk indicators found in the current data.');
+
+    // ---- Management actions ----
+    const managementActions: string[] = [];
+    if (plansInReview > 0)
+      managementActions.push(`Review and approve ${plansInReview} test plan(s) waiting for approval.`);
+    if (casesReady > 0)
+      managementActions.push(`Review and approve ${casesReady} test case(s) ready for approval.`);
+    if (defects.criticalOpenCount > 0)
+      managementActions.push(`Escalate ${defects.criticalOpenCount} open critical defect(s).`);
+    const overduePlans = activePlans.filter((p) => p.endDate && p.endDate < new Date());
+    if (overduePlans.length > 0)
+      managementActions.push(
+        `${overduePlans.length} test plan(s) are past their end date and still running: ${overduePlans
+          .map((p) => p.name)
+          .slice(0, 5)
+          .join(', ')}.`,
+      );
+    if (managementActions.length === 0)
+      managementActions.push('Nothing needs your attention right now.');
+
+    return {
+      product: { id: product.id, name: product.name },
+      generatedAt: new Date().toISOString(),
+      qualityHealthScore: { score: healthScore, band: healthBand },
+      testingCoverage: {
+        testCoveragePercent: testExecutionSummary.testCoveragePercent,
+        requirementCoveragePercent: requirementCoverage.requirementCoveragePercent,
+        passRatePercent: testExecutionSummary.passRatePercent,
+      },
+      defectRisk: {
+        openCount: defects.openCount,
+        criticalOpenCount: defects.criticalOpenCount,
+        averageAgeDays: avgAgeDays,
+        trend,
+      },
+      releaseReadiness: readiness,
+      aiPredictedRiskAreas: riskAreas.length ? riskAreas : ['No elevated risk areas detected.'],
+      regressionRecommendations,
+      managementActions,
+    };
+  }
+
   async bulkImport(
     rows: Record<string, string>[],
     actor: AuthenticatedUser,

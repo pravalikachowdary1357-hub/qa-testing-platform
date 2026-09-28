@@ -15,7 +15,9 @@ import {
   Typography,
 } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
+import DownloadIcon from '@mui/icons-material/Download';
 import { fetchTestPlanSummaryReport } from '../../api/testPlans';
+import { exportToCsvWithAudit } from '../../utils/csvExport';
 import { ApiError } from '../../api/client';
 import type { TestPlanSummaryReport } from '../../types/testPlan';
 import { TestPlanGovernanceSummary } from './TestPlanGovernanceSummary';
@@ -91,6 +93,52 @@ export function TestPlanSummaryReportDialog({
     win.document.close();
     win.focus();
     win.print();
+  };
+
+  const downloadCsv = () => {
+    if (!report || !plan) return;
+    const rows: { metric: string; value: string | number }[] = [
+      { metric: 'Test plan', value: plan.name },
+      { metric: 'Product', value: plan.product.name },
+      { metric: 'Owner', value: plan.owner },
+      { metric: 'Status', value: pretty(plan.status) },
+      { metric: 'Generated', value: report.generatedAt },
+      { metric: 'Scope of figures', value: SCOPE_TEXT[report.scopeBasis] },
+      { metric: 'Test completion %', value: report.execution.completionPercent },
+      { metric: 'Pass rate %', value: report.execution.passRatePercent },
+      { metric: 'Requirement coverage %', value: report.requirements.coveragePercent },
+      { metric: 'Test cases total', value: report.execution.total },
+      { metric: 'Passed', value: report.execution.pass },
+      { metric: 'Failed', value: report.execution.fail },
+      { metric: 'Blocked', value: report.execution.blocked },
+      { metric: 'Not executed', value: report.execution.notRun },
+      { metric: 'Defects total', value: report.defects.total },
+      { metric: 'Defects open', value: report.defects.open },
+      { metric: 'Defects reopened', value: report.defects.reopened },
+      ...Object.entries(report.defects.openBySeverity).map(([sev, n]) => ({
+        metric: `Open defects (${pretty(sev)})`,
+        value: n,
+      })),
+      { metric: 'Milestones total', value: report.milestones.total },
+      { metric: 'Milestones done', value: report.milestones.done },
+      { metric: 'Milestones overdue', value: report.milestones.overdue },
+      { metric: 'Exit (completion) criteria', value: plan.exitCriteria ?? '' },
+      {
+        metric: 'Approved by',
+        value: plan.status !== 'DRAFT' ? (plan.reviewedBy?.name ?? '') : '',
+      },
+      { metric: 'Completion signed off by', value: plan.completedBy?.name ?? '' },
+      { metric: 'Completion summary', value: plan.completionSummary ?? '' },
+    ];
+    exportToCsvWithAudit(
+      'TestPlan',
+      `test-summary-report-${plan.name.replace(/[^a-z0-9]+/gi, '-')}.csv`,
+      rows,
+      [
+        { header: 'Metric', value: (r) => r.metric },
+        { header: 'Value', value: (r) => r.value },
+      ],
+    );
   };
 
   return (
@@ -196,6 +244,9 @@ export function TestPlanSummaryReportDialog({
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={onClose}>Close</Button>
+        <Button startIcon={<DownloadIcon />} onClick={downloadCsv} disabled={!report}>
+          Download CSV
+        </Button>
         <Button variant="contained" startIcon={<PrintIcon />} onClick={print} disabled={!report}>
           Print / Save as PDF
         </Button>
