@@ -40,3 +40,14 @@ export function importTestCases(
     formData,
   );
 }
+
+export function reviewTestCase(
+  id: string,
+  decision: 'APPROVED' | 'REJECTED' | 'RETURNED_FOR_REWORK',
+  comment?: string,
+): Promise<ApiTestCase> {
+  return apiFetch<ApiTestCase>(`/test-cases/${id}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ decision, ...(comment ? { comment } : {}) }),
+  });
+}

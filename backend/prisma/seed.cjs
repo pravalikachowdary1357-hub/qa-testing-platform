@@ -66,9 +66,9 @@ const MODULES = {
   products: ['read', 'write', 'manage'],
   product_documents: ['read', 'write', 'manage'],
   requirements: ['read', 'write', 'manage', 'approve'],
-  test_plans: ['read', 'write', 'manage'],
+  test_plans: ['read', 'write', 'manage', 'approve'],
   test_scenarios: ['read', 'write', 'manage'],
-  test_cases: ['read', 'write', 'manage'],
+  test_cases: ['read', 'write', 'manage', 'approve'],
   test_data: ['read', 'write', 'manage'],
   environments: ['read', 'write', 'manage'],
   test_executions: ['read', 'execute', 'manage'],
@@ -157,27 +157,33 @@ const ROLE_GRANTS = {
   ],
 
   // Overall testing owner: strategy, governance, planning, quality, risk,
+  // release readiness. Per the RACI the Test Manager is Accountable (not
+  // Responsible) for execution and requirement authoring, so it approves
+  // test plans/cases/requirements and manages the lifecycle but holds no
+  // hands-on execute rights and does not author requirements.
   // release readiness, and full lifecycle authority (including the
   // specialized test types and AI). api_testing is included alongside
   // automation/performance/security for the same reason it always has
   // been: leaving out just one lifecycle module for the broadest testing
   // role would be an inconsistent, almost certainly unintended gap.
   'Test Manager': [
-    ...allKeys('requirements'),
+    ...keys('requirements', 'read', 'approve'),
     ...allKeys('product_documents'),
+    ...keys('products', 'read'),
+    ...keys('projects', 'read'),
     ...allKeys('test_plans'),
     ...allKeys('test_scenarios'),
     ...allKeys('test_cases'),
     'test_templates:read', // use enabled templates when creating test cases
     ...allKeys('test_data'),
     ...allKeys('environments'),
-    ...allKeys('test_executions'),
+    ...keys('test_executions', 'read', 'manage'),
     ...allKeys('defects'),
-    ...allKeys('automation'),
-    ...allKeys('api_testing'),
-    ...allKeys('performance_testing'),
-    ...allKeys('security_testing'),
-    ...allKeys('uat'),
+    ...keys('automation', 'read', 'write', 'manage'),
+    ...keys('api_testing', 'read', 'write', 'manage'),
+    ...keys('performance_testing', 'read', 'write', 'manage'),
+    ...keys('security_testing', 'read', 'write', 'manage'),
+    ...keys('uat', 'read', 'write', 'approve', 'manage'),
     ...allKeys('release_quality'),
     ...keys('traceability', 'read'),
     ...keys('reports', 'read'),
@@ -193,9 +199,10 @@ const ROLE_GRANTS = {
   'Test Lead': [
     ...keys('requirements', 'read'),
     ...keys('product_documents', 'read'),
-    ...allKeys('test_plans'),
+    // Approval of plans/cases stays with Test Manager (RACI: Accountable).
+    ...keys('test_plans', 'read', 'write', 'manage'),
     ...allKeys('test_scenarios'),
-    ...allKeys('test_cases'),
+    ...keys('test_cases', 'read', 'write', 'manage'),
     'test_templates:read', // use enabled templates when creating test cases
     ...allKeys('test_data'),
     ...allKeys('environments'),
@@ -310,7 +317,7 @@ const ROLE_GRANTS = {
 
 const ROLE_DESCRIPTIONS = {
   'System Administrator': 'Platform administration: organizations, business units, teams, projects, products, users, roles/permissions, and system/audit settings. Does not include any QA testing execution, planning, or governance -- that is Test Manager\'s domain.',
-  'Test Manager': 'Overall testing ownership: strategy, governance, planning, quality risk, and release readiness, with full authority across the entire testing lifecycle including automation, performance, security, UAT, release quality, and AI.',
+  'Test Manager': 'Overall testing ownership: test strategy, master test plan, scope, effort, resources, milestones and risks; approves test plans, completion criteria, test cases and requirements; monitors progress, coverage and defects; supports release decisions. Accountable for execution but does not execute tests.',
   'Test Lead': 'Day-to-day testing management: test plans, scenarios, cases, data, environments, execution, and defects.',
   'Tester': 'Creates/executes test cases, records evidence, raises and updates defects, executes UAT, and performs assigned specialized testing (automation, API, performance, security).',
   'Automation Engineer': 'Owns test automation: develops/maintains automation frameworks, scripts, and repositories; executes automated regression; analyzes failures. Read-only on manual test cases/scenarios/execution history.',

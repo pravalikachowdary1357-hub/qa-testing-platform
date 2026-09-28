@@ -25,6 +25,10 @@ import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import GavelIcon from '@mui/icons-material/Gavel';
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import StarIcon from '@mui/icons-material/Star';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
 import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
@@ -34,8 +38,17 @@ import { TestPlanFormDialog } from '../components/testplan/TestPlanFormDialog';
 import { TestPlanDetailDialog } from '../components/testplan/TestPlanDetailDialog';
 import { DeleteTestPlanDialog } from '../components/testplan/DeleteTestPlanDialog';
 import {
+  TestPlanCompleteDialog,
+  TestPlanReviewDialog,
+} from '../components/testplan/TestPlanDecisionDialogs';
+import { TestPlanSummaryReportDialog } from '../components/testplan/TestPlanSummaryReportDialog';
+import { EMPTY_GOVERNANCE } from '../components/testplan/governance';
+import { useAuth } from '../context/AuthContext';
+import {
+  completeTestPlan,
   createTestPlan,
   deleteTestPlan,
+  reviewTestPlan,
   fetchTestPlans,
   importTestPlans,
   updateTestPlan,
@@ -95,6 +108,11 @@ function formatDateRange(start: string | null, end: string | null): string {
 
 export function TestPlansPage() {
   const { currentProduct } = useProductContext();
+  const { hasPermission } = useAuth();
+  const canApprove = hasPermission('test_plans:approve');
+  const [reviewingPlan, setReviewingPlan] = useState<ApiTestPlan | null>(null);
+  const [completingPlan, setCompletingPlan] = useState<ApiTestPlan | null>(null);
+  const [reportPlanId, setReportPlanId] = useState<string | null>(null);
   const [testPlans, setTestPlans] = useState<ApiTestPlan[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [releases, setReleases] = useState<ApiRelease[]>([]);
@@ -223,6 +241,23 @@ export function TestPlansPage() {
     setSnackbar({ message: 'Test plan updated.', severity: 'success' });
   };
 
+  const handleReview = async (decision: Parameters<typeof reviewTestPlan>[1], comment: string) => {
+    if (!reviewingPlan) return;
+    await reviewTestPlan(reviewingPlan.id, decision, comment || undefined);
+    await loadTestPlans();
+    setSnackbar({
+      message: decision === 'APPROVED' ? 'Test plan approved.' : 'Decision saved; plan moved back to Draft.',
+      severity: 'success',
+    });
+  };
+
+  const handleComplete = async (summary: string) => {
+    if (!completingPlan) return;
+    await completeTestPlan(completingPlan.id, summary);
+    await loadTestPlans();
+    setSnackbar({ message: 'Test completion signed off.', severity: 'success' });
+  };
+
   const handleDeleteConfirm = async () => {
     if (!deletingTestPlan) return;
     await deleteTestPlan(deletingTestPlan.id);
@@ -256,6 +291,11 @@ export function TestPlansPage() {
       { header: 'Owner', value: (p) => p.owner },
       { header: 'Start Date', value: (p) => (p.startDate ? new Date(p.startDate).toLocaleDateString() : '') },
       { header: 'End Date', value: (p) => (p.endDate ? new Date(p.endDate).toLocaleDateString() : '') },
+      { header: 'Master Plan', value: (p) => (p.isMaster ? 'Yes' : 'No') },
+      { header: 'Estimated Effort (h)', value: (p) => (p.estimatedEffortHours ?? '').toString() },
+      { header: 'Exit Criteria', value: (p) => p.exitCriteria ?? '' },
+      { header: 'Approved By', value: (p) => (p.status !== 'DRAFT' ? (p.reviewedBy?.name ?? '') : '') },
+      { header: 'Completion Signed Off By', value: (p) => p.completedBy?.name ?? '' },
       { header: 'Created', value: (p) => new Date(p.createdAt).toLocaleDateString() },
     ]);
   };
@@ -399,9 +439,16 @@ export function TestPlansPage() {
               {visibleTestPlans.map((plan) => (
                 <TableRow key={plan.id} hover>
                   <TableCell sx={{ maxWidth: 220 }}>
-                    <Typography variant="body2" noWrap>
-                      {plan.name}
-                    </Typography>
+                    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                      {plan.isMaster && (
+                        <Tooltip title="Master test plan">
+                          <StarIcon fontSize="small" color="secondary" />
+                        </Tooltip>
+                      )}
+                      <Typography variant="body2" noWrap>
+                        {plan.name}
+                      </Typography>
+                    </Stack>
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" color="text.secondary">
@@ -427,7 +474,40 @@ export function TestPlansPage() {
                         : `${plan.requirements.length} linked`}
                     </Typography>
                   </TableCell>
-                  <TableCell align="right">
+                  <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                    {canApprove && plan.status === 'IN_REVIEW' && (
+                      <Tooltip title="Review (approve / return / reject)">
+                        <IconButton
+                          size="small"
+                          color="secondary"
+                          aria-label={`Review ${plan.name}`}
+                          onClick={() => setReviewingPlan(plan)}
+                        >
+                          <GavelIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    {canApprove && (plan.status === 'APPROVED' || plan.status === 'ACTIVE') && (
+                      <Tooltip title="Sign off completion">
+                        <IconButton
+                          size="small"
+                          color="success"
+                          aria-label={`Sign off completion of ${plan.name}`}
+                          onClick={() => setCompletingPlan(plan)}
+                        >
+                          <TaskAltIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    <Tooltip title="Status / summary report">
+                      <IconButton
+                        size="small"
+                        aria-label={`Report for ${plan.name}`}
+                        onClick={() => setReportPlanId(plan.id)}
+                      >
+                        <AssessmentIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                     <Tooltip title="View">
                       <IconButton size="small" onClick={() => setViewingTestPlanId(plan.id)}>
                         <VisibilityIcon fontSize="small" />
@@ -477,6 +557,29 @@ export function TestPlansPage() {
                 startDate: editingTestPlan.startDate ? editingTestPlan.startDate.slice(0, 10) : '',
                 endDate: editingTestPlan.endDate ? editingTestPlan.endDate.slice(0, 10) : '',
                 requirementIds: editingTestPlan.requirements.map((r) => r.id),
+                governance: {
+                  ...EMPTY_GOVERNANCE,
+                  isMaster: editingTestPlan.isMaster ?? false,
+                  scope: editingTestPlan.scope ?? '',
+                  objectives: editingTestPlan.objectives ?? '',
+                  testLevels: editingTestPlan.testLevels ?? [],
+                  testTypes: editingTestPlan.testTypes ?? [],
+                  approach: editingTestPlan.approach ?? '',
+                  entryCriteria: editingTestPlan.entryCriteria ?? '',
+                  exitCriteria: editingTestPlan.exitCriteria ?? '',
+                  estimatedEffortHours:
+                    editingTestPlan.estimatedEffortHours !== null &&
+                    editingTestPlan.estimatedEffortHours !== undefined
+                      ? String(editingTestPlan.estimatedEffortHours)
+                      : '',
+                  resources: editingTestPlan.resources ?? '',
+                  risks: editingTestPlan.risks ?? '',
+                  milestones: (editingTestPlan.milestones ?? []).map((m) => ({
+                    name: m.name,
+                    dueDate: m.dueDate ? m.dueDate.slice(0, 10) : '',
+                    done: Boolean(m.done),
+                  })),
+                },
               }
             : undefined
         }
@@ -497,6 +600,20 @@ export function TestPlansPage() {
         onClose={() => setDeletingTestPlan(null)}
         onConfirm={handleDeleteConfirm}
       />
+
+      <TestPlanReviewDialog
+        plan={reviewingPlan}
+        onClose={() => setReviewingPlan(null)}
+        onSubmit={handleReview}
+      />
+
+      <TestPlanCompleteDialog
+        plan={completingPlan}
+        onClose={() => setCompletingPlan(null)}
+        onSubmit={handleComplete}
+      />
+
+      <TestPlanSummaryReportDialog testPlanId={reportPlanId} onClose={() => setReportPlanId(null)} />
 
       <ImportResultDialog result={importResult} onClose={() => setImportResult(null)} />
 

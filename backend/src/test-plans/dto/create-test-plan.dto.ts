@@ -8,8 +8,9 @@ import {
   IsUUID,
 } from 'class-validator';
 import { TestPlanPriority, TestPlanStatus } from '../../../generated/prisma/enums.js';
+import { TestPlanGovernanceDto } from './test-plan-governance.dto';
 
-export class CreateTestPlanDto {
+export class CreateTestPlanDto extends TestPlanGovernanceDto {
   @IsUUID()
   productId: string;
 

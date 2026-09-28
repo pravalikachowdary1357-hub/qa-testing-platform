@@ -19,6 +19,9 @@ import type {
 import type { ApiProduct } from '../../types/product';
 import type { ApiRequirement } from '../../types/requirement';
 import type { ApiRelease } from '../../types/release';
+import { TestPlanGovernanceFields } from './TestPlanGovernanceFields';
+import { EMPTY_GOVERNANCE, governancePayload } from './governance';
+import type { GovernanceValues } from './governance';
 
 const STATUS_OPTIONS: { value: ApiTestPlanStatus; label: string }[] = [
   { value: 'DRAFT', label: 'Draft' },
@@ -47,7 +50,12 @@ interface TestPlanFormValues {
   startDate: string;
   endDate: string;
   requirementIds: string[];
+  governance: GovernanceValues;
 }
+
+// Approved / Completed are Test Manager decisions (Review and Sign off
+// completion), never picked in the form.
+const DECISION_STATUSES: ApiTestPlanStatus[] = ['APPROVED', 'COMPLETED'];
 
 function emptyValues(defaultProductId: string): TestPlanFormValues {
   return {
@@ -61,6 +69,7 @@ function emptyValues(defaultProductId: string): TestPlanFormValues {
     startDate: '',
     endDate: '',
     requirementIds: [],
+    governance: EMPTY_GOVERNANCE,
   };
 }
 
@@ -75,6 +84,8 @@ interface TestPlanFormDialogProps {
   onClose: () => void;
   onSubmit: (data: CreateTestPlanPayload) => Promise<void>;
 }
+
+export type { TestPlanFormValues };
 
 export function TestPlanFormDialog({
   open,
@@ -177,6 +188,7 @@ export function TestPlanFormDialog({
         startDate: values.startDate || undefined,
         endDate: values.endDate || undefined,
         requirementIds: values.requirementIds,
+        ...governancePayload(values.governance),
       });
       onClose();
     } catch (err: unknown) {
@@ -187,11 +199,17 @@ export function TestPlanFormDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
       <DialogTitle>{mode === 'create' ? 'Create Test Plan' : 'Edit Test Plan'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {submitError && <Alert severity="error">{submitError}</Alert>}
+          {mode === 'edit' && initialValues?.status === 'APPROVED' && (
+            <Alert severity="info">
+              This plan is approved. Changing its content, dates or criteria sends it back to In
+              Review for the Test Manager to re-approve.
+            </Alert>
+          )}
 
           {noProductsAvailable ? (
             <Alert severity="warning">
@@ -269,7 +287,11 @@ export function TestPlanFormDialog({
                     setValues((prev) => ({ ...prev, status: e.target.value as ApiTestPlanStatus }))
                   }
                 >
-                  {STATUS_OPTIONS.map((option) => (
+                  {STATUS_OPTIONS.filter(
+                    (option) =>
+                      !DECISION_STATUSES.includes(option.value) ||
+                      option.value === initialValues?.status,
+                  ).map((option) => (
                     <MenuItem key={option.value} value={option.value}>
                       {option.label}
                     </MenuItem>
@@ -372,6 +394,10 @@ export function TestPlanFormDialog({
                   </MenuItem>
                 ))}
               </TextField>
+              <TestPlanGovernanceFields
+                values={values.governance}
+                onChange={(governance) => setValues((prev) => ({ ...prev, governance }))}
+              />
             </>
           )}
         </Stack>

@@ -13,7 +13,19 @@ import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { validateRow } from '../common/import/validate-row.util';
 import type { ImportResult, ImportRowError } from '../common/import/import-result.interface';
 import { assertSameOrganization } from '../common/organization-scope.util';
-import { assertWorkflowTransition } from '../admin-config/admin-config.service';
+import {
+  assertApprovalComment,
+  assertWorkflowTransition,
+} from '../admin-config/admin-config.service';
+import { TestCaseStatus } from '../../generated/prisma/enums.js';
+import type { ReviewTestCaseDto } from './dto/review-test-case.dto';
+import { notifySubmittedForApproval } from '../notifications/notification-events';
+
+const REVIEW_STATUS: Record<ReviewTestCaseDto['decision'], TestCaseStatus> = {
+  APPROVED: TestCaseStatus.APPROVED,
+  REJECTED: TestCaseStatus.DRAFT,
+  RETURNED_FOR_REWORK: TestCaseStatus.DRAFT,
+};
 
 const RELEASE_REF_SELECT = { select: { id: true, name: true, version: true } };
 const TEST_CASE_INCLUDE = {
@@ -22,6 +34,7 @@ const TEST_CASE_INCLUDE = {
   },
   release: RELEASE_REF_SELECT,
   steps: { orderBy: { stepNumber: 'asc' as const } },
+  reviewedBy: { select: { id: true, name: true } },
 };
 
 @Injectable()
@@ -81,14 +94,24 @@ export class TestCasesService {
     );
   }
 
-  async create(dto: CreateTestCaseDto, actor: AuthenticatedUser) {
+  async create(
+    dto: CreateTestCaseDto,
+    actor: AuthenticatedUser,
+    options: { notify?: boolean } = {},
+  ) {
     const { testScenarioId, releaseId, title, description, preconditions, expectedResult, priority, status, steps } =
       dto;
 
     await this.assertTestScenarioInScope(testScenarioId, actor.organizationId);
+    if (status === TestCaseStatus.APPROVED) {
+      throw new BadRequestException(
+        'A new test case cannot start as Approved. Mark it Ready for review and a Test Manager approves it.',
+      );
+    }
 
+    let created;
     try {
-      return await this.prisma.testCase.create({
+      created = await this.prisma.testCase.create({
         data: {
           testScenarioId,
           releaseId,
@@ -114,6 +137,15 @@ export class TestCasesService {
       }
       throw error;
     }
+    if (options.notify !== false && created.status === TestCaseStatus.READY) {
+      await notifySubmittedForApproval(this.prisma, actor, {
+        kind: 'TestCase',
+        id: created.id,
+        name: created.title,
+        organizationId: created.testScenario.product.organizationId,
+      });
+    }
+    return created;
   }
 
   async update(id: string, dto: UpdateTestCaseDto, actor: AuthenticatedUser) {
@@ -131,8 +163,43 @@ export class TestCasesService {
       `Test case ${id} not found`,
     );
 
-    const { testScenarioId, releaseId, title, description, preconditions, expectedResult, priority, status, steps } =
+    const { testScenarioId, releaseId, title, description, preconditions, expectedResult, priority, steps } =
       dto;
+    let { status } = dto;
+
+    if (status === TestCaseStatus.APPROVED && existing.status !== TestCaseStatus.APPROVED) {
+      throw new BadRequestException('Use Review (approve) to approve a test case.');
+    }
+    // Changing what an approved test case tests invalidates the approval:
+    // it goes back to Ready for re-approval.
+    let resetApproval = false;
+    if (
+      existing.status === TestCaseStatus.APPROVED &&
+      (!status || status === TestCaseStatus.APPROVED)
+    ) {
+      const differs = (next: unknown, current: unknown) =>
+        next !== undefined && (next ?? '') !== (current ?? '');
+      let changed =
+        differs(testScenarioId, existing.testScenarioId) ||
+        differs(title, existing.title) ||
+        differs(description, existing.description) ||
+        differs(preconditions, existing.preconditions) ||
+        differs(expectedResult, existing.expectedResult);
+      if (!changed && steps !== undefined) {
+        const currentSteps = await this.prisma.testCaseStep.findMany({
+          where: { testCaseId: id },
+          orderBy: { stepNumber: 'asc' },
+          select: { action: true, expectedResult: true },
+        });
+        changed =
+          JSON.stringify(currentSteps) !==
+          JSON.stringify(steps.map((st) => ({ action: st.action, expectedResult: st.expectedResult })));
+      }
+      if (changed) {
+        status = TestCaseStatus.READY;
+        resetApproval = true;
+      }
+    }
 
     await assertWorkflowTransition(
       this.prisma,
@@ -141,8 +208,9 @@ export class TestCasesService {
       status,
     );
 
+    let updated;
     try {
-      return await this.prisma.testCase.update({
+      updated = await this.prisma.testCase.update({
         where: { id },
         data: {
           testScenarioId,
@@ -153,6 +221,9 @@ export class TestCasesService {
           expectedResult,
           priority,
           status,
+          ...(resetApproval
+            ? { reviewedById: null, reviewedAt: null, reviewComment: null }
+            : {}),
           ...(steps !== undefined
             ? {
                 steps: {
@@ -179,6 +250,47 @@ export class TestCasesService {
       }
       throw error;
     }
+    if (
+      updated.status === TestCaseStatus.READY &&
+      existing.status !== TestCaseStatus.READY
+    ) {
+      await notifySubmittedForApproval(this.prisma, actor, {
+        kind: 'TestCase',
+        id: updated.id,
+        name: updated.title,
+        organizationId: updated.testScenario.product.organizationId,
+      });
+    }
+    return updated;
+  }
+
+  // Test Manager decision on a test case that is Ready for review.
+  async review(id: string, dto: ReviewTestCaseDto, actor: AuthenticatedUser) {
+    const testCase = await this.findOne(id, actor.organizationId);
+    if (testCase.status !== TestCaseStatus.READY) {
+      throw new BadRequestException(
+        'Only a test case that is Ready for review can be approved, rejected, or returned for rework.',
+      );
+    }
+    const next = REVIEW_STATUS[dto.decision];
+    await assertWorkflowTransition(this.prisma, 'TEST_CASE', testCase.status, next);
+    await assertApprovalComment(
+      this.prisma,
+      'TEST_CASE_APPROVAL',
+      dto.decision,
+      dto.comment,
+      actor,
+    );
+    return this.prisma.testCase.update({
+      where: { id },
+      data: {
+        status: next,
+        reviewedById: actor.id,
+        reviewedAt: new Date(),
+        reviewComment: dto.comment ?? null,
+      },
+      include: TEST_CASE_INCLUDE,
+    });
   }
 
   async bulkImport(
@@ -241,7 +353,7 @@ export class TestCasesService {
       }
 
       try {
-        await this.create(result.dto, actor);
+        await this.create(result.dto, actor, { notify: false });
         successCount++;
       } catch (error) {
         errors.push({

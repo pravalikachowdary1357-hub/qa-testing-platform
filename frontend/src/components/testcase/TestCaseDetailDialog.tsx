@@ -156,6 +156,15 @@ export function TestCaseDetailDialog({ testCaseId, onClose }: TestCaseDetailDial
               </Typography>
             </Box>
 
+            {testCase.reviewedAt && (
+              <Alert severity={testCase.status === 'APPROVED' ? 'success' : 'warning'}>
+                {testCase.status === 'APPROVED' ? 'Approved' : 'Returned'} by{' '}
+                {testCase.reviewedBy?.name ?? 'a Test Manager'} on{' '}
+                {new Date(testCase.reviewedAt).toLocaleString()}
+                {testCase.reviewComment ? ` — "${testCase.reviewComment}"` : ''}
+              </Alert>
+            )}
+
             <Stack direction="row" spacing={4}>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">

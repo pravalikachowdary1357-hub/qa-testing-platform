@@ -35,6 +35,9 @@ export interface ApiTestCase {
   updatedAt: string;
   testScenario: ApiTestCaseScenarioRef;
   steps: ApiTestCaseStep[];
+  reviewedAt?: string | null;
+  reviewComment?: string | null;
+  reviewedBy?: { id: string; name: string } | null;
 }
 
 export interface TestCaseStepInput {

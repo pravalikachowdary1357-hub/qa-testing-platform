@@ -25,6 +25,7 @@ import { CreateTestPlanDto } from './dto/create-test-plan.dto';
 import { UpdateTestPlanDto } from './dto/update-test-plan.dto';
 import { ListTestPlansQueryDto } from './dto/list-test-plans-query.dto';
 import { ImportTestPlansQueryDto } from './dto/import-test-plans-query.dto';
+import { CompleteTestPlanDto, ReviewTestPlanDto } from './dto/review-test-plan.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermission } from '../auth/require-permission.decorator';
@@ -73,6 +74,35 @@ export class TestPlansController {
     @CurrentUser() actor: AuthenticatedUser,
   ) {
     return this.testPlansService.update(id, dto, actor);
+  }
+
+  @Post(':id/review')
+  @RequirePermission('test_plans:approve')
+  review(
+    @Param('id') id: string,
+    @Body() dto: ReviewTestPlanDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.testPlansService.review(id, dto, actor);
+  }
+
+  @Post(':id/complete')
+  @RequirePermission('test_plans:approve')
+  complete(
+    @Param('id') id: string,
+    @Body() dto: CompleteTestPlanDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.testPlansService.complete(id, dto, actor);
+  }
+
+  @Get(':id/summary-report')
+  @RequirePermission('test_plans:read')
+  summaryReport(
+    @Param('id') id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.testPlansService.summaryReport(id, actor);
   }
 
   @Delete(':id')

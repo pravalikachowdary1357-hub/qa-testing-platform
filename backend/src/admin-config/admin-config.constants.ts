@@ -42,6 +42,8 @@ export const WORKFLOW_LABELS: Record<WorkflowKey, string> = {
 // The approval points that already exist in TestSphere.
 export const APPROVAL_KEYS = [
   'REQUIREMENT_REVIEW',
+  'TEST_PLAN_APPROVAL',
+  'TEST_CASE_APPROVAL',
   'UAT_SIGN_OFF',
   'RELEASE_SIGN_OFF',
 ] as const;
@@ -49,6 +51,8 @@ export type ApprovalKey = (typeof APPROVAL_KEYS)[number];
 
 export const APPROVAL_LABELS: Record<ApprovalKey, string> = {
   REQUIREMENT_REVIEW: 'Requirement review',
+  TEST_PLAN_APPROVAL: 'Test plan approval & completion sign-off',
+  TEST_CASE_APPROVAL: 'Test case approval',
   UAT_SIGN_OFF: 'UAT cycle sign-off',
   RELEASE_SIGN_OFF: 'Release sign-off',
 };
@@ -57,6 +61,8 @@ export const APPROVAL_LABELS: Record<ApprovalKey, string> = {
 // rework (enforced by its DTO), so that floor can never be switched off.
 export const APPROVAL_LOCKED_REJECT_COMMENT: Record<ApprovalKey, boolean> = {
   REQUIREMENT_REVIEW: true,
+  TEST_PLAN_APPROVAL: true,
+  TEST_CASE_APPROVAL: true,
   UAT_SIGN_OFF: false,
   RELEASE_SIGN_OFF: false,
 };
@@ -102,6 +108,8 @@ export interface ApprovalPolicy {
 // role must hold it, otherwise selecting it would have no effect.
 export const APPROVAL_PERMISSION: Record<ApprovalKey, string> = {
   REQUIREMENT_REVIEW: 'requirements:approve',
+  TEST_PLAN_APPROVAL: 'test_plans:approve',
+  TEST_CASE_APPROVAL: 'test_cases:approve',
   UAT_SIGN_OFF: 'uat:approve',
   RELEASE_SIGN_OFF: 'release_quality:approve',
 };

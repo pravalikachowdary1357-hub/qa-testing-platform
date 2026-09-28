@@ -12,7 +12,12 @@ export interface ApiWorkflow {
 }
 
 export interface ApiApprovalPolicy {
-  key: 'REQUIREMENT_REVIEW' | 'UAT_SIGN_OFF' | 'RELEASE_SIGN_OFF';
+  key:
+    | 'REQUIREMENT_REVIEW'
+    | 'TEST_PLAN_APPROVAL'
+    | 'TEST_CASE_APPROVAL'
+    | 'UAT_SIGN_OFF'
+    | 'RELEASE_SIGN_OFF';
   label: string;
   rejectCommentLocked: boolean;
   requireCommentOnApprove: boolean;

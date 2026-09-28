@@ -23,6 +23,7 @@ import { memoryStorage } from 'multer';
 import { TestCasesService } from './test-cases.service';
 import { CreateTestCaseDto } from './dto/create-test-case.dto';
 import { UpdateTestCaseDto } from './dto/update-test-case.dto';
+import { ReviewTestCaseDto } from './dto/review-test-case.dto';
 import { ListTestCasesQueryDto } from './dto/list-test-cases-query.dto';
 import { ImportTestCasesQueryDto } from './dto/import-test-cases-query.dto';
 import { AuthGuard } from '../auth/auth.guard';
@@ -70,6 +71,16 @@ export class TestCasesController {
     @CurrentUser() actor: AuthenticatedUser,
   ) {
     return this.testCasesService.update(id, dto, actor);
+  }
+
+  @Post(':id/review')
+  @RequirePermission('test_cases:approve')
+  review(
+    @Param('id') id: string,
+    @Body() dto: ReviewTestCaseDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.testCasesService.review(id, dto, actor);
   }
 
   @Delete(':id')

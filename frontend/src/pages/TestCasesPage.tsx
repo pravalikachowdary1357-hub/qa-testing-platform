@@ -25,6 +25,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import GavelIcon from '@mui/icons-material/Gavel';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
 import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
@@ -33,11 +34,14 @@ import type { ImportResultSummary } from '../components/common/ImportResultDialo
 import { TestCaseFormDialog } from '../components/testcase/TestCaseFormDialog';
 import { TestCaseDetailDialog } from '../components/testcase/TestCaseDetailDialog';
 import { DeleteTestCaseDialog } from '../components/testcase/DeleteTestCaseDialog';
+import { ReviewDecisionDialog } from '../components/testplan/TestPlanDecisionDialogs';
+import { useAuth } from '../context/AuthContext';
 import {
   createTestCase,
   deleteTestCase,
   fetchTestCases,
   importTestCases,
+  reviewTestCase,
   updateTestCase,
 } from '../api/testCases';
 import { fetchTestScenarios } from '../api/testScenarios';
@@ -103,6 +107,9 @@ export function TestCasesPage() {
     null,
   );
   const [importResult, setImportResult] = useState<ImportResultSummary | null>(null);
+  const { hasPermission } = useAuth();
+  const canApprove = hasPermission('test_cases:approve');
+  const [reviewingTestCase, setReviewingTestCase] = useState<ApiTestCase | null>(null);
 
   const loadTestCases = () => {
     setError(null);
@@ -203,6 +210,19 @@ export function TestCasesPage() {
     await updateTestCase(editingTestCase.id, data);
     await loadTestCases();
     setSnackbar({ message: 'Test case updated.', severity: 'success' });
+  };
+
+  const handleReview = async (
+    decision: Parameters<typeof reviewTestCase>[1],
+    comment: string,
+  ) => {
+    if (!reviewingTestCase) return;
+    await reviewTestCase(reviewingTestCase.id, decision, comment || undefined);
+    await loadTestCases();
+    setSnackbar({
+      message: decision === 'APPROVED' ? 'Test case approved.' : 'Decision saved; test case moved back to Draft.',
+      severity: 'success',
+    });
   };
 
   const handleDeleteConfirm = async () => {
@@ -411,7 +431,19 @@ export function TestCasesPage() {
                     <StatusChip status={STATUS_LABELS[testCase.status]} />
                   </TableCell>
                   <TableCell>{new Date(testCase.createdAt).toLocaleDateString()}</TableCell>
-                  <TableCell align="right">
+                  <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                    {canApprove && testCase.status === 'READY' && (
+                      <Tooltip title="Review (approve / return / reject)">
+                        <IconButton
+                          size="small"
+                          color="secondary"
+                          aria-label={`Review ${testCase.title}`}
+                          onClick={() => setReviewingTestCase(testCase)}
+                        >
+                          <GavelIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
                     <Tooltip title="View">
                       <IconButton size="small" onClick={() => setViewingTestCaseId(testCase.id)}>
                         <VisibilityIcon fontSize="small" />
@@ -480,6 +512,14 @@ export function TestCasesPage() {
         testCase={deletingTestCase}
         onClose={() => setDeletingTestCase(null)}
         onConfirm={handleDeleteConfirm}
+      />
+
+      <ReviewDecisionDialog
+        open={Boolean(reviewingTestCase)}
+        title="Review test case"
+        itemName={reviewingTestCase?.title ?? ''}
+        onClose={() => setReviewingTestCase(null)}
+        onSubmit={handleReview}
       />
 
       <ImportResultDialog result={importResult} onClose={() => setImportResult(null)} />

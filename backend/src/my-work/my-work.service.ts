@@ -332,6 +332,8 @@ export class MyWorkService {
       plansInReview,
       reqInReview,
       totalReq,
+      casesReady,
+      activePlans,
     ] = await Promise.all([
       can('release_quality:read')
         ? this.releaseQuality.getProductQuality(productId)
@@ -359,6 +361,26 @@ export class MyWorkService {
         where: { productId, status: 'IN_REVIEW' },
       }),
       this.prisma.requirement.count({ where: { productId } }),
+      can('test_cases:read')
+        ? this.prisma.testCase.findMany({
+            where: { testScenario: { productId }, status: 'READY' },
+            select: { id: true, title: true, updatedAt: true },
+            orderBy: { updatedAt: 'asc' },
+            take: LIST_LIMIT,
+          })
+        : [],
+      this.prisma.testPlan.findMany({
+        where: { productId, status: { in: ['APPROVED', 'ACTIVE'] } },
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          endDate: true,
+          owner: true,
+        },
+        orderBy: { endDate: 'asc' },
+        take: LIST_LIMIT,
+      }),
     ]);
     const severe = openDefects.filter(
       (d) => d.severity === 'CRITICAL' || d.severity === 'MAJOR',
@@ -444,14 +466,36 @@ export class MyWorkService {
         },
         {
           key: 'approvals',
-          title: `Waiting for approval (${plansInReview.length} test plan(s), ${reqInReview} requirement(s))`,
+          title: `Waiting for approval (${plansInReview.length} test plan(s), ${casesReady.length} test case(s), ${reqInReview} requirement(s))`,
           link: '/test-planning',
           emptyText: 'Nothing is waiting for your approval.',
-          items: plansInReview.map((p) => ({
+          items: [
+            ...plansInReview.map((p) => ({
+              id: p.id,
+              title: p.name,
+              meta: `Test plan · owner ${p.owner} · in review ${ageDays(p.updatedAt)} day(s)`,
+              status: 'IN_REVIEW',
+              link: '/test-planning',
+            })),
+            ...casesReady.map((c) => ({
+              id: c.id,
+              title: c.title,
+              meta: `Test case · ready ${ageDays(c.updatedAt)} day(s)`,
+              status: 'READY',
+              link: '/test-cases',
+            })),
+          ].slice(0, LIST_LIMIT),
+        },
+        {
+          key: 'completion',
+          title: 'Test plans running — completion sign-off',
+          link: '/test-planning',
+          emptyText: 'No approved or active test plans.',
+          items: activePlans.map((p) => ({
             id: p.id,
             title: p.name,
-            meta: `Test plan · owner ${p.owner} · in review ${ageDays(p.updatedAt)} day(s)`,
-            status: 'IN_REVIEW',
+            meta: `Owner ${p.owner}${p.endDate ? ` · ends ${p.endDate.toISOString().slice(0, 10)}` : ''}`,
+            status: p.status,
             link: '/test-planning',
           })),
         },

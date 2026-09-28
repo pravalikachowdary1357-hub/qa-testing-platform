@@ -16,6 +16,7 @@ import { ProductDetailDialog } from '../product/ProductDetailDialog';
 import { fetchTestPlan } from '../../api/testPlans';
 import { ApiError } from '../../api/client';
 import type { ApiTestPlan, TestPlanPriority, TestPlanStatus } from '../../types/testPlan';
+import { TestPlanGovernanceSummary } from './TestPlanGovernanceSummary';
 
 const STATUS_LABELS: Record<string, TestPlanStatus> = {
   DRAFT: 'Draft',
@@ -163,6 +164,8 @@ export function TestPlanDetailDialog({ testPlanId, onClose }: TestPlanDetailDial
                 </Stack>
               )}
             </Box>
+
+            <TestPlanGovernanceSummary plan={testPlan} />
 
             <Stack direction="row" spacing={4}>
               <Box>

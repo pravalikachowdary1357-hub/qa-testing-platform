@@ -1,5 +1,11 @@
 import { apiFetch, apiUpload } from './client';
-import type { ApiTestPlan, CreateTestPlanPayload, UpdateTestPlanPayload } from '../types/testPlan';
+import type {
+  ApiTestPlan,
+  CreateTestPlanPayload,
+  TestPlanReviewDecision,
+  TestPlanSummaryReport,
+  UpdateTestPlanPayload,
+} from '../types/testPlan';
 import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 
 export function fetchTestPlans(productId?: string): Promise<ApiTestPlan[]> {
@@ -39,4 +45,30 @@ export function importTestPlans(
     `/test-plans/import?productId=${productId}`,
     formData,
   );
+}
+
+export function reviewTestPlan(
+  id: string,
+  decision: TestPlanReviewDecision,
+  comment?: string,
+): Promise<ApiTestPlan> {
+  return apiFetch<ApiTestPlan>(`/test-plans/${id}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ decision, ...(comment ? { comment } : {}) }),
+  });
+}
+
+export function completeTestPlan(
+  id: string,
+  summary: string,
+  comment?: string,
+): Promise<ApiTestPlan> {
+  return apiFetch<ApiTestPlan>(`/test-plans/${id}/complete`, {
+    method: 'POST',
+    body: JSON.stringify({ summary, ...(comment ? { comment } : {}) }),
+  });
+}
+
+export function fetchTestPlanSummaryReport(id: string): Promise<TestPlanSummaryReport> {
+  return apiFetch<TestPlanSummaryReport>(`/test-plans/${id}/summary-report`);
 }

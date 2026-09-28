@@ -187,6 +187,7 @@ function verb(action: string) {
     execute: 'executed',
     stop: 'stopped',
     complete: 'completed',
+    review: 'reviewed',
   };
   return map[action] ?? action.replace(/-/g, ' ');
 }

@@ -463,7 +463,10 @@ export function TestCaseFormDialog({
                     }))
                   }
                 >
-                  {STATUS_OPTIONS.map((option) => (
+                  {STATUS_OPTIONS.filter(
+                    // Approved is a Test Manager decision (Review), not a form choice.
+                    (option) => option.value !== 'APPROVED' || initialValues?.status === 'APPROVED',
+                  ).map((option) => (
                     <MenuItem key={option.value} value={option.value}>
                       {option.label}
                     </MenuItem>

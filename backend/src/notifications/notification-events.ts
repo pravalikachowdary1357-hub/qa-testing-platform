@@ -297,3 +297,38 @@ export async function trackReadiness(
     // Best effort: never affects the quality computation.
   }
 }
+
+// A test plan (In Review) or test case (Ready) was submitted for the Test
+// Manager's approval: remind the configured approvers.
+export async function notifySubmittedForApproval(
+  prisma: PrismaService,
+  actor: Actor,
+  item: {
+    kind: 'TestPlan' | 'TestCase';
+    id: string;
+    name: string;
+    organizationId: string | null;
+  },
+) {
+  try {
+    const isPlan = item.kind === 'TestPlan';
+    await notify(prisma, {
+      event: 'APPROVAL_REMINDER',
+      recipients: {
+        kind: 'approval',
+        approval: isPlan ? 'TEST_PLAN_APPROVAL' : 'TEST_CASE_APPROVAL',
+      },
+      organizationId: item.organizationId,
+      actorUserId: actor.id,
+      title: isPlan
+        ? 'Test plan waiting for approval'
+        : 'Test case waiting for approval',
+      message: `${isPlan ? 'Test plan' : 'Test case'} "${item.name}" was submitted for approval.`,
+      link: isPlan ? '/test-planning' : '/test-cases',
+      entityType: item.kind,
+      entityId: item.id,
+    });
+  } catch {
+    // Notifications are best effort: never fail the saved change.
+  }
+}
