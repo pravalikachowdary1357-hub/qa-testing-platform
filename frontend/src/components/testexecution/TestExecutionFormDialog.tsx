@@ -58,6 +58,9 @@ interface TestExecutionFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   testCases: ApiTestCase[];
+  // True when the test case list came back empty because this role lacks
+  // test_cases:read (a 403), not because no test cases exist.
+  testCasesForbidden?: boolean;
   testScenarios: ApiTestScenario[];
   environments: ApiEnvironment[];
   testDataList: ApiTestDataListItem[];
@@ -71,6 +74,7 @@ export function TestExecutionFormDialog({
   open,
   mode,
   testCases,
+  testCasesForbidden = false,
   testScenarios,
   environments,
   testDataList,
@@ -179,7 +183,9 @@ export function TestExecutionFormDialog({
 
           {noTestCasesAvailable ? (
             <Alert severity="warning">
-              No test cases exist yet. Create a test case before starting an execution.
+              {testCasesForbidden
+                ? "You don't have permission to view the test case list, so an execution can't be started from here. Ask a System Administrator to grant your role test_cases:read."
+                : 'No test cases exist yet. Create a test case before starting an execution.'}
             </Alert>
           ) : (
             <>

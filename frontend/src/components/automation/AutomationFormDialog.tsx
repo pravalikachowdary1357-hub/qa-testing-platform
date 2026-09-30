@@ -72,6 +72,9 @@ interface AutomationFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   testCases: ApiTestCase[];
+  // True when the test case list came back empty because this role lacks
+  // test_cases:read (a 403), not because no test cases exist.
+  testCasesForbidden?: boolean;
   testScenarios: ApiTestScenario[];
   environments: ApiEnvironment[];
   releases: ApiRelease[];
@@ -84,6 +87,7 @@ export function AutomationFormDialog({
   open,
   mode,
   testCases,
+  testCasesForbidden = false,
   testScenarios,
   environments,
   releases,
@@ -177,7 +181,9 @@ export function AutomationFormDialog({
 
           {noTestCasesAvailable ? (
             <Alert severity="warning">
-              No test cases exist yet. Create a test case before adding an automation.
+              {testCasesForbidden
+                ? "You don't have permission to view the test case list, so an automation can't be added from here. Ask a System Administrator to grant your role test_cases:read."
+                : 'No test cases exist yet. Create a test case before adding an automation.'}
             </Alert>
           ) : (
             <>

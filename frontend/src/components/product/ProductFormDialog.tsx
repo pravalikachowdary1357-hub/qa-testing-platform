@@ -94,6 +94,9 @@ interface ProductFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   organizations: ApiOrganization[];
+  // True when the organization list came back empty because this role lacks
+  // organizations:read (a 403), not because no organizations exist.
+  organizationsForbidden?: boolean;
   projects: ApiProject[];
   users: ApiUser[];
   initialValues?: ProductFormValues;
@@ -105,6 +108,7 @@ export function ProductFormDialog({
   open,
   mode,
   organizations,
+  organizationsForbidden = false,
   projects,
   users,
   initialValues,
@@ -246,7 +250,9 @@ export function ProductFormDialog({
 
           {noOrganizationsAvailable ? (
             <Alert severity="warning">
-              No organizations exist yet. Create an organization before adding a product.
+              {organizationsForbidden
+                ? "You don't have permission to view the organization list, so a product can't be assigned to one from here. Ask a System Administrator to create the product, or to grant your role organizations:read."
+                : 'No organizations exist yet. Create an organization before adding a product.'}
             </Alert>
           ) : (
             <>

@@ -53,6 +53,9 @@ interface UatExecutionFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   environments: ApiEnvironment[];
+  // True when the environments list came back empty because this role
+  // lacks environments:read (a 403), not because none exist.
+  environmentsForbidden?: boolean;
   defects: ApiDefect[];
   initialValues?: UatExecutionFormValues;
   onClose: () => void;
@@ -63,6 +66,7 @@ export function UatExecutionFormDialog({
   open,
   mode,
   environments,
+  environmentsForbidden = false,
   defects,
   initialValues,
   onClose,
@@ -126,7 +130,9 @@ export function UatExecutionFormDialog({
 
           {noEnvironmentsAvailable ? (
             <Alert severity="warning">
-              No environments exist for this product yet. Create one before recording an execution.
+              {environmentsForbidden
+                ? "You don't have permission to view the environment list, so an execution can't be recorded from here. Ask a System Administrator to grant your role environments:read."
+                : 'No environments exist for this product yet. Create one before recording an execution.'}
             </Alert>
           ) : (
             <>

@@ -55,6 +55,9 @@ interface EnvironmentFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   products: ApiProduct[];
+  // True when the product list came back empty because this role lacks
+  // products:read (a 403), not because no products exist.
+  productsForbidden?: boolean;
   currentProductId?: string;
   initialValues?: EnvironmentFormValues;
   onClose: () => void;
@@ -65,6 +68,7 @@ export function EnvironmentFormDialog({
   open,
   mode,
   products,
+  productsForbidden = false,
   currentProductId,
   initialValues,
   onClose,
@@ -126,7 +130,9 @@ export function EnvironmentFormDialog({
 
           {noProductsAvailable ? (
             <Alert severity="warning">
-              No products exist yet. Create a product before adding an environment.
+              {productsForbidden
+                ? "You don't have permission to view the product list, so an environment can't be added from here. Ask a System Administrator to grant your role products:read."
+                : 'No products exist yet. Create a product before adding an environment.'}
             </Alert>
           ) : (
             <>

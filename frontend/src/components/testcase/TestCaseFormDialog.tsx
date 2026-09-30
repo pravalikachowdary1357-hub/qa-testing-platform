@@ -80,6 +80,9 @@ interface TestCaseFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   testScenarios: ApiTestScenario[];
+  // True when the scenario list came back empty because this role lacks
+  // permission to view it (a 403), not because no scenarios exist.
+  scenariosForbidden?: boolean;
   releases: ApiRelease[];
   initialValues?: TestCaseFormValues;
   onClose: () => void;
@@ -90,6 +93,7 @@ export function TestCaseFormDialog({
   open,
   mode,
   testScenarios,
+  scenariosForbidden = false,
   releases,
   initialValues,
   onClose,
@@ -261,7 +265,9 @@ export function TestCaseFormDialog({
 
           {noScenariosAvailable ? (
             <Alert severity="warning">
-              No test scenarios exist yet. Create a test scenario before adding a test case.
+              {scenariosForbidden
+                ? "You don't have permission to view the test scenario list, so a test case can't be added from here. Ask a System Administrator to grant your role test_scenarios:read."
+                : 'No test scenarios exist yet. Create a test scenario before adding a test case.'}
             </Alert>
           ) : (
             <>

@@ -48,6 +48,11 @@ interface UatCycleFormDialogProps {
   mode: 'create' | 'edit';
   products: ApiProduct[];
   releases: ApiRelease[];
+  // True when the product list came back empty because this role lacks
+  // products:read (a 403), not because no products exist. Lets the dialog
+  // show an accurate message instead of telling the user to create a
+  // product -- which may not even be true.
+  productsForbidden?: boolean;
   currentProductId?: string;
   initialValues?: UatCycleFormValues;
   onClose: () => void;
@@ -59,6 +64,7 @@ export function UatCycleFormDialog({
   mode,
   products,
   releases,
+  productsForbidden = false,
   currentProductId,
   initialValues,
   onClose,
@@ -138,7 +144,9 @@ export function UatCycleFormDialog({
 
           {noProductsAvailable ? (
             <Alert severity="warning">
-              No products exist yet. Create a product before starting a UAT cycle.
+              {productsForbidden
+                ? "You don't have permission to view the product list, so a UAT cycle can't be started from here. Ask a System Administrator to grant your role products:read."
+                : 'No products exist yet. Create a product before starting a UAT cycle.'}
             </Alert>
           ) : (
             <>

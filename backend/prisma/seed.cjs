@@ -192,10 +192,13 @@ const ROLE_GRANTS = {
 
   // Day-to-day test-cycle management: full authority over test planning,
   // scenarios, cases, data, environments, execution, and defects -- but not
-  // the specialized test types (automation/API/performance/security), UAT,
-  // release quality, or AI, which stay with Test Manager. Requirements
-  // access is read-only (needed to build test plans against them, not
-  // listed as an owned module).
+  // the specialized test types (automation/API/performance/security) or AI,
+  // which stay with Test Manager. Requirements access is read-only (needed
+  // to build test plans against them, not listed as an owned module). Per
+  // the Roles & Responsibilities RACI, Test Lead is Responsible (R) for
+  // both UAT and Release Readiness, so it gets read-only visibility into
+  // both -- but is not their approval owner (Test Manager/Product Owner/UAT
+  // Coordinator hold the write/execute/approve/manage grants there).
   'Test Lead': [
     ...keys('requirements', 'read'),
     ...keys('product_documents', 'read'),
@@ -208,6 +211,8 @@ const ROLE_GRANTS = {
     ...allKeys('environments'),
     ...allKeys('test_executions'),
     ...allKeys('defects'),
+    ...keys('uat', 'read'),
+    ...keys('release_quality', 'read'),
     ...keys('traceability', 'read'),
     ...keys('reports', 'read'),
   ],
@@ -225,7 +230,7 @@ const ROLE_GRANTS = {
     ...keys('test_scenarios', 'read'),
     ...keys('test_cases', 'read', 'write'),
     'test_templates:read', // use enabled templates when creating test cases
-    ...keys('test_data', 'read'),
+    ...keys('test_data', 'read', 'write'), // "Prepare test data" (source responsibility)
     ...keys('environments', 'read'),
     ...keys('test_executions', 'read', 'execute'),
     ...keys('defects', 'read', 'write'),
@@ -244,16 +249,24 @@ const ROLE_GRANTS = {
   // ("maintain libraries", "maintain repositories") the API/performance/
   // security sections don't. Read-only on test_cases/test_scenarios/
   // test_executions (needs to know what to automate and see run history,
-  // but doesn't author manual test cases -- matches the RACI's C-not-R
-  // rating for Automation on Test Case Design). `automation:*` overlaps
-  // intentionally with Tester/Test Manager above: the RACI marks Tester,
-  // Automation, and Test Manager all Responsible/Accountable together on
-  // Test Case Design, Test Execution, Defect Reporting, and Regression.
+  // but doesn't author manual test cases). Note: the RACI actually rates
+  // Automation "R" (not "C") on Test Case Design -- read-only is kept
+  // anyway because the source's own §7 narrative is entirely about
+  // *automated* artifacts ("create automated test scripts", "maintain
+  // test scripts"), never about authoring the generic manual TestCase
+  // entity Tester/Test Lead own; revisit if further workflow analysis
+  // says otherwise. `automation:*` overlaps intentionally with Tester/
+  // Test Manager above: the RACI marks Tester, Automation, and Test
+  // Manager all Responsible/Accountable together on Test Case Design,
+  // Test Execution, Defect Reporting, and Regression. `environments:read`
+  // is needed because Automation entries carry an optional environmentId
+  // and the create/edit form loads the environment list.
   'Automation Engineer': [
     ...allKeys('automation'),
     ...keys('test_cases', 'read'),
     ...keys('test_scenarios', 'read'),
     ...keys('test_executions', 'read'),
+    ...keys('environments', 'read'),
     ...keys('reports', 'read'),
   ],
 
@@ -269,12 +282,16 @@ const ROLE_GRANTS = {
   // them to gate.
   'Database Test Engineer': [],
 
-  // Unchanged: investigates and fixes defects (root cause, corrective
-  // action, ready-for-retest -- all just defect record updates); views
-  // requirements, test results, UAT, and release status.
+  // Investigates and fixes defects (root cause, corrective action,
+  // ready-for-retest -- all just defect record updates); views
+  // requirements, test results, UAT, and release status. test_scenarios:
+  // read is needed because the Defects and Test Executions pages -- both
+  // central to this role -- load test scenario context unconditionally;
+  // without it that call 403s and is silently swallowed by the frontend.
   Developer: [
     ...keys('requirements', 'read'),
     ...keys('product_documents', 'read'),
+    ...keys('test_scenarios', 'read'),
     ...keys('test_cases', 'read'),
     ...keys('test_data', 'read'),
     ...keys('environments', 'read'),
@@ -290,11 +307,18 @@ const ROLE_GRANTS = {
   // users, prepares UAT test cases, manages UAT execution, records
   // feedback), while "Product Owner" below APPROVES it.
   // The same account no longer does both. Deliberately no uat:approve or
-  // uat:manage.
+  // uat:manage. environments:read and defects:read are needed because
+  // UatExecution.environmentId is a required field and .defectId an
+  // existing optional one -- the execution form loads both lists, and
+  // without these permissions those fetches 403 (silently, on the
+  // frontend), leaving uat:execute practically unusable and the existing
+  // defect-linking capability unreachable.
   'UAT Coordinator': [
     ...keys('uat', 'read', 'write', 'execute'),
     ...keys('requirements', 'read'),
     ...keys('test_cases', 'read'),
+    ...keys('environments', 'read'),
+    ...keys('defects', 'read'),
     ...keys('reports', 'read'),
   ],
 

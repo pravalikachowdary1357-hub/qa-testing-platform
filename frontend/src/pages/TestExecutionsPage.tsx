@@ -83,6 +83,9 @@ export function TestExecutionsPage() {
   const [testDataList, setTestDataList] = useState<ApiTestDataListItem[]>([]);
   const [releases, setReleases] = useState<ApiRelease[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // True when the test cases fetch that feeds the create-execution dialog
+  // came back 403'd rather than genuinely empty.
+  const [testCasesForbidden, setTestCasesForbidden] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [testCaseFilter, setTestCaseFilter] = useState<string | typeof ALL>(ALL);
@@ -133,7 +136,10 @@ export function TestExecutionsPage() {
       .then((data) => {
         if (!cancelled) setTestCases(data);
       })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setTestCasesForbidden(err instanceof ApiError && err.status === 403);
+      });
 
     fetchTestScenarios(currentProduct?.id)
       .then((data) => {
@@ -431,6 +437,7 @@ export function TestExecutionsPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         testCases={testCases}
+        testCasesForbidden={testCasesForbidden}
         testScenarios={testScenarios}
         environments={environments}
         testDataList={testDataList}

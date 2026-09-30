@@ -77,6 +77,9 @@ interface TestPlanFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   products: ApiProduct[];
+  // True when the product list came back empty because this role lacks
+  // products:read (a 403), not because no products exist.
+  productsForbidden?: boolean;
   releases: ApiRelease[];
   requirements: ApiRequirement[];
   currentProductId?: string;
@@ -91,6 +94,7 @@ export function TestPlanFormDialog({
   open,
   mode,
   products,
+  productsForbidden = false,
   releases,
   requirements,
   currentProductId,
@@ -213,7 +217,9 @@ export function TestPlanFormDialog({
 
           {noProductsAvailable ? (
             <Alert severity="warning">
-              No products exist yet. Create a product before adding a test plan.
+              {productsForbidden
+                ? "You don't have permission to view the product list, so a test plan can't be added from here. Ask a System Administrator to grant your role products:read."
+                : 'No products exist yet. Create a product before adding a test plan.'}
             </Alert>
           ) : (
             <>

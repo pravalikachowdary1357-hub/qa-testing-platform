@@ -42,6 +42,9 @@ interface UatTestCaseDetailDialogProps {
   cycleId: string;
   testCase: UatTestCase | null;
   environments: ApiEnvironment[];
+  // True when the environments list came back empty because this role
+  // lacks environments:read (a 403), not because none exist.
+  environmentsForbidden?: boolean;
   defects: ApiDefect[];
   onClose: () => void;
   onMutate: () => void;
@@ -51,6 +54,7 @@ export function UatTestCaseDetailDialog({
   cycleId,
   testCase,
   environments,
+  environmentsForbidden = false,
   defects,
   onClose,
   onMutate,
@@ -219,6 +223,7 @@ export function UatTestCaseDetailDialog({
         open={executionFormMode !== null}
         mode={executionFormMode ?? 'create'}
         environments={environments}
+        environmentsForbidden={environmentsForbidden}
         defects={defects}
         initialValues={
           executionFormMode === 'edit' && editingExecution

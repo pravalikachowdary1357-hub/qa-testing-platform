@@ -79,6 +79,9 @@ export function ProductsPage() {
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // True when the organizations fetch that feeds the create-product dialog
+  // came back 403'd rather than genuinely empty.
+  const [organizationsForbidden, setOrganizationsForbidden] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ApiProductStatus | typeof ALL>(ALL);
@@ -130,10 +133,12 @@ export function ProductsPage() {
       .then((data) => {
         if (!cancelled) setOrganizations(data);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         // The organization list only feeds the create/edit dropdown and the
         // filter bar; a failure here surfaces naturally as "no organizations
         // available" rather than blocking the products list itself.
+        if (cancelled) return;
+        setOrganizationsForbidden(err instanceof ApiError && err.status === 403);
       });
 
     fetchProjects()
@@ -497,6 +502,7 @@ export function ProductsPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         organizations={organizations}
+        organizationsForbidden={organizationsForbidden}
         projects={projects}
         users={users}
         initialValues={

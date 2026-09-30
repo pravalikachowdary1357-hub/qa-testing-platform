@@ -91,6 +91,9 @@ export function TestCasesPage() {
   const [testScenarios, setTestScenarios] = useState<ApiTestScenario[]>([]);
   const [releases, setReleases] = useState<ApiRelease[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // True when the scenarios fetch that feeds the create-case dialog came
+  // back 403'd rather than genuinely empty.
+  const [scenariosForbidden, setScenariosForbidden] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [scenarioFilter, setScenarioFilter] = useState<string | typeof ALL>(ALL);
@@ -145,8 +148,10 @@ export function TestCasesPage() {
       .then((data) => {
         if (!cancelled) setTestScenarios(data);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         // Only feeds the create/edit dropdown and the filter bar.
+        if (cancelled) return;
+        setScenariosForbidden(err instanceof ApiError && err.status === 403);
       });
 
     fetchReleases()
@@ -477,6 +482,7 @@ export function TestCasesPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         testScenarios={testScenarios}
+        scenariosForbidden={scenariosForbidden}
         releases={releases}
         initialValues={
           formMode === 'edit' && editingTestCase

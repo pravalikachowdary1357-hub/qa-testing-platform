@@ -44,6 +44,12 @@ interface ProjectFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   organizations: ApiOrganization[];
+  // True when the organization list came back empty because this role lacks
+  // organizations:read (a 403), not because no organizations exist. Lets the
+  // dialog show an accurate message instead of telling the user to create an
+  // organization -- which may not even be true, and which most roles (this
+  // one included) have no permission to do anyway.
+  organizationsForbidden?: boolean;
   initialValues?: ProjectFormValues;
   onClose: () => void;
   onSubmit: (data: CreateProjectPayload) => Promise<void>;
@@ -53,6 +59,7 @@ export function ProjectFormDialog({
   open,
   mode,
   organizations,
+  organizationsForbidden = false,
   initialValues,
   onClose,
   onSubmit,
@@ -139,7 +146,9 @@ export function ProjectFormDialog({
 
           {noOrganizationsAvailable ? (
             <Alert severity="warning">
-              No organizations exist yet. Create an organization before adding a project.
+              {organizationsForbidden
+                ? "You don't have permission to view the organization list, so a project can't be assigned to one from here. Ask a System Administrator to create the project, or to grant your role organizations:read."
+                : 'No organizations exist yet. Create an organization before adding a project.'}
             </Alert>
           ) : (
             <>

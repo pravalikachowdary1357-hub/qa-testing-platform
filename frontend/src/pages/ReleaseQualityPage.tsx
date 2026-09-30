@@ -84,6 +84,9 @@ export function ReleaseQualityPage() {
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [environments, setEnvironments] = useState<ApiEnvironment[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // True when the products fetch that feeds the create-release dialog came
+  // back 403'd rather than genuinely empty.
+  const [productsForbidden, setProductsForbidden] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ReleaseStatus | typeof ALL>(ALL);
@@ -132,7 +135,10 @@ export function ReleaseQualityPage() {
       .then((data) => {
         if (!cancelled) setProducts(data);
       })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setProductsForbidden(err instanceof ApiError && err.status === 403);
+      });
 
     fetchEnvironments()
       .then((data) => {
@@ -460,6 +466,7 @@ export function ReleaseQualityPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         products={products}
+        productsForbidden={productsForbidden}
         environments={environments}
         currentProductId={currentProduct?.id}
         initialValues={formMode === 'edit' && editingRelease ? releaseToFormValues(editingRelease) : undefined}

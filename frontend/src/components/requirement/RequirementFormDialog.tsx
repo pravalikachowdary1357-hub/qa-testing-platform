@@ -94,6 +94,9 @@ interface RequirementFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   products: ApiProduct[];
+  // True when the product list came back empty because this role lacks
+  // products:read (a 403), not because no products exist.
+  productsForbidden?: boolean;
   releases: ApiRelease[];
   users: ApiUser[];
   currentProductId?: string;
@@ -106,6 +109,7 @@ export function RequirementFormDialog({
   open,
   mode,
   products,
+  productsForbidden = false,
   releases,
   users,
   currentProductId,
@@ -220,7 +224,9 @@ export function RequirementFormDialog({
 
           {noProductsAvailable ? (
             <Alert severity="warning">
-              No products exist yet. Create a product before adding requirements.
+              {productsForbidden
+                ? "You don't have permission to view the product list, so a requirement can't be added from here. Ask a System Administrator to grant your role products:read."
+                : 'No products exist yet. Create a product before adding requirements.'}
             </Alert>
           ) : (
             <>

@@ -117,6 +117,9 @@ export function SecurityTestingPage() {
   const [testScenarios, setTestScenarios] = useState<ApiTestScenario[]>([]);
   const [releases, setReleases] = useState<ApiRelease[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // True when the products fetch that feeds the create-test dialog came
+  // back 403'd rather than genuinely empty.
+  const [productsForbidden, setProductsForbidden] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<SecurityTestStatus | typeof ALL>(ALL);
@@ -177,7 +180,10 @@ export function SecurityTestingPage() {
       .then((data) => {
         if (!cancelled) setProducts(data);
       })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setProductsForbidden(err instanceof ApiError && err.status === 403);
+      });
     fetchEnvironments()
       .then((data) => {
         if (!cancelled) setEnvironments(data);
@@ -479,6 +485,7 @@ export function SecurityTestingPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         products={products}
+        productsForbidden={productsForbidden}
         environments={environments}
         testCases={testCases}
         testScenarios={testScenarios}

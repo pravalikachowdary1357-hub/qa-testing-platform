@@ -101,6 +101,9 @@ export function TestScenariosPage() {
   const [requirements, setRequirements] = useState<ApiRequirement[]>([]);
   const [releases, setReleases] = useState<ApiRelease[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // True when the products fetch that feeds the create-scenario dialog came
+  // back 403'd rather than genuinely empty.
+  const [productsForbidden, setProductsForbidden] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ApiTestScenarioStatus | typeof ALL>(ALL);
@@ -152,8 +155,10 @@ export function TestScenariosPage() {
       .then((data) => {
         if (!cancelled) setProducts(data);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         // Only feeds the create/edit dropdown and the filter bar.
+        if (cancelled) return;
+        setProductsForbidden(err instanceof ApiError && err.status === 403);
       });
 
     fetchRequirements()
@@ -493,6 +498,7 @@ export function TestScenariosPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         products={products}
+        productsForbidden={productsForbidden}
         requirements={requirements}
         releases={releases}
         currentProductId={currentProduct?.id}

@@ -97,6 +97,12 @@ export function UatPage() {
   const [defects, setDefects] = useState<ApiDefect[]>([]);
   const [requirements, setRequirements] = useState<ApiRequirement[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // True when the products fetch that feeds the create-cycle dialog came
+  // back 403'd rather than genuinely empty.
+  const [productsForbidden, setProductsForbidden] = useState(false);
+  // Same, for the environments fetch that feeds the record-execution dialog
+  // (threaded through UatCycleDetailDialog -> UatTestCaseDetailDialog).
+  const [environmentsForbidden, setEnvironmentsForbidden] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<UatCycleStatus | typeof ALL>(ALL);
@@ -147,7 +153,10 @@ export function UatPage() {
       .then((data) => {
         if (!cancelled) setProducts(data);
       })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setProductsForbidden(err instanceof ApiError && err.status === 403);
+      });
     fetchReleases()
       .then((data) => {
         if (!cancelled) setReleases(data);
@@ -157,7 +166,10 @@ export function UatPage() {
       .then((data) => {
         if (!cancelled) setEnvironments(data);
       })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setEnvironmentsForbidden(err instanceof ApiError && err.status === 403);
+      });
     fetchDefects()
       .then((data) => {
         if (!cancelled) setDefects(data);
@@ -451,6 +463,7 @@ export function UatPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         products={products}
+        productsForbidden={productsForbidden}
         releases={releases}
         currentProductId={currentProduct?.id}
         initialValues={formMode === 'edit' ? (editingFormValues ?? undefined) : undefined}
@@ -465,6 +478,7 @@ export function UatPage() {
       <UatCycleDetailDialog
         cycleId={viewingCycleId}
         environments={environments}
+        environmentsForbidden={environmentsForbidden}
         defects={defects}
         requirements={requirements}
         onClose={() => {

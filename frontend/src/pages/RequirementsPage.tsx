@@ -111,6 +111,9 @@ export function RequirementsPage() {
   const [releases, setReleases] = useState<ApiRelease[]>([]);
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // True when the products fetch that feeds the create-requirement dialog
+  // came back 403'd rather than genuinely empty.
+  const [productsForbidden, setProductsForbidden] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ApiRequirementStatus | typeof ALL>(ALL);
@@ -166,10 +169,12 @@ export function RequirementsPage() {
       .then((data) => {
         if (!cancelled) setProducts(data);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         // The product list only feeds the create/edit dropdown; a failure
         // here surfaces naturally as "no products available" in the form
         // rather than blocking the requirements list itself.
+        if (cancelled) return;
+        setProductsForbidden(err instanceof ApiError && err.status === 403);
       });
 
     fetchReleases()
@@ -593,6 +598,7 @@ export function RequirementsPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         products={products}
+        productsForbidden={productsForbidden}
         releases={releases}
         users={users}
         currentProductId={currentProduct?.id}

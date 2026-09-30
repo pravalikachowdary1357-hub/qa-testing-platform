@@ -72,6 +72,9 @@ export function PerformanceTestingPage() {
   const [environments, setEnvironments] = useState<ApiEnvironment[]>([]);
   const [releases, setReleases] = useState<ApiRelease[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // True when the products fetch that feeds the create-test dialog came
+  // back 403'd rather than genuinely empty.
+  const [productsForbidden, setProductsForbidden] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<PerformanceRunStatus | typeof ALL>(ALL);
@@ -121,8 +124,10 @@ export function PerformanceTestingPage() {
       .then((data) => {
         if (!cancelled) setProducts(data);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         // Only feeds the create/edit dropdown and the filter bar.
+        if (cancelled) return;
+        setProductsForbidden(err instanceof ApiError && err.status === 403);
       });
 
     fetchEnvironments()
@@ -396,6 +401,7 @@ export function PerformanceTestingPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         products={products}
+        productsForbidden={productsForbidden}
         environments={environments}
         releases={releases}
         currentProductId={currentProduct?.id}

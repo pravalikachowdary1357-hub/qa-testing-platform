@@ -61,6 +61,11 @@ const ALL = 'ALL' as const;
 export function ProjectsPage() {
   const [projects, setProjects] = useState<ApiProject[] | null>(null);
   const [organizations, setOrganizations] = useState<ApiOrganization[]>([]);
+  // True when fetchOrganizations() came back 403 rather than an empty list --
+  // this role can't see the organization list, even though organizations may
+  // well exist (the Projects table above gets its org names from a different,
+  // permitted endpoint, which is why this can look inconsistent otherwise).
+  const [organizationsForbidden, setOrganizationsForbidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ApiProjectStatus | typeof ALL>(ALL);
@@ -109,10 +114,14 @@ export function ProjectsPage() {
       .then((data) => {
         if (!cancelled) setOrganizations(data);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
+        if (cancelled) return;
         // The organization list only feeds the create/edit dropdown and the
-        // filter bar; a failure here surfaces naturally as "no organizations
-        // available" rather than blocking the projects list itself.
+        // filter bar, so a failure here doesn't block the projects list
+        // itself -- but a 403 (this role lacks organizations:read) is a
+        // different situation from a genuinely empty list, and the dialog
+        // needs to know which one happened to show an accurate message.
+        setOrganizationsForbidden(err instanceof ApiError && err.status === 403);
       });
 
     return () => {
@@ -364,6 +373,7 @@ export function ProjectsPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         organizations={organizations}
+        organizationsForbidden={organizationsForbidden}
         initialValues={
           formMode === 'edit' && editingProject
             ? {

@@ -118,6 +118,9 @@ export function TestPlansPage() {
   const [releases, setReleases] = useState<ApiRelease[]>([]);
   const [requirements, setRequirements] = useState<ApiRequirement[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // True when the products fetch that feeds the create-plan dialog came
+  // back 403'd rather than genuinely empty.
+  const [productsForbidden, setProductsForbidden] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ApiTestPlanStatus | typeof ALL>(ALL);
@@ -168,10 +171,12 @@ export function TestPlansPage() {
       .then((data) => {
         if (!cancelled) setProducts(data);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         // The product list only feeds the create/edit dropdown and the
         // filter bar; a failure here surfaces naturally as "no products
         // available" rather than blocking the test plans list itself.
+        if (cancelled) return;
+        setProductsForbidden(err instanceof ApiError && err.status === 403);
       });
 
     fetchRequirements()
@@ -541,6 +546,7 @@ export function TestPlansPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         products={products}
+        productsForbidden={productsForbidden}
         releases={releases}
         requirements={requirements}
         currentProductId={currentProduct?.id}

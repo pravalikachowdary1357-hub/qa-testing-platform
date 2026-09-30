@@ -100,6 +100,9 @@ export function AutomationPage() {
   const [environments, setEnvironments] = useState<ApiEnvironment[]>([]);
   const [releases, setReleases] = useState<ApiRelease[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // True when the test cases fetch that feeds the create-automation dialog
+  // came back 403'd rather than genuinely empty.
+  const [testCasesForbidden, setTestCasesForbidden] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<ApiAutomationType | typeof ALL>(ALL);
@@ -155,7 +158,10 @@ export function AutomationPage() {
       .then((data) => {
         if (!cancelled) setTestCases(data);
       })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setTestCasesForbidden(err instanceof ApiError && err.status === 403);
+      });
 
     fetchTestScenarios(currentProduct?.id)
       .then((data) => {
@@ -495,6 +501,7 @@ export function AutomationPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         testCases={testCases}
+        testCasesForbidden={testCasesForbidden}
         testScenarios={testScenarios}
         environments={environments}
         releases={releases}

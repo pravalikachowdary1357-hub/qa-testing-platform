@@ -77,6 +77,9 @@ export function EnvironmentsPage() {
   const [environments, setEnvironments] = useState<ApiEnvironment[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // True when the products fetch that feeds the create-environment dialog
+  // came back 403'd rather than genuinely empty.
+  const [productsForbidden, setProductsForbidden] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<ApiEnvironmentType | typeof ALL>(ALL);
@@ -127,8 +130,10 @@ export function EnvironmentsPage() {
       .then((data) => {
         if (!cancelled) setProducts(data);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         // Only feeds the create/edit dropdown and the filter bar.
+        if (cancelled) return;
+        setProductsForbidden(err instanceof ApiError && err.status === 403);
       });
 
     return () => {
@@ -403,6 +408,7 @@ export function EnvironmentsPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         products={products}
+        productsForbidden={productsForbidden}
         currentProductId={currentProduct?.id}
         initialValues={
           formMode === 'edit' && editingEnvironment

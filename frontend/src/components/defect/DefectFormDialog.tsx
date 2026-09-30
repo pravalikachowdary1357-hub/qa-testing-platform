@@ -93,6 +93,9 @@ interface DefectFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   products: ApiProduct[];
+  // True when the product list came back empty because this role lacks
+  // products:read (a 403), not because no products exist.
+  productsForbidden?: boolean;
   releases: ApiRelease[];
   environments: ApiEnvironment[];
   testCases: ApiTestCase[];
@@ -108,6 +111,7 @@ export function DefectFormDialog({
   open,
   mode,
   products,
+  productsForbidden = false,
   releases,
   environments,
   testCases,
@@ -272,7 +276,9 @@ export function DefectFormDialog({
 
           {noProductsAvailable ? (
             <Alert severity="warning">
-              No products exist yet. Create a product before reporting a defect.
+              {productsForbidden
+                ? "You don't have permission to view the product list, so a defect can't be reported from here. Ask a System Administrator to grant your role products:read."
+                : 'No products exist yet. Create a product before reporting a defect.'}
             </Alert>
           ) : (
             <>

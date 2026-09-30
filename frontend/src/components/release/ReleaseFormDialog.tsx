@@ -53,6 +53,9 @@ interface ReleaseFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   products: ApiProduct[];
+  // True when the product list came back empty because this role lacks
+  // products:read (a 403), not because no products exist.
+  productsForbidden?: boolean;
   environments: ApiEnvironment[];
   currentProductId?: string;
   initialValues?: ReleaseFormValues;
@@ -64,6 +67,7 @@ export function ReleaseFormDialog({
   open,
   mode,
   products,
+  productsForbidden = false,
   environments,
   currentProductId,
   initialValues,
@@ -154,7 +158,11 @@ export function ReleaseFormDialog({
           {submitError && <Alert severity="error">{submitError}</Alert>}
 
           {noProductsAvailable ? (
-            <Alert severity="warning">No products exist yet. Create a product before planning a release.</Alert>
+            <Alert severity="warning">
+              {productsForbidden
+                ? "You don't have permission to view the product list, so a release can't be planned from here. Ask a System Administrator to grant your role products:read."
+                : 'No products exist yet. Create a product before planning a release.'}
+            </Alert>
           ) : (
             <>
               <TextField

@@ -110,6 +110,9 @@ export function DefectsPage() {
   const [testScenarios, setTestScenarios] = useState<ApiTestScenario[]>([]);
   const [testExecutions, setTestExecutions] = useState<ApiTestExecution[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // True when the products fetch that feeds the create-defect dialog came
+  // back 403'd rather than genuinely empty.
+  const [productsForbidden, setProductsForbidden] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [severityFilter, setSeverityFilter] = useState<ApiDefectSeverity | typeof ALL>(ALL);
@@ -160,7 +163,10 @@ export function DefectsPage() {
       .then((data) => {
         if (!cancelled) setProducts(data);
       })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setProductsForbidden(err instanceof ApiError && err.status === 403);
+      });
 
     fetchReleases()
       .then((data) => {
@@ -473,6 +479,7 @@ export function DefectsPage() {
         open={formMode !== null}
         mode={formMode ?? 'create'}
         products={products}
+        productsForbidden={productsForbidden}
         releases={releases}
         environments={environments}
         testCases={testCases}

@@ -49,6 +49,10 @@ import type { ApiRequirement } from '../../types/requirement';
 interface UatCycleDetailDialogProps {
   cycleId: string | null;
   environments: ApiEnvironment[];
+  // True when the environments list came back empty because this role
+  // lacks environments:read (a 403), not because none exist. Threaded down
+  // to UatTestCaseDetailDialog -> UatExecutionFormDialog.
+  environmentsForbidden?: boolean;
   defects: ApiDefect[];
   requirements: ApiRequirement[];
   onClose: () => void;
@@ -63,6 +67,7 @@ function latestStatusLabel(testCase: UatTestCase): string {
 export function UatCycleDetailDialog({
   cycleId,
   environments,
+  environmentsForbidden = false,
   defects,
   requirements,
   onClose,
@@ -334,6 +339,7 @@ export function UatCycleDetailDialog({
           cycleId={cycleId}
           testCase={viewingTestCase}
           environments={environmentsForProduct}
+          environmentsForbidden={environmentsForbidden}
           defects={defectsForProduct}
           onClose={() => setViewingTestCase(null)}
           onMutate={refresh}
