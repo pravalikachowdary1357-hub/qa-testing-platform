@@ -153,10 +153,6 @@ export function DefectFormDialog({
     [environments, values.productId],
   );
 
-  const releasesForProduct = useMemo(
-    () => releases.filter((release) => release.productId === values.productId),
-    [releases, values.productId],
-  );
 
   const testCasesForProduct = useMemo(
     () => testCases.filter((tc) => scenarioProductMap.get(tc.testScenarioId) === values.productId),
@@ -297,25 +293,6 @@ export function DefectFormDialog({
                 ))}
               </TextField>
 
-              <TextField
-                select
-                label="Release (optional)"
-                fullWidth
-                value={values.releaseId}
-                helperText={
-                  releasesForProduct.length === 0 ? 'No releases exist for this product yet.' : ' '
-                }
-                onChange={(e) => setValues((prev) => ({ ...prev, releaseId: e.target.value }))}
-              >
-                <MenuItem value={NONE}>
-                  <em>None</em>
-                </MenuItem>
-                {releasesForProduct.map((release) => (
-                  <MenuItem key={release.id} value={release.id}>
-                    {release.name} ({release.version})
-                  </MenuItem>
-                ))}
-              </TextField>
 
               <TextField
                 select

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   Button,
@@ -94,10 +94,6 @@ export function UatCycleFormDialog({
   // dedicated Sign-Off action is the only way to reach/change those values.
   const statusIsEditable = EDITABLE_CYCLE_STATUSES.includes(values.status);
 
-  const releasesForProduct = useMemo(
-    () => releases.filter((release) => release.productId === values.productId),
-    [releases, values.productId],
-  );
 
   const handleProductChange = (newProductId: string) => {
     setValues((prev) => ({
@@ -165,25 +161,6 @@ export function UatCycleFormDialog({
                 ))}
               </TextField>
 
-              <TextField
-                select
-                label="Release (optional)"
-                fullWidth
-                value={values.releaseId}
-                helperText={
-                  releasesForProduct.length === 0 ? 'No releases exist for this product yet.' : ' '
-                }
-                onChange={(e) => setValues((prev) => ({ ...prev, releaseId: e.target.value }))}
-              >
-                <MenuItem value="">
-                  <em>None</em>
-                </MenuItem>
-                {releasesForProduct.map((release) => (
-                  <MenuItem key={release.id} value={release.id}>
-                    {release.name} ({release.version})
-                  </MenuItem>
-                ))}
-              </TextField>
 
               <TextField
                 label="Name"

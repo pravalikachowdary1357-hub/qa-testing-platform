@@ -78,7 +78,6 @@ export function TestExecutionFormDialog({
   testScenarios,
   environments,
   testDataList,
-  releases,
   initialValues,
   onClose,
   onSubmit,
@@ -252,22 +251,6 @@ export function TestExecutionFormDialog({
                 ))}
               </TextField>
 
-              <TextField
-                select
-                label="Release (optional)"
-                fullWidth
-                value={values.releaseId}
-                onChange={(e) => setValues((prev) => ({ ...prev, releaseId: e.target.value }))}
-              >
-                <MenuItem value="">
-                  <em>None</em>
-                </MenuItem>
-                {releases.map((r) => (
-                  <MenuItem key={r.id} value={r.id}>
-                    {r.name} ({r.version}) — {r.product.name}
-                  </MenuItem>
-                ))}
-              </TextField>
 
               <TextField
                 select

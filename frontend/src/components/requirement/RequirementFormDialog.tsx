@@ -111,7 +111,6 @@ export function RequirementFormDialog({
   products,
   productsForbidden = false,
   releases,
-  users,
   currentProductId,
   initialValues,
   onClose,
@@ -141,10 +140,6 @@ export function RequirementFormDialog({
 
   const noProductsAvailable = mode === 'create' && products.length === 0;
 
-  const releasesForProduct = useMemo(
-    () => releases.filter((release) => release.productId === values.productId),
-    [releases, values.productId],
-  );
 
   // Editing a requirement that's already moved past Draft/In Review (e.g.
   // Approved, Implemented) -- keep its current value selectable (read-only
@@ -244,44 +239,6 @@ export function RequirementFormDialog({
                   </MenuItem>
                 ))}
               </TextField>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <TextField
-                  select
-                  label="Release (optional)"
-                  fullWidth
-                  value={values.releaseId}
-                  helperText={
-                    releasesForProduct.length === 0 ? 'No releases exist for this product yet.' : ' '
-                  }
-                  onChange={(e) => setValues((prev) => ({ ...prev, releaseId: e.target.value }))}
-                >
-                  <MenuItem value="">
-                    <em>None</em>
-                  </MenuItem>
-                  {releasesForProduct.map((release) => (
-                    <MenuItem key={release.id} value={release.id}>
-                      {release.name} ({release.version})
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
-                  label="Owner (optional)"
-                  fullWidth
-                  value={values.ownerId}
-                  onChange={(e) => setValues((prev) => ({ ...prev, ownerId: e.target.value }))}
-                >
-                  <MenuItem value={NO_OWNER}>
-                    <em>No owner assigned</em>
-                  </MenuItem>
-                  {users.map((user) => (
-                    <MenuItem key={user.id} value={user.id}>
-                      {user.name} ({user.email})
-                      {user.status === 'INACTIVE' ? ' (Inactive)' : ''}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Stack>
               <TextField
                 label="Title"
                 required

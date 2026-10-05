@@ -90,7 +90,6 @@ export function AutomationFormDialog({
   testCasesForbidden = false,
   testScenarios,
   environments,
-  releases,
   initialValues,
   onClose,
   onSubmit,
@@ -202,22 +201,6 @@ export function AutomationFormDialog({
                 ))}
               </TextField>
 
-              <TextField
-                select
-                label="Release (optional)"
-                fullWidth
-                value={values.releaseId}
-                onChange={(e) => setValues((prev) => ({ ...prev, releaseId: e.target.value }))}
-              >
-                <MenuItem value={NO_RELEASE}>
-                  <em>None</em>
-                </MenuItem>
-                {releases.map((release) => (
-                  <MenuItem key={release.id} value={release.id}>
-                    {release.name} ({release.version}) — {release.product.name}
-                  </MenuItem>
-                ))}
-              </TextField>
 
               <TextField
                 select

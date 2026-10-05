@@ -94,7 +94,6 @@ export function TestCaseFormDialog({
   mode,
   testScenarios,
   scenariosForbidden = false,
-  releases,
   initialValues,
   onClose,
   onSubmit,
@@ -301,22 +300,6 @@ export function TestCaseFormDialog({
                 {testScenarios.map((scenario) => (
                   <MenuItem key={scenario.id} value={scenario.id}>
                     {scenario.title}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                select
-                label="Release (optional)"
-                fullWidth
-                value={values.releaseId}
-                onChange={(e) => setValues((prev) => ({ ...prev, releaseId: e.target.value }))}
-              >
-                <MenuItem value="">
-                  <em>None</em>
-                </MenuItem>
-                {releases.map((r) => (
-                  <MenuItem key={r.id} value={r.id}>
-                    {r.name} ({r.version}) — {r.product.name}
                   </MenuItem>
                 ))}
               </TextField>

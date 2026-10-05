@@ -128,10 +128,6 @@ export function TestPlanFormDialog({
 
   const noProductsAvailable = mode === 'create' && products.length === 0;
 
-  const releasesForProduct = useMemo(
-    () => releases.filter((release) => release.productId === values.productId),
-    [releases, values.productId],
-  );
 
   const requirementsForProduct = useMemo(
     () => requirements.filter((requirement) => requirement.productId === values.productId),
@@ -234,25 +230,6 @@ export function TestPlanFormDialog({
                 {products.map((product) => (
                   <MenuItem key={product.id} value={product.id}>
                     {product.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                select
-                label="Release (optional)"
-                fullWidth
-                value={values.releaseId}
-                helperText={
-                  releasesForProduct.length === 0 ? 'No releases exist for this product yet.' : ' '
-                }
-                onChange={(e) => setValues((prev) => ({ ...prev, releaseId: e.target.value }))}
-              >
-                <MenuItem value="">
-                  <em>None</em>
-                </MenuItem>
-                {releasesForProduct.map((release) => (
-                  <MenuItem key={release.id} value={release.id}>
-                    {release.name} ({release.version})
                   </MenuItem>
                 ))}
               </TextField>
