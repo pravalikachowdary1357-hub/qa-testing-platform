@@ -170,7 +170,8 @@ const ROLE_GRANTS = {
     ...keys('requirements', 'read', 'approve'),
     ...allKeys('product_documents'),
     ...keys('products', 'read'),
-    ...keys('projects', 'read'),
+    ...keys('projects', 'read', 'write'), // may create/edit projects (requested)
+    ...keys('organizations', 'read'), // needed by the Create Project form's Organization dropdown
     ...allKeys('test_plans'),
     ...allKeys('test_scenarios'),
     ...allKeys('test_cases'),
