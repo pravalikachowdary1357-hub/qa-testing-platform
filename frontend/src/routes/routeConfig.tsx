@@ -59,7 +59,7 @@ export const navItems: NavItemConfig[] = [
   },
   {
     path: '/projects',
-    label: 'Project',
+    label: 'Projects & Products',
     icon: FolderSpecialIcon,
     element: <ProjectsPage />,
     permission: 'projects:read',
