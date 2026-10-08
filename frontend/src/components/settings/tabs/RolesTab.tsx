@@ -199,6 +199,10 @@ export function RolesTab() {
   const grouped = useMemo(() => {
     const groups = new Map<string, ApiPermission[]>();
     for (const permission of catalog) {
+      // Products and projects are shown as ONE "projects" group; the products
+      // permissions stay in the catalog but are toggled together with the
+      // matching projects permission (see linkedKeys below).
+      if (permission.resource === 'products') continue;
       const list = groups.get(permission.resource) ?? [];
       list.push(permission);
       groups.set(permission.resource, list);
@@ -211,11 +215,26 @@ export function RolesTab() {
     (checkedKeys.size !== selectedRole.permissions.length ||
       selectedRole.permissions.some((p) => !checkedKeys.has(p.key)));
 
+  // A projects permission also controls the matching products permission, so
+  // one checkbox covers both (products now live inside projects).
+  const linkedKeys = (permission: ApiPermission): string[] => {
+    if (permission.resource !== 'projects') return [permission.key];
+    const productKey = `products:${permission.action}`;
+    return catalog.some((p) => p.key === productKey) ? [permission.key, productKey] : [permission.key];
+  };
+
+  const isChecked = (permission: ApiPermission) =>
+    linkedKeys(permission).some((key) => checkedKeys.has(key));
+
   const togglePermission = (permission: ApiPermission) => {
+    const keys = linkedKeys(permission);
+    const turnOn = !keys.some((key) => checkedKeys.has(key));
     setCheckedKeys((prev) => {
       const next = new Set(prev);
-      if (next.has(permission.key)) next.delete(permission.key);
-      else next.add(permission.key);
+      for (const key of keys) {
+        if (turnOn) next.add(key);
+        else next.delete(key);
+      }
       return next;
     });
   };
@@ -366,7 +385,7 @@ export function RolesTab() {
                           key={permission.id}
                           control={
                             <Checkbox
-                              checked={checkedKeys.has(permission.key)}
+                              checked={isChecked(permission)}
                               disabled={locked}
                               onChange={() => togglePermission(permission)}
                             />
