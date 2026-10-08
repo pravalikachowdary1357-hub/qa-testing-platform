@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Box,
   Button,
   CircularProgress,
+  Collapse,
   IconButton,
   InputAdornment,
   MenuItem,
@@ -22,6 +23,8 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -33,6 +36,8 @@ import type { ImportResultSummary } from '../components/common/ImportResultDialo
 import { ProjectFormDialog } from '../components/project/ProjectFormDialog';
 import { ProjectDetailDialog } from '../components/project/ProjectDetailDialog';
 import { DeleteProjectDialog } from '../components/project/DeleteProjectDialog';
+import { ProductFormDialog } from '../components/product/ProductFormDialog';
+import { ProductDetailDialog } from '../components/product/ProductDetailDialog';
 import {
   createProject,
   deleteProject,
@@ -40,7 +45,9 @@ import {
   importProjects,
   updateProject,
 } from '../api/projects';
+import { createProduct, fetchProducts, updateProduct } from '../api/products';
 import { fetchOrganizations } from '../api/organizations';
+import { fetchUsers } from '../api/users';
 import { ApiError } from '../api/client';
 import { exportToCsvWithAudit } from '../utils/csvExport';
 import type {
@@ -50,10 +57,23 @@ import type {
   ProjectStatus,
 } from '../types/project';
 import type { ApiOrganization } from '../types/organization';
+import type {
+  ApiProduct,
+  ApiProductStatus,
+  CreateProductPayload,
+  ProductStatus,
+} from '../types/product';
+import type { ApiUser } from '../types/settings';
 
 const STATUS_LABELS: Record<ApiProjectStatus, ProjectStatus> = {
   ACTIVE: 'Active',
   INACTIVE: 'Inactive',
+};
+
+const PRODUCT_STATUS_LABELS: Record<ApiProductStatus, ProductStatus> = {
+  ACTIVE: 'Active',
+  ON_HOLD: 'On Hold',
+  DEPRECATED: 'Deprecated',
 };
 
 const ALL = 'ALL' as const;
@@ -66,6 +86,17 @@ export function ProjectsPage() {
   // well exist (the Projects table above gets its org names from a different,
   // permitted endpoint, which is why this can look inconsistent otherwise).
   const [organizationsForbidden, setOrganizationsForbidden] = useState(false);
+  // Products are shown nested under their project, so one page covers both.
+  const [products, setProducts] = useState<ApiProduct[]>([]);
+  // True when fetchProducts() came back 403 (role lacks products:read), as
+  // opposed to a project simply having no products.
+  const [productsForbidden, setProductsForbidden] = useState(false);
+  const [users, setUsers] = useState<ApiUser[]>([]);
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
+  const [productFormMode, setProductFormMode] = useState<'create' | 'edit' | null>(null);
+  const [productFormProject, setProductFormProject] = useState<ApiProject | null>(null);
+  const [editingProduct, setEditingProduct] = useState<ApiProduct | null>(null);
+  const [viewingProductId, setViewingProductId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ApiProjectStatus | typeof ALL>(ALL);
@@ -124,10 +155,50 @@ export function ProjectsPage() {
         setOrganizationsForbidden(err instanceof ApiError && err.status === 403);
       });
 
+    fetchProducts()
+      .then((data) => {
+        if (!cancelled) setProducts(data);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setProductsForbidden(err instanceof ApiError && err.status === 403);
+      });
+
+    fetchUsers()
+      .then((data) => {
+        if (!cancelled) setUsers(data);
+      })
+      .catch(() => {
+        // Only feeds the product-owner picker in the product form.
+      });
+
     return () => {
       cancelled = true;
     };
   }, []);
+
+  const reloadProducts = () =>
+    fetchProducts()
+      .then((data) => setProducts(data))
+      .catch(() => {
+        // Keep the current list; the save itself already succeeded.
+      });
+
+  const toggleExpanded = (id: string) =>
+    setExpandedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const handleProductCreate = async (data: CreateProductPayload) => {
+    await createProduct(data);
+    await Promise.all([loadProjects(), reloadProducts()]);
+    setSnackbar({ message: 'Product created.', severity: 'success' });
+  };
+
+  const handleProductEdit = async (data: CreateProductPayload) => {
+    if (!editingProduct) return;
+    await updateProduct(editingProduct.id, data);
+    await Promise.all([loadProjects(), reloadProducts()]);
+    setSnackbar({ message: 'Product updated.', severity: 'success' });
+  };
 
   const filteredProjects = useMemo(() => {
     if (!projects) return [];
@@ -191,7 +262,7 @@ export function ProjectsPage() {
     <>
       <PageHeader
         title="Projects"
-        subtitle="Manage the projects that group products within an organization"
+        subtitle="Manage projects and the products inside them. Click the arrow on a project to see its products."
         actions={
           <Stack direction="row" spacing={1}>
             <ImportExportToolbar
@@ -303,6 +374,7 @@ export function ProjectsPage() {
           <Table size="small">
             <TableHead>
               <TableRow>
+                <TableCell sx={{ width: 40 }} />
                 <TableCell>Project</TableCell>
                 <TableCell>Organization</TableCell>
                 <TableCell>Description</TableCell>
@@ -313,8 +385,23 @@ export function ProjectsPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredProjects.map((project) => (
-                <TableRow key={project.id} hover>
+              {filteredProjects.map((project) => {
+                const isExpanded = expandedIds.includes(project.id);
+                const projectProducts = products.filter((p) => p.projectId === project.id);
+                return (
+                <Fragment key={project.id}>
+                <TableRow hover>
+                  <TableCell sx={{ width: 40, px: 0.5 }}>
+                    <Tooltip title={isExpanded ? 'Hide products' : 'Show products'}>
+                      <IconButton size="small" onClick={() => toggleExpanded(project.id)}>
+                        {isExpanded ? (
+                          <KeyboardArrowUpIcon fontSize="small" />
+                        ) : (
+                          <KeyboardArrowDownIcon fontSize="small" />
+                        )}
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
                   <TableCell>{project.name}</TableCell>
                   <TableCell>
                     <Typography variant="body2" color="text.secondary">
@@ -363,7 +450,90 @@ export function ProjectsPage() {
                     </Tooltip>
                   </TableCell>
                 </TableRow>
-              ))}
+                <TableRow>
+                  <TableCell colSpan={8} sx={{ py: 0, borderBottom: isExpanded ? undefined : 'none' }}>
+                    <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                      <Box sx={{ py: 1.5, pl: 4 }}>
+                        <Stack
+                          direction="row"
+                          sx={{ mb: 1, justifyContent: 'space-between', alignItems: 'center' }}
+                        >
+                          <Typography variant="subtitle2">
+                            Products in {project.name} ({projectProducts.length})
+                          </Typography>
+                          <Button
+                            size="small"
+                            startIcon={<AddIcon />}
+                            onClick={() => {
+                              setProductFormProject(project);
+                              setProductFormMode('create');
+                            }}
+                          >
+                            Add Product
+                          </Button>
+                        </Stack>
+                        {productsForbidden ? (
+                          <Alert severity="info">
+                            You don't have permission to view products. Ask a System Administrator to
+                            grant your role products:read.
+                          </Alert>
+                        ) : projectProducts.length === 0 ? (
+                          <Typography variant="body2" color="text.secondary">
+                            No products in this project yet.
+                          </Typography>
+                        ) : (
+                          <Table size="small">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell>Product</TableCell>
+                                <TableCell>Key</TableCell>
+                                <TableCell>Status</TableCell>
+                                <TableCell>Release</TableCell>
+                                <TableCell align="right">Actions</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {projectProducts.map((product) => (
+                                <TableRow key={product.id} hover>
+                                  <TableCell>{product.name}</TableCell>
+                                  <TableCell>{product.productKey ?? '—'}</TableCell>
+                                  <TableCell>
+                                    <StatusChip status={PRODUCT_STATUS_LABELS[product.status]} />
+                                  </TableCell>
+                                  <TableCell>{product.release}</TableCell>
+                                  <TableCell align="right">
+                                    <Tooltip title="View">
+                                      <IconButton
+                                        size="small"
+                                        onClick={() => setViewingProductId(product.id)}
+                                      >
+                                        <VisibilityIcon fontSize="small" />
+                                      </IconButton>
+                                    </Tooltip>
+                                    <Tooltip title="Edit">
+                                      <IconButton
+                                        size="small"
+                                        onClick={() => {
+                                          setEditingProduct(product);
+                                          setProductFormMode('edit');
+                                        }}
+                                      >
+                                        <EditIcon fontSize="small" />
+                                      </IconButton>
+                                    </Tooltip>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </Box>
+                    </Collapse>
+                  </TableCell>
+                </TableRow>
+                </Fragment>
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
@@ -391,6 +561,66 @@ export function ProjectsPage() {
         }}
         onSubmit={formMode === 'edit' ? handleEditSubmit : handleCreateSubmit}
       />
+
+      <ProductFormDialog
+        open={productFormMode !== null}
+        mode={productFormMode ?? 'create'}
+        organizations={organizations}
+        organizationsForbidden={organizationsForbidden}
+        projects={projects ?? []}
+        users={users}
+        initialValues={
+          productFormMode === 'edit' && editingProduct
+            ? {
+                organizationId: editingProduct.organizationId,
+                projectId: editingProduct.projectId ?? '',
+                name: editingProduct.name,
+                productKey: editingProduct.productKey ?? '',
+                description: editingProduct.description,
+                status: editingProduct.status,
+                environment: editingProduct.environment,
+                release: editingProduct.release,
+                applicationUrl: editingProduct.applicationUrl ?? '',
+                repositoryUrl: editingProduct.repositoryUrl ?? '',
+                productOwnerId: editingProduct.productOwnerId ?? '',
+                currentVersion: editingProduct.currentVersion ?? '',
+                testCoverage: String(editingProduct.testCoverage),
+                passRate: String(editingProduct.passRate),
+                openDefects: String(editingProduct.openDefects),
+                releaseReadiness: editingProduct.releaseReadiness,
+              }
+            : productFormMode === 'create' && productFormProject
+              ? {
+                  // Pre-select the project (and its organization) the product is
+                  // being added from; everything else starts blank.
+                  organizationId: productFormProject.organizationId,
+                  projectId: productFormProject.id,
+                  name: '',
+                  productKey: '',
+                  description: '',
+                  status: 'ACTIVE',
+                  environment: '',
+                  release: '',
+                  applicationUrl: '',
+                  repositoryUrl: '',
+                  productOwnerId: '',
+                  currentVersion: '',
+                  testCoverage: '',
+                  passRate: '',
+                  openDefects: '0',
+                  releaseReadiness: 'NOT_READY',
+                }
+              : undefined
+        }
+        onClose={() => {
+          setProductFormMode(null);
+          setEditingProduct(null);
+          setProductFormProject(null);
+        }}
+        onSubmit={productFormMode === 'edit' ? handleProductEdit : handleProductCreate}
+      />
+
+      <ProductDetailDialog productId={viewingProductId} onClose={() => setViewingProductId(null)} />
 
       <ProjectDetailDialog
         projectId={viewingProjectId}
