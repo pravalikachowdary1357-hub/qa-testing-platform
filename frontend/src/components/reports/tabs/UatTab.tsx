@@ -75,12 +75,12 @@ export function UatTab({ products }: UatTabProps) {
         <TextField
           select
           size="small"
-          label="Product"
+          label="Project"
           value={productId}
           onChange={(e) => setProductId(e.target.value)}
           sx={{ width: { xs: '100%', sm: 180 } }}
         >
-          <MenuItem value="">All Products</MenuItem>
+          <MenuItem value="">All Projects</MenuItem>
           {products.map((p) => (
             <MenuItem key={p.id} value={p.id}>
               {p.name}
@@ -130,7 +130,7 @@ export function UatTab({ products }: UatTabProps) {
               ? () =>
                   exportToCsv('uat-report.csv', data.rows, [
                     { header: 'Cycle', value: (r) => r.name },
-                    { header: 'Product', value: (r) => r.product.name },
+                    { header: 'Project', value: (r) => r.product.name },
                     { header: 'Status', value: (r) => r.status },
                     { header: 'Test Cases', value: (r) => r.testCaseCount },
                     { header: 'Signed Off By', value: (r) => r.signOffBy },
@@ -211,7 +211,7 @@ export function UatTab({ products }: UatTabProps) {
                 <TableHead>
                   <TableRow>
                     <TableCell>Cycle</TableCell>
-                    <TableCell>Product</TableCell>
+                    <TableCell>Project</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell align="right">Test Cases</TableCell>
                     <TableCell>Signed Off By</TableCell>

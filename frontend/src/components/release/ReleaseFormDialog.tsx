@@ -160,14 +160,14 @@ export function ReleaseFormDialog({
           {noProductsAvailable ? (
             <Alert severity="warning">
               {productsForbidden
-                ? "You don't have permission to view the product list, so a release can't be planned from here. Ask a System Administrator to grant your role products:read."
-                : 'No products exist yet. Create a product before planning a release.'}
+                ? "You don't have permission to view the project list, so a release can't be planned from here. Ask a System Administrator to grant your role products:read."
+                : 'No projects exist yet. Create a project before planning a release.'}
             </Alert>
           ) : (
             <>
               <TextField
                 select
-                label="Product"
+                label="Project"
                 required
                 fullWidth
                 value={values.productId}
@@ -186,7 +186,7 @@ export function ReleaseFormDialog({
                 fullWidth
                 value={values.environmentId}
                 helperText={
-                  environmentsForProduct.length === 0 ? 'No environments exist for this product yet.' : ' '
+                  environmentsForProduct.length === 0 ? 'No environments exist for this project yet.' : ' '
                 }
                 onChange={(e) => setValues((prev) => ({ ...prev, environmentId: e.target.value }))}
               >

@@ -292,7 +292,7 @@ export function RequirementsPage() {
 
   const handleImport = async (file: File) => {
     if (!currentProduct) {
-      setSnackbar({ message: 'Select a product before importing requirements.', severity: 'error' });
+      setSnackbar({ message: 'Select a project before importing requirements.', severity: 'error' });
       return;
     }
     try {
@@ -311,7 +311,7 @@ export function RequirementsPage() {
     exportToCsvWithAudit('Requirement', 'requirements.csv', visibleRequirements, [
       { header: 'Title', value: (r) => r.title },
       { header: 'Description', value: (r) => r.description },
-      { header: 'Product', value: (r) => r.product.name },
+      { header: 'Project', value: (r) => r.product.name },
       { header: 'Type', value: (r) => TYPE_LABELS[r.type] },
       { header: 'Priority', value: (r) => PRIORITY_LABELS[r.priority] },
       { header: 'Risk', value: (r) => RISK_LABELS[r.riskLevel] },
@@ -331,7 +331,7 @@ export function RequirementsPage() {
     <>
       <PageHeader
         title="Requirements"
-        subtitle="Track functional and non-functional requirements across products"
+        subtitle="Track functional and non-functional requirements across projects"
         actions={
           <Stack direction="row" spacing={1}>
             <ImportExportToolbar
@@ -513,7 +513,7 @@ export function RequirementsPage() {
             <TableHead>
               <TableRow>
                 <TableCell>Title</TableCell>
-                <TableCell>Product</TableCell>
+                <TableCell>Project</TableCell>
                 <TableCell>Type</TableCell>
                 <TableCell>Priority</TableCell>
                 <TableCell>Risk</TableCell>

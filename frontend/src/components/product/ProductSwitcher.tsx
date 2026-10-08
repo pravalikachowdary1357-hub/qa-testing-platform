@@ -25,14 +25,14 @@ export function ProductSwitcher() {
   if (error || !currentProduct) {
     return (
       <Typography variant="body2" color="error" sx={{ minWidth: { xs: 140, sm: 220 } }}>
-        {error ?? 'No products available'}
+        {error ?? 'No projects available'}
       </Typography>
     );
   }
 
   return (
     <FormControl size="small" sx={{ minWidth: { xs: 140, sm: 220 } }}>
-      <Select value={currentProduct.id} onChange={handleChange} aria-label="Selected product">
+      <Select value={currentProduct.id} onChange={handleChange} aria-label="Selected project">
         {products.map((product) => (
           <MenuItem key={product.id} value={product.id}>
             {product.name}

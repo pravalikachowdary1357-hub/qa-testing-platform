@@ -132,7 +132,7 @@ export function UatExecutionFormDialog({
             <Alert severity="warning">
               {environmentsForbidden
                 ? "You don't have permission to view the environment list, so an execution can't be recorded from here. Ask a System Administrator to grant your role environments:read."
-                : 'No environments exist for this product yet. Create one before recording an execution.'}
+                : 'No environments exist for this project yet. Create one before recording an execution.'}
             </Alert>
           ) : (
             <>
@@ -183,7 +183,7 @@ export function UatExecutionFormDialog({
                   fullWidth
                   value={values.defectId}
                   helperText={
-                    defectOptions.length === 0 ? 'No defects exist for this product yet.' : ' '
+                    defectOptions.length === 0 ? 'No defects exist for this project yet.' : ' '
                   }
                   onChange={(e) => setValues((prev) => ({ ...prev, defectId: e.target.value }))}
                 >

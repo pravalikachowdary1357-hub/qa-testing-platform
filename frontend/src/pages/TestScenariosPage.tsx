@@ -262,7 +262,7 @@ export function TestScenariosPage() {
 
   const handleImport = async (file: File) => {
     if (!currentProduct) {
-      setSnackbar({ message: 'Select a product before importing test scenarios.', severity: 'error' });
+      setSnackbar({ message: 'Select a project before importing test scenarios.', severity: 'error' });
       return;
     }
     try {
@@ -292,7 +292,7 @@ export function TestScenariosPage() {
     <>
       <PageHeader
         title="Test Scenarios"
-        subtitle="Define testing conditions that trace back to products and requirements"
+        subtitle="Define testing conditions that trace back to projects and requirements"
         actions={
           <Stack direction="row" spacing={1}>
             <ImportExportToolbar
@@ -429,7 +429,7 @@ export function TestScenariosPage() {
             <TableHead>
               <TableRow>
                 <TableCell>Title</TableCell>
-                <TableCell>Product</TableCell>
+                <TableCell>Project</TableCell>
                 <TableCell>Requirement</TableCell>
                 <TableCell>Type</TableCell>
                 <TableCell>Priority</TableCell>

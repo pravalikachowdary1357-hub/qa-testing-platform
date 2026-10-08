@@ -214,14 +214,14 @@ export function TestPlanFormDialog({
           {noProductsAvailable ? (
             <Alert severity="warning">
               {productsForbidden
-                ? "You don't have permission to view the product list, so a test plan can't be added from here. Ask a System Administrator to grant your role products:read."
-                : 'No products exist yet. Create a product before adding a test plan.'}
+                ? "You don't have permission to view the project list, so a test plan can't be added from here. Ask a System Administrator to grant your role products:read."
+                : 'No projects exist yet. Create a project before adding a test plan.'}
             </Alert>
           ) : (
             <>
               <TextField
                 select
-                label="Product"
+                label="Project"
                 required
                 fullWidth
                 value={values.productId}
@@ -346,7 +346,7 @@ export function TestPlanFormDialog({
                 disabled={requirementsForProduct.length === 0}
                 helperText={
                   requirementsForProduct.length === 0
-                    ? 'No requirements exist for this product yet.'
+                    ? 'No requirements exist for this project yet.'
                     : ' '
                 }
                 onChange={(e) => {

@@ -272,7 +272,7 @@ export function TestPlansPage() {
 
   const handleImport = async (file: File) => {
     if (!currentProduct) {
-      setSnackbar({ message: 'Select a product before importing test plans.', severity: 'error' });
+      setSnackbar({ message: 'Select a project before importing test plans.', severity: 'error' });
       return;
     }
     try {
@@ -309,7 +309,7 @@ export function TestPlansPage() {
     <>
       <PageHeader
         title="Test Planning"
-        subtitle="Plan and organize test coverage across products and requirements"
+        subtitle="Plan and organize test coverage across projects and requirements"
         actions={
           <Stack direction="row" spacing={1}>
             <ImportExportToolbar
@@ -431,7 +431,7 @@ export function TestPlansPage() {
             <TableHead>
               <TableRow>
                 <TableCell>Name</TableCell>
-                <TableCell>Product</TableCell>
+                <TableCell>Project</TableCell>
                 <TableCell>Owner</TableCell>
                 <TableCell>Priority</TableCell>
                 <TableCell>Status</TableCell>

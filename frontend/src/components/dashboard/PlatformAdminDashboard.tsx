@@ -105,7 +105,7 @@ export function PlatformAdminDashboard() {
     { title: 'Business Units', value: totals.businessUnits, icon: ApartmentIcon },
     { title: 'Teams', value: totals.teams, icon: GroupsIcon },
     { title: 'Projects', value: totals.projects, icon: FolderSpecialIcon },
-    { title: 'Products', value: totals.products, icon: Inventory2Icon },
+    { title: 'Projects', value: totals.products, icon: Inventory2Icon },
     { title: 'Users', value: `${activeUsers} / ${userList.length}`, icon: PeopleIcon },
   ];
 
@@ -132,7 +132,7 @@ export function PlatformAdminDashboard() {
                   <TableCell>Status</TableCell>
                   <TableCell align="right">Business Units</TableCell>
                   <TableCell align="right">Teams</TableCell>
-                  <TableCell align="right">Products</TableCell>
+                  <TableCell align="right">Projects</TableCell>
                   <TableCell align="right">Users</TableCell>
                 </TableRow>
               </TableHead>

@@ -61,7 +61,7 @@ export function ProductProvider({ children }: ProductProviderProps) {
       const restored = storedId ? list.find((p) => p.id === storedId) : undefined;
       setCurrentProductState(restored ?? list[0] ?? null);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load products.');
+      setError(err instanceof Error ? err.message : 'Failed to load projects.');
     } finally {
       setLoading(false);
     }

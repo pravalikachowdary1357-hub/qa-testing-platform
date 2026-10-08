@@ -42,7 +42,7 @@ export function ProductConfigTab() {
     setError(null);
     fetchProducts()
       .then(setProducts)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load products.'));
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load projects.'));
   };
 
   useEffect(load, []);
@@ -57,7 +57,7 @@ export function ProductConfigTab() {
       )}
       {products && products.length === 0 && (
         <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
-          <Typography color="text.secondary">No products found.</Typography>
+          <Typography color="text.secondary">No projects found.</Typography>
         </Paper>
       )}
       {products && products.length > 0 && (
@@ -137,7 +137,7 @@ function ProductEditDialog({
       onSaved();
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to save product.');
+      setError(err instanceof Error ? err.message : 'Failed to save project.');
     } finally {
       setSaving(false);
     }
@@ -145,7 +145,7 @@ function ProductEditDialog({
 
   return (
     <Dialog open={Boolean(product)} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Edit Product Configuration</DialogTitle>
+      <DialogTitle>Edit Project Configuration</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {error && <Alert severity="error">{error}</Alert>}

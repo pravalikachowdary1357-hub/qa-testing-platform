@@ -189,7 +189,7 @@ export function TraceabilityPage() {
 
   const handleExportMatrix = () => {
     exportToCsvWithAudit('TraceabilityMatrix', 'traceability-matrix.csv', visibleRequirements, [
-      { header: 'Product', value: (r) => r.product.name },
+      { header: 'Project', value: (r) => r.product.name },
       { header: 'Requirement', value: (r) => r.title },
       { header: 'Priority', value: (r) => PRIORITY_LABELS[r.priority] },
       { header: 'Scenario Count', value: (r) => r.testScenarioCount },
@@ -209,7 +209,7 @@ export function TraceabilityPage() {
         { header: 'Test Case', value: (tc) => tc.title },
         { header: 'Test Scenario', value: (tc) => tc.testScenario.title },
         { header: 'Requirement', value: (tc) => tc.requirement?.title ?? '' },
-        { header: 'Product', value: (tc) => tc.product.name },
+        { header: 'Project', value: (tc) => tc.product.name },
       ],
     );
   };
@@ -407,7 +407,7 @@ export function TraceabilityPage() {
                 <TableHead>
                   <TableRow>
                     <TableCell>Requirement</TableCell>
-                    <TableCell>Product</TableCell>
+                    <TableCell>Project</TableCell>
                     <TableCell>Priority</TableCell>
                     <TableCell>Scenarios</TableCell>
                     <TableCell>Test Cases</TableCell>
@@ -482,7 +482,7 @@ export function TraceabilityPage() {
                     <TableHead>
                       <TableRow>
                         <TableCell>Scenario</TableCell>
-                        <TableCell>Product</TableCell>
+                        <TableCell>Project</TableCell>
                         <TableCell>Test Cases</TableCell>
                         <TableCell align="right">Actions</TableCell>
                       </TableRow>
@@ -532,7 +532,7 @@ export function TraceabilityPage() {
                         <TableCell>Test Case</TableCell>
                         <TableCell>Test Scenario</TableCell>
                         <TableCell>Requirement</TableCell>
-                        <TableCell>Product</TableCell>
+                        <TableCell>Project</TableCell>
                         <TableCell align="right">Actions</TableCell>
                       </TableRow>
                     </TableHead>
@@ -642,7 +642,7 @@ export function TraceabilityPage() {
                     <TableHead>
                       <TableRow>
                         <TableCell>Defect</TableCell>
-                        <TableCell>Product</TableCell>
+                        <TableCell>Project</TableCell>
                         <TableCell>Severity</TableCell>
                         <TableCell>Status</TableCell>
                         <TableCell align="right">Actions</TableCell>

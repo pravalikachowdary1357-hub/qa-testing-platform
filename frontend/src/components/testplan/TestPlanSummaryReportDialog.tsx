@@ -25,7 +25,7 @@ import { TestPlanGovernanceSummary } from './TestPlanGovernanceSummary';
 const SCOPE_TEXT: Record<TestPlanSummaryReport['scopeBasis'], string> = {
   REQUIREMENTS: 'Test cases of the requirements linked to this plan',
   RELEASE: 'Test cases of the plan’s release',
-  PRODUCT: 'All test cases of the product (no requirements or release linked)',
+  PRODUCT: 'All test cases of the project (no requirements or release linked)',
 };
 
 const pretty = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ');
@@ -99,7 +99,7 @@ export function TestPlanSummaryReportDialog({
     if (!report || !plan) return;
     const rows: { metric: string; value: string | number }[] = [
       { metric: 'Test plan', value: plan.name },
-      { metric: 'Product', value: plan.product.name },
+      { metric: 'Project', value: plan.product.name },
       { metric: 'Owner', value: plan.owner },
       { metric: 'Status', value: pretty(plan.status) },
       { metric: 'Generated', value: report.generatedAt },

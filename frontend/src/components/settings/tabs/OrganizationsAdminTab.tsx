@@ -121,7 +121,7 @@ export function OrganizationsAdminTab() {
                 <TableCell>Name</TableCell>
                 <TableCell>Location</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell align="right">Products</TableCell>
+                <TableCell align="right">Projects</TableCell>
                 <TableCell align="right">Users</TableCell>
                 {(canWrite || canDelete) && <TableCell align="right">Actions</TableCell>}
               </TableRow>

@@ -28,12 +28,12 @@ export function TraceabilityTab({ products }: TraceabilityTabProps) {
         <TextField
           select
           size="small"
-          label="Product"
+          label="Project"
           value={productId}
           onChange={(e) => setProductId(e.target.value)}
           sx={{ width: { xs: '100%', sm: 200 } }}
         >
-          <MenuItem value="">All Products</MenuItem>
+          <MenuItem value="">All Projects</MenuItem>
           {products.map((p) => (
             <MenuItem key={p.id} value={p.id}>
               {p.name}
@@ -88,7 +88,7 @@ export function TraceabilityTab({ products }: TraceabilityTabProps) {
                     [
                       { header: 'Category', value: (r) => r.category },
                       { header: 'Item', value: (r) => r.item },
-                      { header: 'Product', value: (r) => r.product },
+                      { header: 'Project', value: (r) => r.product },
                       { header: 'Value', value: (r) => r.value },
                     ],
                   )

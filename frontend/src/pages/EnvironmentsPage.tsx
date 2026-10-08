@@ -192,7 +192,7 @@ export function EnvironmentsPage() {
 
   const handleImport = async (file: File) => {
     if (!currentProduct) {
-      setSnackbar({ message: 'Select a product before importing environments.', severity: 'error' });
+      setSnackbar({ message: 'Select a project before importing environments.', severity: 'error' });
       return;
     }
     try {
@@ -343,7 +343,7 @@ export function EnvironmentsPage() {
             <TableHead>
               <TableRow>
                 <TableCell>Name</TableCell>
-                <TableCell>Product</TableCell>
+                <TableCell>Project</TableCell>
                 <TableCell>Type</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Base URL</TableCell>

@@ -81,7 +81,7 @@ export function PerformanceTab({ products, environments }: PerformanceTabProps) 
         <TextField
           select
           size="small"
-          label="Product"
+          label="Project"
           value={productId}
           onChange={(e) => {
             setProductId(e.target.value);
@@ -89,7 +89,7 @@ export function PerformanceTab({ products, environments }: PerformanceTabProps) 
           }}
           sx={{ width: { xs: '100%', sm: 180 } }}
         >
-          <MenuItem value="">All Products</MenuItem>
+          <MenuItem value="">All Projects</MenuItem>
           {products.map((p) => (
             <MenuItem key={p.id} value={p.id}>
               {p.name}

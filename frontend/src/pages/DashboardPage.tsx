@@ -204,7 +204,7 @@ export function DashboardPage() {
         subtitle={
           currentProduct
             ? `${user?.roleName ?? 'My'} dashboard for ${currentProduct.name}`
-            : 'Select a product to see your dashboard'
+            : 'Select a project to see your dashboard'
         }
       />
 
@@ -213,7 +213,7 @@ export function DashboardPage() {
       {showOverview && (
       <>
       <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-        Product quality overview
+        Project quality overview
       </Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
@@ -226,7 +226,7 @@ export function DashboardPage() {
       {!loading && !error && !currentProduct && (
         <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
           <Typography color="text.secondary">
-            No product selected. Choose a product from the switcher above to see its testing
+            No project selected. Choose a project from the switcher above to see its testing
             overview.
           </Typography>
         </Paper>
@@ -252,13 +252,13 @@ export function DashboardPage() {
           {show('PRODUCT_OVERVIEW') && (
           <>
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-            Product Overview
+            Project Overview
           </Typography>
           <TableContainer component={Paper} variant="outlined" sx={{ mb: 4 }}>
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>Product</TableCell>
+                  <TableCell>Project</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell align="right">Test Coverage</TableCell>
                   <TableCell align="right">Pass Rate</TableCell>

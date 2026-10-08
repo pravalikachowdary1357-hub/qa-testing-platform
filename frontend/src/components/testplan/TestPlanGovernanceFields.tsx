@@ -93,7 +93,7 @@ export function TestPlanGovernanceFields({ values, onChange }: Props) {
         control={
           <Checkbox checked={values.isMaster} onChange={(e) => set('isMaster', e.target.checked)} />
         }
-        label="Master test plan (overall test strategy for the product)"
+        label="Master test plan (overall test strategy for the project)"
       />
       <TextField
         label="Scope (in / out of scope)"

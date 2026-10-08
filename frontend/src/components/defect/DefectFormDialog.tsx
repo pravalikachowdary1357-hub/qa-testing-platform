@@ -273,14 +273,14 @@ export function DefectFormDialog({
           {noProductsAvailable ? (
             <Alert severity="warning">
               {productsForbidden
-                ? "You don't have permission to view the product list, so a defect can't be reported from here. Ask a System Administrator to grant your role products:read."
-                : 'No products exist yet. Create a product before reporting a defect.'}
+                ? "You don't have permission to view the project list, so a defect can't be reported from here. Ask a System Administrator to grant your role products:read."
+                : 'No projects exist yet. Create a project before reporting a defect.'}
             </Alert>
           ) : (
             <>
               <TextField
                 select
-                label="Product"
+                label="Project"
                 required
                 fullWidth
                 value={values.productId}
@@ -301,7 +301,7 @@ export function DefectFormDialog({
                 value={values.environmentId}
                 helperText={
                   environmentsForProduct.length === 0
-                    ? 'No environments exist for this product yet.'
+                    ? 'No environments exist for this project yet.'
                     : ' '
                 }
                 onChange={(e) => setValues((prev) => ({ ...prev, environmentId: e.target.value }))}
@@ -322,7 +322,7 @@ export function DefectFormDialog({
                 fullWidth
                 value={values.testCaseId}
                 helperText={
-                  testCasesForProduct.length === 0 ? 'No test cases exist for this product yet.' : ' '
+                  testCasesForProduct.length === 0 ? 'No test cases exist for this project yet.' : ' '
                 }
                 onChange={(e) => handleTestCaseChange(e.target.value)}
               >

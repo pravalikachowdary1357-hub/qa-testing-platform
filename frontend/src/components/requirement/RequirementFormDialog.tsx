@@ -220,14 +220,14 @@ export function RequirementFormDialog({
           {noProductsAvailable ? (
             <Alert severity="warning">
               {productsForbidden
-                ? "You don't have permission to view the product list, so a requirement can't be added from here. Ask a System Administrator to grant your role products:read."
-                : 'No products exist yet. Create a product before adding requirements.'}
+                ? "You don't have permission to view the project list, so a requirement can't be added from here. Ask a System Administrator to grant your role products:read."
+                : 'No projects exist yet. Create a project before adding requirements.'}
             </Alert>
           ) : (
             <>
               <TextField
                 select
-                label="Product"
+                label="Project"
                 required
                 fullWidth
                 value={values.productId}

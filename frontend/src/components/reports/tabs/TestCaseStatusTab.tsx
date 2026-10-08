@@ -77,12 +77,12 @@ export function TestCaseStatusTab({ products }: TestCaseStatusTabProps) {
         <TextField
           select
           size="small"
-          label="Product"
+          label="Project"
           value={productId}
           onChange={(e) => setProductId(e.target.value)}
           sx={{ width: { xs: '100%', sm: 180 } }}
         >
-          <MenuItem value="">All Products</MenuItem>
+          <MenuItem value="">All Projects</MenuItem>
           {products.map((p) => (
             <MenuItem key={p.id} value={p.id}>
               {p.name}
@@ -129,7 +129,7 @@ export function TestCaseStatusTab({ products }: TestCaseStatusTabProps) {
               ? () =>
                   exportToCsv('test-case-status-report.csv', data.rows, [
                     { header: 'Test Case', value: (r) => r.title },
-                    { header: 'Product', value: (r) => r.product.name },
+                    { header: 'Project', value: (r) => r.product.name },
                     { header: 'Priority', value: (r) => r.priority },
                     { header: 'Lifecycle Status', value: (r) => r.lifecycleStatus },
                     { header: 'Latest Result', value: (r) => r.latestResultStatus },
@@ -205,7 +205,7 @@ export function TestCaseStatusTab({ products }: TestCaseStatusTabProps) {
                 <TableHead>
                   <TableRow>
                     <TableCell>Test Case</TableCell>
-                    <TableCell>Product</TableCell>
+                    <TableCell>Project</TableCell>
                     <TableCell>Priority</TableCell>
                     <TableCell>Lifecycle Status</TableCell>
                     <TableCell>Latest Result</TableCell>

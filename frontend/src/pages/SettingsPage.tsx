@@ -47,7 +47,7 @@ const TABS: SettingsTab[] = [
   { label: 'Profile', icon: PersonIcon, content: <ProfileTab /> },
   { label: 'Organization', icon: BusinessIcon, permission: 'organizations:read', content: <OrganizationTab /> },
   { label: 'All Organizations', icon: CorporateFareIcon, permission: 'organizations:write', hideWithoutPermission: true, content: <OrganizationsAdminTab /> },
-  { label: 'Products', icon: Inventory2Icon, permission: 'organization:read', content: <ProductConfigTab /> },
+  { label: 'Projects', icon: Inventory2Icon, permission: 'organization:read', content: <ProductConfigTab /> },
   { label: 'Users', icon: GroupIcon, permission: 'users:read', content: <UsersTab /> },
   { label: 'Roles & Permissions', icon: AdminPanelSettingsIcon, permission: 'roles:read', content: <RolesTab /> },
   { label: 'Application Settings', icon: TuneIcon, permission: 'app_settings:read', content: <AppSettingsTab /> },

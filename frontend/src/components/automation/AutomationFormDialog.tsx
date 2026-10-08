@@ -209,7 +209,7 @@ export function AutomationFormDialog({
                 value={values.environmentId}
                 helperText={
                   environmentsForProduct.length === 0
-                    ? 'No environments exist for this test case’s product yet.'
+                    ? 'No environments exist for this test case’s project yet.'
                     : ' '
                 }
                 onChange={(e) => setValues((prev) => ({ ...prev, environmentId: e.target.value }))}

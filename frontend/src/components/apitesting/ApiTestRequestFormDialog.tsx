@@ -373,14 +373,14 @@ export function ApiTestRequestFormDialog({
           {noProductsAvailable ? (
             <Alert severity="warning">
               {productsForbidden
-                ? "You don't have permission to view the product list, so an API test request can't be added from here. Ask a System Administrator to grant your role products:read."
-                : 'No products exist yet. Create a product before adding an API test request.'}
+                ? "You don't have permission to view the project list, so an API test request can't be added from here. Ask a System Administrator to grant your role products:read."
+                : 'No projects exist yet. Create a project before adding an API test request.'}
             </Alert>
           ) : (
             <>
               <TextField
                 select
-                label="Product"
+                label="Project"
                 required
                 fullWidth
                 value={values.productId}
@@ -400,7 +400,7 @@ export function ApiTestRequestFormDialog({
                 value={values.environmentId}
                 helperText={
                   environmentsForProduct.length === 0
-                    ? 'No environments exist for this product yet.'
+                    ? 'No environments exist for this project yet.'
                     : ' '
                 }
                 onChange={(e) => setValues((prev) => ({ ...prev, environmentId: e.target.value }))}

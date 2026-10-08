@@ -84,7 +84,7 @@ export function DefectsTab({ products, environments }: DefectsTabProps) {
         <TextField
           select
           size="small"
-          label="Product"
+          label="Project"
           value={productId}
           onChange={(e) => {
             setProductId(e.target.value);
@@ -92,7 +92,7 @@ export function DefectsTab({ products, environments }: DefectsTabProps) {
           }}
           sx={{ width: { xs: '100%', sm: 170 } }}
         >
-          <MenuItem value="">All Products</MenuItem>
+          <MenuItem value="">All Projects</MenuItem>
           {products.map((p) => (
             <MenuItem key={p.id} value={p.id}>
               {p.name}
@@ -172,7 +172,7 @@ export function DefectsTab({ products, environments }: DefectsTabProps) {
               ? () =>
                   exportToCsv('defect-report.csv', data.rows, [
                     { header: 'Title', value: (r) => r.title },
-                    { header: 'Product', value: (r) => r.product.name },
+                    { header: 'Project', value: (r) => r.product.name },
                     { header: 'Severity', value: (r) => r.severity },
                     { header: 'Priority', value: (r) => r.priority },
                     { header: 'Status', value: (r) => r.status },
@@ -251,7 +251,7 @@ export function DefectsTab({ products, environments }: DefectsTabProps) {
                 <TableHead>
                   <TableRow>
                     <TableCell>Title</TableCell>
-                    <TableCell>Product</TableCell>
+                    <TableCell>Project</TableCell>
                     <TableCell>Severity</TableCell>
                     <TableCell>Priority</TableCell>
                     <TableCell>Status</TableCell>

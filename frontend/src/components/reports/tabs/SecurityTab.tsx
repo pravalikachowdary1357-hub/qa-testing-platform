@@ -90,7 +90,7 @@ export function SecurityTab({ products, environments }: SecurityTabProps) {
         <TextField
           select
           size="small"
-          label="Product"
+          label="Project"
           value={productId}
           onChange={(e) => {
             setProductId(e.target.value);
@@ -98,7 +98,7 @@ export function SecurityTab({ products, environments }: SecurityTabProps) {
           }}
           sx={{ width: { xs: '100%', sm: 170 } }}
         >
-          <MenuItem value="">All Products</MenuItem>
+          <MenuItem value="">All Projects</MenuItem>
           {products.map((p) => (
             <MenuItem key={p.id} value={p.id}>
               {p.name}
@@ -307,7 +307,7 @@ export function SecurityTab({ products, environments }: SecurityTabProps) {
             ? [
                 { label: 'Severity', value: SEVERITY_LABELS[viewing.severity] ?? viewing.severity },
                 { label: 'Status', value: STATUS_LABELS[viewing.status] ?? viewing.status },
-                { label: 'Product', value: viewing.product?.name },
+                { label: 'Project', value: viewing.product?.name },
                 { label: 'Environment', value: viewing.environment?.name },
                 { label: 'Recommendation', value: viewing.recommendation },
                 { label: 'Evidence', value: viewing.evidence },

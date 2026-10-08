@@ -308,7 +308,7 @@ export function UatPage() {
       {cycles && cycles.length > 0 && (
         <Box sx={{ mb: 3 }}>
           <Typography variant="overline" color="text.secondary">
-            Test Case Results (this product's cycles)
+            Test Case Results (this project's cycles)
           </Typography>
           <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap' }}>
             <SummaryCard label="Pass" value={overallSummary.pass} />
@@ -407,7 +407,7 @@ export function UatPage() {
             <TableHead>
               <TableRow>
                 <TableCell>Name</TableCell>
-                <TableCell>Product</TableCell>
+                <TableCell>Project</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Test Cases</TableCell>
                 <TableCell>Pass / Fail / Blocked</TableCell>

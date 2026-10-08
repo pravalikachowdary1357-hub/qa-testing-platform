@@ -42,12 +42,12 @@ export function OverviewTab({ products }: OverviewTabProps) {
         <TextField
           select
           size="small"
-          label="Product"
+          label="Project"
           value={productId}
           onChange={(e) => setProductId(e.target.value)}
           sx={{ width: { xs: '100%', sm: 200 } }}
         >
-          <MenuItem value="">All Products</MenuItem>
+          <MenuItem value="">All Projects</MenuItem>
           {products.map((p) => (
             <MenuItem key={p.id} value={p.id}>
               {p.name}
@@ -84,7 +84,7 @@ export function OverviewTab({ products }: OverviewTabProps) {
                     'Report:Overview',
                     'overview-report.csv',
                     [
-                      { category: 'Overview', metric: 'Products', value: data.productCount },
+                      { category: 'Overview', metric: 'Projects', value: data.productCount },
                       { category: 'Requirement Coverage', metric: 'Coverage %', value: data.requirementCoverage.requirementCoveragePercent },
                       { category: 'Requirement Coverage', metric: 'Covered Requirements', value: data.requirementCoverage.coveredRequirements },
                       { category: 'Requirement Coverage', metric: 'Total Requirements', value: data.requirementCoverage.totalRequirements },
@@ -162,7 +162,7 @@ export function OverviewTab({ products }: OverviewTabProps) {
         <Stack spacing={3}>
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <SummaryCard title="Products" value={data.productCount} icon={Inventory2Icon} />
+              <SummaryCard title="Projects" value={data.productCount} icon={Inventory2Icon} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <SummaryCard

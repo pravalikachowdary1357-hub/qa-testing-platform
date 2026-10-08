@@ -111,8 +111,8 @@ export function HistoryTab({ products }: { products: ApiProduct[] }) {
         />
       </Stack>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
-        <TextField select size="small" label="Product" value={productId} onChange={(e) => setProductId(e.target.value)} sx={{ width: 200 }}>
-          <MenuItem value="">All Products</MenuItem>
+        <TextField select size="small" label="Project" value={productId} onChange={(e) => setProductId(e.target.value)} sx={{ width: 200 }}>
+          <MenuItem value="">All Projects</MenuItem>
           {products.map((p) => (
             <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
           ))}
@@ -150,7 +150,7 @@ export function HistoryTab({ products }: { products: ApiProduct[] }) {
               <TableRow>
                 <TableCell>Capability</TableCell>
                 <TableCell>Source</TableCell>
-                <TableCell>Product</TableCell>
+                <TableCell>Project</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Created</TableCell>
                 <TableCell align="right">Actions</TableCell>

@@ -392,7 +392,7 @@ export function ReleaseQualityPage() {
             <TableHead>
               <TableRow>
                 <TableCell>Release</TableCell>
-                <TableCell>Product</TableCell>
+                <TableCell>Project</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Readiness</TableCell>
                 <TableCell>Release Date</TableCell>

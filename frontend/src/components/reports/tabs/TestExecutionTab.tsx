@@ -74,7 +74,7 @@ export function TestExecutionTab({ products, environments }: TestExecutionTabPro
         <TextField
           select
           size="small"
-          label="Product"
+          label="Project"
           value={productId}
           onChange={(e) => {
             setProductId(e.target.value);
@@ -82,7 +82,7 @@ export function TestExecutionTab({ products, environments }: TestExecutionTabPro
           }}
           sx={{ width: { xs: '100%', sm: 180 } }}
         >
-          <MenuItem value="">All Products</MenuItem>
+          <MenuItem value="">All Projects</MenuItem>
           {products.map((p) => (
             <MenuItem key={p.id} value={p.id}>
               {p.name}
@@ -147,7 +147,7 @@ export function TestExecutionTab({ products, environments }: TestExecutionTabPro
               ? () =>
                   exportToCsv('test-execution-report.csv', data.rows, [
                     { header: 'Test Case', value: (r) => r.testCaseTitle },
-                    { header: 'Product', value: (r) => r.product.name },
+                    { header: 'Project', value: (r) => r.product.name },
                     { header: 'Environment', value: (r) => r.environment.name },
                     { header: 'Status', value: (r) => r.status },
                     { header: 'Executed By', value: (r) => r.executedBy },
@@ -200,7 +200,7 @@ export function TestExecutionTab({ products, environments }: TestExecutionTabPro
                 <TableHead>
                   <TableRow>
                     <TableCell>Test Case</TableCell>
-                    <TableCell>Product</TableCell>
+                    <TableCell>Project</TableCell>
                     <TableCell>Environment</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell>Executed By</TableCell>

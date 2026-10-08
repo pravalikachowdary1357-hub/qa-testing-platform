@@ -202,7 +202,7 @@ export function UatTestCaseFormDialog({
             fullWidth
             value={values.requirementId}
             helperText={
-              requirementsForProduct.length === 0 ? 'No requirements exist for this product yet.' : ' '
+              requirementsForProduct.length === 0 ? 'No requirements exist for this project yet.' : ' '
             }
             onChange={(e) => setValues((prev) => ({ ...prev, requirementId: e.target.value }))}
           >

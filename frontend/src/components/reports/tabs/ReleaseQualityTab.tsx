@@ -89,7 +89,7 @@ export function ReleaseQualityTab({ products, environments }: ReleaseQualityTabP
         <TextField
           select
           size="small"
-          label="Product"
+          label="Project"
           value={productId}
           onChange={(e) => {
             setProductId(e.target.value);
@@ -97,7 +97,7 @@ export function ReleaseQualityTab({ products, environments }: ReleaseQualityTabP
           }}
           sx={{ width: { xs: '100%', sm: 170 } }}
         >
-          <MenuItem value="">All Products</MenuItem>
+          <MenuItem value="">All Projects</MenuItem>
           {products.map((p) => (
             <MenuItem key={p.id} value={p.id}>
               {p.name}
@@ -177,7 +177,7 @@ export function ReleaseQualityTab({ products, environments }: ReleaseQualityTabP
               ? () =>
                   exportToCsv('release-quality-report.csv', data.rows, [
                     { header: 'Release', value: (r) => `${r.name} (${r.version})` },
-                    { header: 'Product', value: (r) => r.product.name },
+                    { header: 'Project', value: (r) => r.product.name },
                     { header: 'Status', value: (r) => r.status },
                     { header: 'Readiness', value: (r) => r.readiness },
                     { header: 'Pass Rate', value: (r) => r.passRatePercent },
@@ -235,7 +235,7 @@ export function ReleaseQualityTab({ products, environments }: ReleaseQualityTabP
                 <TableHead>
                   <TableRow>
                     <TableCell>Release</TableCell>
-                    <TableCell>Product</TableCell>
+                    <TableCell>Project</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell>Readiness</TableCell>
                     <TableCell align="right">Pass Rate</TableCell>

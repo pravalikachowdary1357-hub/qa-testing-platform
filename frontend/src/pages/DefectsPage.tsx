@@ -264,7 +264,7 @@ export function DefectsPage() {
 
   const handleImport = async (file: File) => {
     if (!currentProduct) {
-      setSnackbar({ message: 'Select a product before importing defects.', severity: 'error' });
+      setSnackbar({ message: 'Select a project before importing defects.', severity: 'error' });
       return;
     }
     try {
@@ -416,7 +416,7 @@ export function DefectsPage() {
             <TableHead>
               <TableRow>
                 <TableCell>Title</TableCell>
-                <TableCell>Product</TableCell>
+                <TableCell>Project</TableCell>
                 <TableCell>Severity</TableCell>
                 <TableCell>Priority</TableCell>
                 <TableCell>Status</TableCell>

@@ -95,7 +95,7 @@ export function DashboardConfigTab() {
   return (
     <Paper variant="outlined" sx={{ p: 3 }}>
       <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-        Product testing dashboard
+        Project testing dashboard
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Choose which dashboard sections are shown. Metrics and KPI calculations are not changed.

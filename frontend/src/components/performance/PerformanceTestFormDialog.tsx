@@ -314,14 +314,14 @@ export function PerformanceTestFormDialog({
           {noProductsAvailable ? (
             <Alert severity="warning">
               {productsForbidden
-                ? "You don't have permission to view the product list, so a performance test can't be added from here. Ask a System Administrator to grant your role products:read."
-                : 'No products exist yet. Create a product before adding a performance test.'}
+                ? "You don't have permission to view the project list, so a performance test can't be added from here. Ask a System Administrator to grant your role products:read."
+                : 'No projects exist yet. Create a project before adding a performance test.'}
             </Alert>
           ) : (
             <>
               <TextField
                 select
-                label="Product"
+                label="Project"
                 required
                 fullWidth
                 value={values.productId}
@@ -341,7 +341,7 @@ export function PerformanceTestFormDialog({
                 value={values.environmentId}
                 helperText={
                   environmentsForProduct.length === 0
-                    ? 'No environments exist for this product yet.'
+                    ? 'No environments exist for this project yet.'
                     : 'Used to resolve a relative target URL via its base URL.'
                 }
                 onChange={(e) => setValues((prev) => ({ ...prev, environmentId: e.target.value }))}

@@ -239,7 +239,7 @@ export function TestCasesPage() {
 
   const handleImport = async (file: File) => {
     if (!currentProduct) {
-      setSnackbar({ message: 'Select a product before importing test cases.', severity: 'error' });
+      setSnackbar({ message: 'Select a project before importing test cases.', severity: 'error' });
       return;
     }
     try {

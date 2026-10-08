@@ -63,12 +63,12 @@ export function DuplicateDefectsTab() {
         <TextField
           select
           size="small"
-          label="Product"
+          label="Project"
           value={productId}
           onChange={(e) => setProductId(e.target.value)}
           sx={{ minWidth: 240 }}
         >
-          <MenuItem value="">Select a product…</MenuItem>
+          <MenuItem value="">Select a project…</MenuItem>
           {products.map((p) => (
             <MenuItem key={p.id} value={p.id}>
               {p.name}
