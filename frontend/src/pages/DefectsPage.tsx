@@ -28,6 +28,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
 import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { useReportHeader } from '../utils/useReportHeader';
+import { exportDefectReport } from '../utils/qmicsReport';
 import { ImportResultDialog } from '../components/common/ImportResultDialog';
 import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 import { DefectFormDialog } from '../components/defect/DefectFormDialog';
@@ -102,6 +104,7 @@ const ALL = 'ALL' as const;
 
 export function DefectsPage() {
   const { currentProduct } = useProductContext();
+  const reportHeader = useReportHeader('Defects');
   const [defects, setDefects] = useState<ApiDefect[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [releases, setReleases] = useState<ApiRelease[]>([]);
@@ -279,6 +282,30 @@ export function DefectsPage() {
     }
   };
 
+  // Defect numbers (DEF-001...) follow creation order across the whole project.
+  const handleExportReport = () => {
+    const idOf = new Map(
+      [...(defects ?? [])]
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+        .map((d, index) => [d.id, `DEF-${String(index + 1).padStart(3, '0')}`] as const),
+    );
+    exportDefectReport(
+      reportHeader,
+      visibleDefects.map((d) => ({
+        id: idOf.get(d.id) ?? '',
+        testCaseId: d.testCase?.title ?? '',
+        description: d.description ? `${d.title}\n${d.description}` : d.title,
+        defectType: '',
+        severity: SEVERITY_LABELS[d.severity],
+        engineerStatus: STATUS_LABELS[d.status],
+        engineerRemarks: d.assignedTo ? `Assigned to: ${d.assignedTo}` : '',
+        testerStatus: '',
+        testerRemarks: '',
+        closureDate: d.status === 'CLOSED' ? new Date(d.updatedAt).toLocaleDateString('en-GB') : '',
+      })),
+    );
+  };
+
   const handleExport = () => {
     exportToCsvWithAudit('Defect', 'defects.csv', visibleDefects, [
       { header: 'Title', value: (d) => d.title },
@@ -302,6 +329,7 @@ export function DefectsPage() {
             <ImportExportToolbar
               onImport={handleImport}
               onExport={handleExport}
+              onExportReport={handleExportReport}
               importDisabled={!currentProduct}
               exportDisabled={!defects || defects.length === 0}
               importLabel="Import Defects"

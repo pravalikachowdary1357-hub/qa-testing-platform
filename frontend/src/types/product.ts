@@ -25,6 +25,7 @@ export interface ApiProductOwnerRef {
 export interface ApiProductProjectRef {
   id: string;
   name: string;
+  code: string;
 }
 
 export interface ApiProduct {

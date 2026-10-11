@@ -32,6 +32,8 @@ import StarIcon from '@mui/icons-material/Star';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
 import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { useReportHeader } from '../utils/useReportHeader';
+import { exportListReport } from '../utils/qmicsReport';
 import { ImportResultDialog } from '../components/common/ImportResultDialog';
 import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 import { TestPlanFormDialog } from '../components/testplan/TestPlanFormDialog';
@@ -108,6 +110,7 @@ function formatDateRange(start: string | null, end: string | null): string {
 
 export function TestPlansPage() {
   const { currentProduct } = useProductContext();
+  const reportHeader = useReportHeader('Test Planning');
   const { hasPermission } = useAuth();
   const canApprove = hasPermission('test_plans:approve');
   const [reviewingPlan, setReviewingPlan] = useState<ApiTestPlan | null>(null);
@@ -287,6 +290,44 @@ export function TestPlansPage() {
     }
   };
 
+  const handleExportReport = () => {
+    exportListReport(reportHeader, {
+      title: 'Test Plan Report',
+      sheetName: 'Test Plans',
+      tableTitle: 'TEST PLAN DETAILS',
+      filenamePrefix: 'Test_Plan_Report',
+      entityType: 'TestPlan',
+      columns: [
+        { header: 'Test Plan', width: 28 },
+        { header: 'Description', width: 44 },
+        { header: 'Status', width: 13 },
+        { header: 'Priority', width: 11 },
+        { header: 'Owner', width: 18 },
+        { header: 'Start\nDate', width: 12 },
+        { header: 'End\nDate', width: 12 },
+        { header: 'Master\nPlan', width: 9 },
+        { header: 'Effort\n(hours)', width: 9 },
+        { header: 'Exit Criteria', width: 34 },
+        { header: 'Approved By', width: 18 },
+        { header: 'Completion\nSigned Off By', width: 18 },
+      ],
+      rows: visibleTestPlans.map((p) => [
+        p.name,
+        p.description,
+        STATUS_LABELS[p.status],
+        PRIORITY_LABELS[p.priority],
+        p.owner,
+        p.startDate ? new Date(p.startDate).toLocaleDateString('en-GB') : '',
+        p.endDate ? new Date(p.endDate).toLocaleDateString('en-GB') : '',
+        p.isMaster ? 'Yes' : 'No',
+        p.estimatedEffortHours ?? '',
+        p.exitCriteria ?? '',
+        p.status !== 'DRAFT' ? (p.reviewedBy?.name ?? '') : '',
+        p.completedBy?.name ?? '',
+      ]),
+    });
+  };
+
   const handleExport = () => {
     exportToCsvWithAudit('TestPlan', 'test-plans.csv', visibleTestPlans, [
       { header: 'Name', value: (p) => p.name },
@@ -315,6 +356,7 @@ export function TestPlansPage() {
             <ImportExportToolbar
               onImport={handleImport}
               onExport={handleExport}
+              onExportReport={handleExportReport}
               importDisabled={!currentProduct}
               exportDisabled={!testPlans || testPlans.length === 0}
               importLabel="Import Test Plans"

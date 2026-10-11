@@ -2,12 +2,16 @@ import { useRef } from 'react';
 import { Button, Stack } from '@mui/material';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
+import DescriptionIcon from '@mui/icons-material/Description';
 
 interface ImportExportToolbarProps {
   onImport?: (file: File) => void;
   onExport?: () => void;
+  // Downloads the branded QMICS Excel report (header, sign-off block, table).
+  onExportReport?: () => void;
   importDisabled?: boolean;
   exportDisabled?: boolean;
+  exportReportLabel?: string;
   importLabel?: string;
   exportLabel?: string;
 }
@@ -20,10 +24,12 @@ interface ImportExportToolbarProps {
 export function ImportExportToolbar({
   onImport,
   onExport,
+  onExportReport,
   importDisabled,
   exportDisabled,
   importLabel = 'Import CSV',
   exportLabel = 'Export CSV',
+  exportReportLabel = 'Export Report',
 }: ImportExportToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -62,6 +68,17 @@ export function ImportExportToolbar({
           onClick={onExport}
         >
           {exportLabel}
+        </Button>
+      )}
+      {onExportReport && (
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<DescriptionIcon fontSize="small" />}
+          disabled={exportDisabled}
+          onClick={onExportReport}
+        >
+          {exportReportLabel}
         </Button>
       )}
     </Stack>

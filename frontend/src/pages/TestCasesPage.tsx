@@ -29,6 +29,8 @@ import GavelIcon from '@mui/icons-material/Gavel';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
 import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { useReportHeader } from '../utils/useReportHeader';
+import { exportTestCaseReport } from '../utils/qmicsReport';
 import { ImportResultDialog } from '../components/common/ImportResultDialog';
 import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 import { TestCaseFormDialog } from '../components/testcase/TestCaseFormDialog';
@@ -87,6 +89,7 @@ const ALL = 'ALL' as const;
 
 export function TestCasesPage() {
   const { currentProduct } = useProductContext();
+  const reportHeader = useReportHeader('Test Cases');
   const [testCases, setTestCases] = useState<ApiTestCase[] | null>(null);
   const [testScenarios, setTestScenarios] = useState<ApiTestScenario[]>([]);
   const [releases, setReleases] = useState<ApiRelease[]>([]);
@@ -254,6 +257,31 @@ export function TestCasesPage() {
     }
   };
 
+  // IDs (TC-001...) follow creation order across the whole project so a test
+  // case keeps the same number whatever filter or sort is active.
+  const handleExportReport = () => {
+    const idOf = new Map(
+      [...(testCases ?? [])]
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+        .map((tc, index) => [tc.id, `TC-${String(index + 1).padStart(3, '0')}`] as const),
+    );
+    exportTestCaseReport(
+      reportHeader,
+      visibleTestCases.map((tc) => ({
+        id: idOf.get(tc.id) ?? '',
+        objective: tc.title,
+        preCondition: tc.preconditions ?? '',
+        steps: tc.steps.length > 0
+          ? [...tc.steps].sort((a, b) => a.stepNumber - b.stepNumber).map((step) => `${step.stepNumber}. ${step.action}`).join('\n')
+          : tc.description,
+        inputData: '',
+        expectedResult: tc.expectedResult,
+        actualResult: '',
+        remarks: `Scenario: ${tc.testScenario.title}\nPriority: ${PRIORITY_LABELS[tc.priority]} | Status: ${STATUS_LABELS[tc.status]}`,
+      })),
+    );
+  };
+
   const handleExport = () => {
     exportToCsvWithAudit('TestCase', 'test-cases.csv', visibleTestCases, [
       { header: 'Title', value: (tc) => tc.title },
@@ -276,6 +304,7 @@ export function TestCasesPage() {
             <ImportExportToolbar
               onImport={handleImport}
               onExport={handleExport}
+              onExportReport={handleExportReport}
               importDisabled={!currentProduct}
               exportDisabled={!testCases || testCases.length === 0}
               importLabel="Import Test Cases"

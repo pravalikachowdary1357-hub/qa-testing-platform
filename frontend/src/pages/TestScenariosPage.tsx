@@ -28,6 +28,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
 import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { useReportHeader } from '../utils/useReportHeader';
+import { exportListReport } from '../utils/qmicsReport';
 import { ImportResultDialog } from '../components/common/ImportResultDialog';
 import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 import { TestScenarioFormDialog } from '../components/testscenario/TestScenarioFormDialog';
@@ -96,6 +98,7 @@ const ALL = 'ALL' as const;
 
 export function TestScenariosPage() {
   const { currentProduct } = useProductContext();
+  const reportHeader = useReportHeader('Test Scenarios');
   const [scenarios, setScenarios] = useState<ApiTestScenario[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [requirements, setRequirements] = useState<ApiRequirement[]>([]);
@@ -277,6 +280,34 @@ export function TestScenariosPage() {
     }
   };
 
+  const handleExportReport = () => {
+    exportListReport(reportHeader, {
+      title: 'Test Scenario Report',
+      sheetName: 'Test Scenarios',
+      tableTitle: 'TEST SCENARIO DETAILS',
+      filenamePrefix: 'Test_Scenario_Report',
+      entityType: 'TestScenario',
+      columns: [
+        { header: 'Test Scenario', width: 32 },
+        { header: 'Description', width: 50 },
+        { header: 'Linked Requirement', width: 30 },
+        { header: 'Type', width: 14 },
+        { header: 'Priority', width: 11 },
+        { header: 'Status', width: 13 },
+        { header: 'Created', width: 12 },
+      ],
+      rows: visibleScenarios.map((s) => [
+        s.title,
+        s.description,
+        s.requirement?.title ?? '',
+        TYPE_LABELS[s.type],
+        PRIORITY_LABELS[s.priority],
+        STATUS_LABELS[s.status],
+        new Date(s.createdAt).toLocaleDateString('en-GB'),
+      ]),
+    });
+  };
+
   const handleExport = () => {
     exportToCsvWithAudit('TestScenario', 'test-scenarios.csv', visibleScenarios, [
       { header: 'Title', value: (s) => s.title },
@@ -298,6 +329,7 @@ export function TestScenariosPage() {
             <ImportExportToolbar
               onImport={handleImport}
               onExport={handleExport}
+              onExportReport={handleExportReport}
               importDisabled={!currentProduct}
               exportDisabled={visibleScenarios.length === 0}
               importLabel="Import Test Scenarios"

@@ -28,6 +28,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
 import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { useReportHeader } from '../utils/useReportHeader';
+import { exportListReport } from '../utils/qmicsReport';
 import { ImportResultDialog } from '../components/common/ImportResultDialog';
 import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 import { RequirementFormDialog } from '../components/requirement/RequirementFormDialog';
@@ -120,6 +122,7 @@ export function RequirementsPage() {
   const canWrite = hasPermission('requirements:write');
   const canDelete = hasPermission('requirements:manage');
   const { currentProduct } = useProductContext();
+  const reportHeader = useReportHeader('Requirements');
   const [requirements, setRequirements] = useState<ApiRequirement[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [releases, setReleases] = useState<ApiRelease[]>([]);
@@ -321,6 +324,42 @@ export function RequirementsPage() {
     }
   };
 
+  const handleExportReport = () => {
+    exportListReport(reportHeader, {
+      title: 'Requirements Report',
+      sheetName: 'Requirements',
+      tableTitle: 'REQUIREMENT DETAILS',
+      filenamePrefix: 'Requirements_Report',
+      entityType: 'Requirement',
+      columns: [
+        { header: 'Requirement\nID', width: 14 },
+        { header: 'Title', width: 30 },
+        { header: 'Description', width: 50 },
+        { header: 'Type', width: 14 },
+        { header: 'Priority', width: 11 },
+        { header: 'Risk', width: 11 },
+        { header: 'Owner', width: 18 },
+        { header: 'Status', width: 13 },
+        { header: 'Release', width: 16 },
+        { header: 'Version', width: 9 },
+        { header: 'Updated', width: 12 },
+      ],
+      rows: visibleRequirements.map((r) => [
+        r.code,
+        r.title,
+        r.description,
+        TYPE_LABELS[r.type],
+        PRIORITY_LABELS[r.priority],
+        RISK_LABELS[r.riskLevel],
+        r.owner?.name ?? '',
+        STATUS_LABELS[r.status],
+        r.release ? `${r.release.name} (${r.release.version})` : '',
+        r.version,
+        new Date(r.updatedAt).toLocaleDateString('en-GB'),
+      ]),
+    });
+  };
+
   const handleExport = () => {
     exportToCsvWithAudit('Requirement', 'requirements.csv', visibleRequirements, [
       { header: 'Requirement ID', value: (r) => r.code },
@@ -352,6 +391,7 @@ export function RequirementsPage() {
             <ImportExportToolbar
               onImport={canWrite ? handleImport : undefined}
               onExport={handleExport}
+              onExportReport={handleExportReport}
               importDisabled={!currentProduct}
               exportDisabled={!requirements || requirements.length === 0}
               importLabel="Import Requirements"

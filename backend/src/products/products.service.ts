@@ -48,7 +48,7 @@ function bucketByWeek(
 }
 
 const ORGANIZATION_REF_SELECT = { select: { id: true, name: true } };
-const PROJECT_REF_SELECT = { select: { id: true, name: true } };
+const PROJECT_REF_SELECT = { select: { id: true, name: true, code: true } };
 const PRODUCT_OWNER_SELECT = { select: { id: true, name: true, email: true } };
 const PRODUCT_INCLUDE = {
   organization: ORGANIZATION_REF_SELECT,
