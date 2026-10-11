@@ -51,6 +51,8 @@ interface ProjectFormDialogProps {
   // one included) have no permission to do anyway.
   organizationsForbidden?: boolean;
   initialValues?: ProjectFormValues;
+  // Read-only ID shown at the top: the next ID on create, the real one on edit.
+  displayCode?: string;
   onClose: () => void;
   onSubmit: (data: CreateProjectPayload) => Promise<void>;
 }
@@ -61,6 +63,7 @@ export function ProjectFormDialog({
   organizations,
   organizationsForbidden = false,
   initialValues,
+  displayCode,
   onClose,
   onSubmit,
 }: ProjectFormDialogProps) {
@@ -142,6 +145,16 @@ export function ProjectFormDialog({
       <DialogTitle>{mode === 'create' ? 'Create Project' : 'Edit Project'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
+          {displayCode && (
+            <TextField
+              label="Project ID"
+              value={displayCode}
+              disabled
+              fullWidth
+              size="small"
+              helperText={mode === 'create' ? 'Assigned automatically when you save' : undefined}
+            />
+          )}
           {submitError && <Alert severity="error">{submitError}</Alert>}
 
           {noOrganizationsAvailable ? (

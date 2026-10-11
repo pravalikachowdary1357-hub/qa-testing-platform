@@ -101,6 +101,8 @@ interface RequirementFormDialogProps {
   users: ApiUser[];
   currentProductId?: string;
   initialValues?: RequirementFormValues;
+  // Read-only ID shown at the top: the next ID on create, the real one on edit.
+  displayCode?: string;
   onClose: () => void;
   onSubmit: (data: CreateRequirementPayload) => Promise<void>;
 }
@@ -113,6 +115,7 @@ export function RequirementFormDialog({
   releases,
   currentProductId,
   initialValues,
+  displayCode,
   onClose,
   onSubmit,
 }: RequirementFormDialogProps) {
@@ -215,6 +218,16 @@ export function RequirementFormDialog({
       <DialogTitle>{mode === 'create' ? 'Create Requirement' : 'Edit Requirement'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
+          {displayCode && (
+            <TextField
+              label="Requirement ID"
+              value={displayCode}
+              disabled
+              fullWidth
+              size="small"
+              helperText={mode === 'create' ? 'Assigned automatically when you save' : undefined}
+            />
+          )}
           {submitError && <Alert severity="error">{submitError}</Alert>}
 
           {noProductsAvailable ? (

@@ -78,6 +78,13 @@ const PRODUCT_STATUS_LABELS: Record<ApiProductStatus, ProductStatus> = {
 
 const ALL = 'ALL' as const;
 
+// Next sequential ID for the create form (PRJ-004 after PRJ-003). The server
+// assigns the real ID on save; this is only the preview shown in the dialog.
+function nextCode(prefix: string, codes: string[]): string {
+  const max = codes.reduce((m, c) => Math.max(m, Number.parseInt(c.slice(prefix.length + 1), 10) || 0), 0);
+  return `${prefix}-${String(max + 1).padStart(3, '0')}`;
+}
+
 export function ProjectsPage() {
   const [projects, setProjects] = useState<ApiProject[] | null>(null);
   const [organizations, setOrganizations] = useState<ApiOrganization[]>([]);
@@ -545,6 +552,11 @@ export function ProjectsPage() {
       <ProjectFormDialog
         open={formMode !== null}
         mode={formMode ?? 'create'}
+        displayCode={
+          formMode === 'edit' && editingProject
+            ? editingProject.code
+            : nextCode('PRJ', (projects ?? []).map((p) => p.code))
+        }
         organizations={organizations}
         organizationsForbidden={organizationsForbidden}
         initialValues={

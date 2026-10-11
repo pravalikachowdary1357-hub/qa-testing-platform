@@ -105,6 +105,13 @@ type SortOption = 'newest' | 'oldest' | 'priority' | 'title';
 
 const ALL = 'ALL' as const;
 
+// Next sequential ID for the create form (PRJ-004 after PRJ-003). The server
+// assigns the real ID on save; this is only the preview shown in the dialog.
+function nextCode(prefix: string, codes: string[]): string {
+  const max = codes.reduce((m, c) => Math.max(m, Number.parseInt(c.slice(prefix.length + 1), 10) || 0), 0);
+  return `${prefix}-${String(max + 1).padStart(3, '0')}`;
+}
+
 export function RequirementsPage() {
   // Per the Roles & Responsibilities document, only some roles author requirements
   // (e.g. Product Owner); Test Manager reviews/approves them. Hide the actions the
@@ -615,6 +622,11 @@ export function RequirementsPage() {
       <RequirementFormDialog
         open={formMode !== null}
         mode={formMode ?? 'create'}
+        displayCode={
+          formMode === 'edit' && editingRequirement
+            ? editingRequirement.code
+            : nextCode('REQ', (requirements ?? []).map((r) => r.code))
+        }
         products={products}
         productsForbidden={productsForbidden}
         releases={releases}
