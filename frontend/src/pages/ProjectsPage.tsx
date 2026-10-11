@@ -518,7 +518,6 @@ export function ProjectsPage() {
                                 <TableCell>Product</TableCell>
                                 <TableCell>Key</TableCell>
                                 <TableCell>Status</TableCell>
-                                <TableCell>Release</TableCell>
                                 <TableCell align="right">Actions</TableCell>
                               </TableRow>
                             </TableHead>
@@ -530,7 +529,6 @@ export function ProjectsPage() {
                                   <TableCell>
                                     <StatusChip status={PRODUCT_STATUS_LABELS[product.status]} />
                                   </TableCell>
-                                  <TableCell>{product.release}</TableCell>
                                   <TableCell align="right">
                                     <Tooltip title="View">
                                       <IconButton

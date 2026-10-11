@@ -180,16 +180,6 @@ export function UatCycleDetailDialog({
               )}
             </Box>
 
-            {cycle.release && (
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Release
-                </Typography>
-                <Typography variant="body2">
-                  {cycle.release.name} ({cycle.release.version})
-                </Typography>
-              </Box>
-            )}
 
             <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
               <Typography variant="subtitle2" color="text.secondary">

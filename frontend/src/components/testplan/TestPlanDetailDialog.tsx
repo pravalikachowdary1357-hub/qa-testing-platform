@@ -118,16 +118,6 @@ export function TestPlanDetailDialog({ testPlanId, onClose }: TestPlanDetailDial
               </Typography>
             </Box>
 
-            {testPlan.release && (
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Release
-                </Typography>
-                <Typography variant="body2">
-                  {testPlan.release.name} ({testPlan.release.version})
-                </Typography>
-              </Box>
-            )}
 
             <Stack direction="row" spacing={4}>
               <Box>

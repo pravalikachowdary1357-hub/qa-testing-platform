@@ -138,7 +138,6 @@ export function RequirementsPage() {
   const [riskFilter, setRiskFilter] = useState<ApiRequirementRisk | typeof ALL>(ALL);
   const [typeFilter, setTypeFilter] = useState<ApiRequirementType | typeof ALL>(ALL);
   const [ownerFilter, setOwnerFilter] = useState<string | typeof ALL>(ALL);
-  const [releaseFilter, setReleaseFilter] = useState<string | typeof ALL>(ALL);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
 
   const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
@@ -226,7 +225,6 @@ export function RequirementsPage() {
       if (riskFilter !== ALL && requirement.riskLevel !== riskFilter) return false;
       if (typeFilter !== ALL && requirement.type !== typeFilter) return false;
       if (ownerFilter !== ALL && requirement.ownerId !== ownerFilter) return false;
-      if (releaseFilter !== ALL && requirement.releaseId !== releaseFilter) return false;
       return true;
     });
 
@@ -254,7 +252,6 @@ export function RequirementsPage() {
     riskFilter,
     typeFilter,
     ownerFilter,
-    releaseFilter,
     sortBy,
   ]);
 
@@ -265,8 +262,7 @@ export function RequirementsPage() {
     priorityFilter !== ALL ||
     riskFilter !== ALL ||
     typeFilter !== ALL ||
-    ownerFilter !== ALL ||
-    releaseFilter !== ALL;
+    ownerFilter !== ALL;
 
   const handleCreateSubmit = async (data: CreateRequirementPayload) => {
     await createRequirement(data);
@@ -340,7 +336,6 @@ export function RequirementsPage() {
         { header: 'Risk', width: 11 },
         { header: 'Owner', width: 18 },
         { header: 'Status', width: 13 },
-        { header: 'Release', width: 16 },
         { header: 'Version', width: 9 },
         { header: 'Updated', width: 12 },
       ],
@@ -353,7 +348,6 @@ export function RequirementsPage() {
         RISK_LABELS[r.riskLevel],
         r.owner?.name ?? '',
         STATUS_LABELS[r.status],
-        r.release ? `${r.release.name} (${r.release.version})` : '',
         r.version,
         new Date(r.updatedAt).toLocaleDateString('en-GB'),
       ]),
@@ -372,7 +366,6 @@ export function RequirementsPage() {
       { header: 'Owner', value: (r) => r.owner?.name ?? '' },
       { header: 'Version', value: (r) => r.version },
       { header: 'Status', value: (r) => STATUS_LABELS[r.status] },
-      { header: 'Release', value: (r) => (r.release ? `${r.release.name} (${r.release.version})` : '') },
       {
         header: 'Acceptance Criteria',
         value: (r) => (r.acceptanceCriteria ?? []).map((c) => c.text).join('; '),
@@ -507,21 +500,6 @@ export function RequirementsPage() {
           <TextField
             select
             size="small"
-            label="Release"
-            value={releaseFilter}
-            onChange={(e) => setReleaseFilter(e.target.value)}
-            sx={{ width: { xs: '100%', sm: 160 } }}
-          >
-            <MenuItem value={ALL}>All Releases</MenuItem>
-            {releases.map((release) => (
-              <MenuItem key={release.id} value={release.id}>
-                {release.name} ({release.version})
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select
-            size="small"
             label="Sort by"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortOption)}
@@ -579,7 +557,6 @@ export function RequirementsPage() {
                 <TableCell>Risk</TableCell>
                 <TableCell>Owner</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell>Release</TableCell>
                 <TableCell>Updated</TableCell>
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
@@ -612,11 +589,6 @@ export function RequirementsPage() {
                   </TableCell>
                   <TableCell>
                     <StatusChip status={STATUS_LABELS[requirement.status]} />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {requirement.release ? requirement.release.name : '—'}
-                    </Typography>
                   </TableCell>
                   <TableCell>{new Date(requirement.updatedAt).toLocaleDateString()}</TableCell>
                   <TableCell align="right">

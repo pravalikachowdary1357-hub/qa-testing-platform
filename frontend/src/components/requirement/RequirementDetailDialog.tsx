@@ -230,16 +230,6 @@ export function RequirementDetailDialog({
                     : '—'}
                 </Typography>
               </Box>
-              {requirement.release && (
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Release
-                  </Typography>
-                  <Typography variant="body2">
-                    {requirement.release.name} ({requirement.release.version})
-                  </Typography>
-                </Box>
-              )}
             </Stack>
 
             <Divider />

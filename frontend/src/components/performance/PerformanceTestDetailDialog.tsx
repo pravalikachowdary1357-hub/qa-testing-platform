@@ -213,16 +213,6 @@ export function PerformanceTestDetailDialog({
               )}
             </Box>
 
-            {test.release && (
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Release
-                </Typography>
-                <Typography variant="body2">
-                  {test.release.name} ({test.release.version})
-                </Typography>
-              </Box>
-            )}
 
             <Box>
               <Typography variant="subtitle2" color="text.secondary">

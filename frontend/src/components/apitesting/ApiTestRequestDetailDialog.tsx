@@ -328,16 +328,6 @@ export function ApiTestRequestDetailDialog({
               </Paper>
             )}
 
-            {request.release && (
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Release
-                </Typography>
-                <Typography variant="body2">
-                  {request.release.name} ({request.release.version})
-                </Typography>
-              </Box>
-            )}
 
             <Stack direction="row" spacing={4}>
               <Box>

@@ -159,7 +159,7 @@ export function TestPlanSummaryReportDialog({
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 {plan.product.name}
-                {plan.release ? ` · ${plan.release.name} (${plan.release.version})` : ''} · Owner{' '}
+                {' '}· Owner{' '}
                 {plan.owner} · Status {pretty(plan.status)} · Generated{' '}
                 {new Date(report.generatedAt).toLocaleString()}
               </Typography>

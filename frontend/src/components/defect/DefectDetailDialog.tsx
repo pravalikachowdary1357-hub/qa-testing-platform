@@ -120,16 +120,6 @@ export function DefectDetailDialog({ defectId, onClose }: DefectDetailDialogProp
               </Typography>
             </Box>
 
-            {defect.release && (
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Release
-                </Typography>
-                <Typography variant="body2">
-                  {defect.release.name} ({defect.release.version})
-                </Typography>
-              </Box>
-            )}
 
             <Stack direction="row" spacing={4}>
               <Box>

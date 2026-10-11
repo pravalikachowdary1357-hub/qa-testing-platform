@@ -120,7 +120,6 @@ export function ProductFormDialog({
   const [productKeyError, setProductKeyError] = useState<string | null>(null);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [environmentError, setEnvironmentError] = useState<string | null>(null);
-  const [releaseError, setReleaseError] = useState<string | null>(null);
   const [applicationUrlError, setApplicationUrlError] = useState<string | null>(null);
   const [repositoryUrlError, setRepositoryUrlError] = useState<string | null>(null);
   const [testCoverageError, setTestCoverageError] = useState<string | null>(null);
@@ -135,7 +134,6 @@ export function ProductFormDialog({
       setProductKeyError(null);
       setDescriptionError(null);
       setEnvironmentError(null);
-      setReleaseError(null);
       setApplicationUrlError(null);
       setRepositoryUrlError(null);
       setTestCoverageError(null);
@@ -189,10 +187,6 @@ export function ProductFormDialog({
       setEnvironmentError('Environment is required.');
       hasError = true;
     }
-    if (!trimmedRelease) {
-      setReleaseError('Release is required.');
-      hasError = true;
-    }
     if (!isValidOptionalUrl(values.applicationUrl)) {
       setApplicationUrlError('Enter a valid URL (e.g. https://app.example.com).');
       hasError = true;
@@ -223,7 +217,8 @@ export function ProductFormDialog({
         description: trimmedDescription,
         status: values.status,
         environment: trimmedEnvironment,
-        release: trimmedRelease,
+        // Release is no longer asked for; keep an existing value, default for new projects.
+        release: trimmedRelease || '1.0',
         applicationUrl: values.applicationUrl.trim() || undefined,
         repositoryUrl: values.repositoryUrl.trim() || undefined,
         productOwnerId: values.productOwnerId || undefined,
@@ -341,19 +336,6 @@ export function ProductFormDialog({
                   onChange={(e) => {
                     setValues((prev) => ({ ...prev, environment: e.target.value }));
                     if (environmentError) setEnvironmentError(null);
-                  }}
-                />
-                <TextField
-                  label="Release"
-                  required
-                  fullWidth
-                  placeholder="e.g. 2.4.0"
-                  value={values.release}
-                  error={Boolean(releaseError)}
-                  helperText={releaseError ?? ' '}
-                  onChange={(e) => {
-                    setValues((prev) => ({ ...prev, release: e.target.value }));
-                    if (releaseError) setReleaseError(null);
                   }}
                 />
               </Stack>

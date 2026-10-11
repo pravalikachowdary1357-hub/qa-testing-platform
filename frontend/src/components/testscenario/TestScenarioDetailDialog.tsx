@@ -138,16 +138,6 @@ export function TestScenarioDetailDialog({
               </Typography>
             </Box>
 
-            {scenario.release && (
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Release
-                </Typography>
-                <Typography variant="body2">
-                  {scenario.release.name} ({scenario.release.version})
-                </Typography>
-              </Box>
-            )}
 
             <Stack direction="row" spacing={4}>
               <Box>
