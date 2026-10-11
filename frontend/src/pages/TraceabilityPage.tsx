@@ -40,6 +40,8 @@ import { PageHeader } from '../components/common/PageHeader';
 import { SummaryCard } from '../components/common/SummaryCard';
 import { StatusChip } from '../components/common/StatusChip';
 import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { useReportHeader } from '../utils/useReportHeader';
+import { exportColumnsReport } from '../utils/qmicsReport';
 import { TestScenarioDetailDialog } from '../components/testscenario/TestScenarioDetailDialog';
 import { TestCaseDetailDialog } from '../components/testcase/TestCaseDetailDialog';
 import { TestExecutionDetailDialog } from '../components/testexecution/TestExecutionDetailDialog';
@@ -85,6 +87,7 @@ const ALL = 'ALL' as const;
 
 export function TraceabilityPage() {
   const { currentProduct } = useProductContext();
+  const reportHeader = useReportHeader('Traceability');
   const [matrix, setMatrix] = useState<TraceabilityMatrix | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -200,10 +203,42 @@ export function TraceabilityPage() {
     ]);
   };
 
+  const handleExportMatrixReport = () => {
+    exportColumnsReport(
+      reportHeader,
+      { title: 'Requirements Traceability Matrix Report', sheetName: 'Traceability Matrix', tableTitle: 'TRACEABILITY MATRIX', filenamePrefix: 'Traceability_Matrix_Report', entityType: 'TraceabilityMatrix' },
+      visibleRequirements,
+      [
+      { header: 'Project', value: (r) => r.product.name },
+      { header: 'Requirement', value: (r) => r.title },
+      { header: 'Priority', value: (r) => PRIORITY_LABELS[r.priority] },
+      { header: 'Scenario Count', value: (r) => r.testScenarioCount },
+      { header: 'Test Case Count', value: (r) => r.testCaseCount },
+      { header: 'Coverage %', value: (r) => r.coveragePercent },
+      { header: 'Coverage Status', value: (r) => COVERAGE_STATUS_LABELS[r.coverageStatus] },
+      { header: 'Defect Count', value: (r) => r.defectCount },
+    ],
+    );
+  };
+
   const handleExportOrphanTestCases = () => {
     exportToCsvWithAudit(
       'TraceabilityOrphanTestCase',
       'traceability-orphan-test-cases.csv',
+      visibleOrphanTestCases,
+      [
+        { header: 'Test Case', value: (tc) => tc.title },
+        { header: 'Test Scenario', value: (tc) => tc.testScenario.title },
+        { header: 'Requirement', value: (tc) => tc.requirement?.title ?? '' },
+        { header: 'Project', value: (tc) => tc.product.name },
+      ],
+    );
+  };
+
+  const handleExportOrphanTestCasesReport = () => {
+    exportColumnsReport(
+      reportHeader,
+      { title: 'Orphan Test Cases Report', sheetName: 'Orphan Test Cases', tableTitle: 'TEST CASES WITHOUT REQUIREMENT TRACE', filenamePrefix: 'Orphan_Test_Cases_Report', entityType: 'TraceabilityOrphanTestCase' },
       visibleOrphanTestCases,
       [
         { header: 'Test Case', value: (tc) => tc.title },
@@ -223,11 +258,13 @@ export function TraceabilityPage() {
           <Stack direction="row" spacing={1}>
             <ImportExportToolbar
               onExport={handleExportMatrix}
+              onExportReport={handleExportMatrixReport}
               exportDisabled={!matrix || visibleRequirements.length === 0}
               exportLabel="Export Coverage"
             />
             <ImportExportToolbar
               onExport={handleExportOrphanTestCases}
+              onExportReport={handleExportOrphanTestCasesReport}
               exportDisabled={!matrix || visibleOrphanTestCases.length === 0}
               exportLabel="Export Orphan Test Cases"
             />

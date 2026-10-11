@@ -29,6 +29,8 @@ import GavelIcon from '@mui/icons-material/Gavel';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
 import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { useReportHeader } from '../utils/useReportHeader';
+import { exportColumnsReport } from '../utils/qmicsReport';
 import { UatCycleFormDialog, uatCycleToFormValues } from '../components/uat/UatCycleFormDialog';
 import type { UatCycleFormValues } from '../components/uat/UatCycleFormDialog';
 import { UatCycleDetailDialog } from '../components/uat/UatCycleDetailDialog';
@@ -90,6 +92,7 @@ function SummaryCard({ label, value }: { label: string; value: number }) {
 
 export function UatPage() {
   const { currentProduct } = useProductContext();
+  const reportHeader = useReportHeader('UAT');
   const [cycles, setCycles] = useState<UatCycleListItem[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [releases, setReleases] = useState<ApiRelease[]>([]);
@@ -286,6 +289,23 @@ export function UatPage() {
     ]);
   };
 
+  const handleExportReport = () => {
+    exportColumnsReport(
+      reportHeader,
+      { title: 'UAT Cycle Report', sheetName: 'UAT Cycles', tableTitle: 'UAT CYCLE DETAILS', filenamePrefix: 'UAT_Report', entityType: 'UatCycle' },
+      visibleCycles,
+      [
+      { header: 'Name', value: (c) => c.name },
+      { header: 'Status', value: (c) => CYCLE_STATUS_LABELS[c.status] },
+      { header: 'Sign-off By', value: (c) => c.signOffBy },
+      {
+        header: 'Sign-off At',
+        value: (c) => (c.signOffAt ? new Date(c.signOffAt).toLocaleDateString() : ''),
+      },
+    ],
+    );
+  };
+
   return (
     <>
       <PageHeader
@@ -295,6 +315,7 @@ export function UatPage() {
           <Stack direction="row" spacing={1}>
             <ImportExportToolbar
               onExport={handleExport}
+              onExportReport={handleExportReport}
               exportDisabled={!cycles || cycles.length === 0}
               exportLabel="Export UAT Cycles"
             />

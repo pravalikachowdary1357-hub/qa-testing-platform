@@ -30,6 +30,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
 import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { useReportHeader } from '../utils/useReportHeader';
+import { exportColumnsReport } from '../utils/qmicsReport';
 import { exportToCsvWithAudit } from '../utils/csvExport';
 import {
   ApiTestRequestFormDialog,
@@ -90,6 +92,7 @@ function lastResultLabel(item: ApiTestRequestListItem): string | null {
 
 export function ApiTestingPage() {
   const { currentProduct } = useProductContext();
+  const reportHeader = useReportHeader('API Testing');
   const [requests, setRequests] = useState<ApiTestRequestListItem[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [environments, setEnvironments] = useState<ApiEnvironment[]>([]);
@@ -244,6 +247,22 @@ export function ApiTestingPage() {
     ]);
   };
 
+  const handleExportReport = () => {
+    exportColumnsReport(
+      reportHeader,
+      { title: 'API Test Report', sheetName: 'API Tests', tableTitle: 'API TEST DETAILS', filenamePrefix: 'API_Test_Report', entityType: 'ApiTestRequest' },
+      visibleRequests,
+      [
+      { header: 'Name', value: (r) => r.name },
+      { header: 'Method', value: (r) => r.method },
+      { header: 'URL', value: (r) => r.url },
+      { header: 'Auth Type', value: (r) => AUTH_TYPE_LABELS[r.authType] ?? r.authType },
+      { header: 'Expected Status', value: (r) => r.expectedStatus },
+      { header: 'Created', value: (r) => new Date(r.createdAt).toLocaleDateString() },
+    ],
+    );
+  };
+
   const handleEditClick = async (item: ApiTestRequestListItem) => {
     try {
       // The list view deliberately omits `authConfig`, so the full detail
@@ -272,6 +291,7 @@ export function ApiTestingPage() {
           <Stack direction="row" spacing={1}>
             <ImportExportToolbar
               onExport={handleExport}
+              onExportReport={handleExportReport}
               exportDisabled={!requests || requests.length === 0}
               exportLabel="Export API Tests"
             />

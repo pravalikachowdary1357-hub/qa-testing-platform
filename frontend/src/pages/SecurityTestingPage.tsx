@@ -28,6 +28,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
 import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { useReportHeader } from '../utils/useReportHeader';
+import { exportColumnsReport } from '../utils/qmicsReport';
 import {
   SecurityTestFormDialog,
   securityTestToFormValues,
@@ -109,6 +111,7 @@ function SummaryCard({
 
 export function SecurityTestingPage() {
   const { currentProduct } = useProductContext();
+  const reportHeader = useReportHeader('Security Testing');
   const [tests, setTests] = useState<SecurityTestListItem[] | null>(null);
   const [summary, setSummary] = useState<SecurityFindingSummary | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
@@ -291,6 +294,24 @@ export function SecurityTestingPage() {
     ]);
   };
 
+  const handleExportReport = () => {
+    exportColumnsReport(
+      reportHeader,
+      { title: 'Security Test Report', sheetName: 'Security Tests', tableTitle: 'SECURITY TEST DETAILS', filenamePrefix: 'Security_Test_Report', entityType: 'SecurityTest' },
+      visibleTests,
+      [
+      { header: 'Name', value: (t) => t.name },
+      { header: 'Target', value: (t) => t.target },
+      { header: 'Test Type', value: (t) => TEST_TYPE_LABELS[t.testType] },
+      { header: 'Status', value: (t) => TEST_STATUS_LABELS[t.status] },
+      {
+        header: 'Last Executed At',
+        value: (t) => (t.lastExecutedAt ? new Date(t.lastExecutedAt).toLocaleString() : ''),
+      },
+    ],
+    );
+  };
+
   return (
     <>
       <PageHeader
@@ -300,6 +321,7 @@ export function SecurityTestingPage() {
           <Stack direction="row" spacing={1}>
             <ImportExportToolbar
               onExport={handleExport}
+              onExportReport={handleExportReport}
               exportDisabled={!tests || tests.length === 0}
               exportLabel="Export Security Tests"
             />

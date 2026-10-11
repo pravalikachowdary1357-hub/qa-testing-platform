@@ -29,6 +29,8 @@ import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
 import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { useReportHeader } from '../utils/useReportHeader';
+import { exportColumnsReport } from '../utils/qmicsReport';
 import { AutomationFormDialog } from '../components/automation/AutomationFormDialog';
 import { AutomationDetailDialog } from '../components/automation/AutomationDetailDialog';
 import { DeleteAutomationDialog } from '../components/automation/DeleteAutomationDialog';
@@ -94,6 +96,7 @@ const ALL = 'ALL' as const;
 
 export function AutomationPage() {
   const { currentProduct } = useProductContext();
+  const reportHeader = useReportHeader('Automation');
   const [automations, setAutomations] = useState<ApiAutomationListItem[] | null>(null);
   const [testCases, setTestCases] = useState<ApiTestCase[]>([]);
   const [testScenarios, setTestScenarios] = useState<ApiTestScenario[]>([]);
@@ -276,6 +279,26 @@ export function AutomationPage() {
     ]);
   };
 
+  const handleExportReport = () => {
+    exportColumnsReport(
+      reportHeader,
+      { title: 'Automation Report', sheetName: 'Automation', tableTitle: 'AUTOMATION DETAILS', filenamePrefix: 'Automation_Report', entityType: 'Automation' },
+      visibleAutomations,
+      [
+      { header: 'Name', value: (a) => a.name },
+      { header: 'Test Case', value: (a) => a.testCase.title },
+      { header: 'Type', value: (a) => TYPE_LABELS[a.type] },
+      { header: 'Framework', value: (a) => FRAMEWORK_LABELS[a.framework] },
+      { header: 'Enabled', value: (a) => (a.enabled ? 'Yes' : 'No') },
+      { header: 'Last Run Status', value: (a) => RUN_STATUS_LABELS[a.lastRunStatus] },
+      {
+        header: 'Last Run At',
+        value: (a) => (a.lastRunAt ? new Date(a.lastRunAt).toLocaleString() : ''),
+      },
+    ],
+    );
+  };
+
   return (
     <>
       <PageHeader
@@ -285,6 +308,7 @@ export function AutomationPage() {
           <Stack direction="row" spacing={1}>
             <ImportExportToolbar
               onExport={handleExport}
+              onExportReport={handleExportReport}
               exportDisabled={!automations || automations.length === 0}
               exportLabel="Export Automations"
             />

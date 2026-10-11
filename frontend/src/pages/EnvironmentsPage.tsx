@@ -28,6 +28,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
 import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { useReportHeader } from '../utils/useReportHeader';
+import { exportColumnsReport } from '../utils/qmicsReport';
 import { ImportResultDialog } from '../components/common/ImportResultDialog';
 import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 import { EnvironmentFormDialog } from '../components/environment/EnvironmentFormDialog';
@@ -74,6 +76,7 @@ const ALL = 'ALL' as const;
 
 export function EnvironmentsPage() {
   const { currentProduct } = useProductContext();
+  const reportHeader = useReportHeader('Environments');
   const [environments, setEnvironments] = useState<ApiEnvironment[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -218,6 +221,22 @@ export function EnvironmentsPage() {
     ]);
   };
 
+  const handleExportReport = () => {
+    exportColumnsReport(
+      reportHeader,
+      { title: 'Environment Report', sheetName: 'Environments', tableTitle: 'ENVIRONMENT DETAILS', filenamePrefix: 'Environment_Report', entityType: 'Environment' },
+      visibleEnvironments,
+      [
+      { header: 'Name', value: (e) => e.name },
+      { header: 'Type', value: (e) => TYPE_LABELS[e.type] },
+      { header: 'Status', value: (e) => STATUS_LABELS[e.status] },
+      { header: 'Base URL', value: (e) => e.baseUrl ?? '' },
+      { header: 'Description', value: (e) => e.description ?? '' },
+      { header: 'Created', value: (e) => new Date(e.createdAt).toLocaleDateString() },
+    ],
+    );
+  };
+
   return (
     <>
       <PageHeader
@@ -228,6 +247,7 @@ export function EnvironmentsPage() {
             <ImportExportToolbar
               onImport={handleImport}
               onExport={handleExport}
+              onExportReport={handleExportReport}
               importDisabled={!currentProduct}
               exportDisabled={!environments || environments.length === 0}
               importLabel="Import Environments"

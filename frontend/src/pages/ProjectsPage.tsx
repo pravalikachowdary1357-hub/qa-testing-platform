@@ -31,6 +31,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
 import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { useReportHeader } from '../utils/useReportHeader';
+import { exportColumnsReport } from '../utils/qmicsReport';
 import { ImportResultDialog } from '../components/common/ImportResultDialog';
 import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 import { ProjectFormDialog } from '../components/project/ProjectFormDialog';
@@ -86,6 +88,7 @@ function nextCode(prefix: string, codes: string[]): string {
 }
 
 export function ProjectsPage() {
+  const reportHeader = { ...useReportHeader('Projects'), projectName: 'All Projects', projectId: '' };
   const [projects, setProjects] = useState<ApiProject[] | null>(null);
   const [organizations, setOrganizations] = useState<ApiOrganization[]>([]);
   // True when fetchOrganizations() came back 403 rather than an empty list --
@@ -266,6 +269,22 @@ export function ProjectsPage() {
     ]);
   };
 
+  const handleExportReport = () => {
+    exportColumnsReport(
+      reportHeader,
+      { title: 'Project Report', sheetName: 'Projects', tableTitle: 'PROJECT DETAILS', filenamePrefix: 'Project_Report', entityType: 'Project' },
+      filteredProjects,
+      [
+      { header: 'Project ID', value: (p) => p.code },
+      { header: 'Project Name', value: (p) => p.name },
+      { header: 'Organization', value: (p) => p.organization.name },
+      { header: 'Description', value: (p) => p.description },
+      { header: 'Status', value: (p) => STATUS_LABELS[p.status] },
+      { header: 'Created', value: (p) => new Date(p.createdAt).toLocaleDateString() },
+    ],
+    );
+  };
+
   return (
     <>
       <PageHeader
@@ -276,6 +295,7 @@ export function ProjectsPage() {
             <ImportExportToolbar
               onImport={handleImport}
               onExport={handleExport}
+              onExportReport={handleExportReport}
               importDisabled={false}
               exportDisabled={!projects || projects.length === 0}
               importLabel="Import Projects"

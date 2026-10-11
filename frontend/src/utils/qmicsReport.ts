@@ -1,6 +1,7 @@
 import { logExportEvent } from '../api/auditLog';
 import { createSheet, downloadXlsx, mergeCells, setCell } from './xlsx';
 import type { CellStyle, CellValue } from './xlsx';
+import type { CsvColumn } from './csvExport';
 
 // QMICS-branded Excel reports. The Test Case and Defect layouts follow the
 // company's "Test Case Report" and "Defect Report" templates; every other
@@ -351,4 +352,32 @@ export function exportListReport(header: ReportHeader, spec: ListReportSpec): vo
   const filename = reportFilename(spec.filenamePrefix, header);
   downloadXlsx(filename, sheet);
   auditExport(spec.entityType, filename, spec.rows.length);
+}
+
+export interface ColumnsReportSpec {
+  title: string;
+  sheetName: string;
+  tableTitle: string;
+  filenamePrefix: string;
+  entityType: string;
+}
+
+// Turns a module's existing CSV column definitions into the QMICS report, so
+// every module exports the same branded layout with its own columns.
+export function exportColumnsReport<T>(
+  header: ReportHeader,
+  spec: ColumnsReportSpec,
+  rows: T[],
+  columns: CsvColumn<T>[],
+): void {
+  const text = (v: string | number | null | undefined): string | number =>
+    v === null || v === undefined ? '' : v;
+  const body = rows.map((row) => columns.map((column) => text(column.value(row))));
+  const sized = columns.map((column, index) => {
+    const sample = body.slice(0, 30).map((r) => String(r[index]).length);
+    const typical = sample.length ? Math.max(...sample) : 0;
+    const width = Math.min(48, Math.max(11, column.header.length + 3, Math.ceil(typical * 0.9)));
+    return { header: column.header, width };
+  });
+  exportListReport(header, { ...spec, columns: sized, rows: body });
 }

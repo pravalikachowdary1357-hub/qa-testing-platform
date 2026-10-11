@@ -28,6 +28,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
 import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { useReportHeader } from '../utils/useReportHeader';
+import { exportColumnsReport } from '../utils/qmicsReport';
 import { TestExecutionFormDialog } from '../components/testexecution/TestExecutionFormDialog';
 import { TestExecutionDetailDialog } from '../components/testexecution/TestExecutionDetailDialog';
 import { DeleteTestExecutionDialog } from '../components/testexecution/DeleteTestExecutionDialog';
@@ -76,6 +78,7 @@ const ALL = 'ALL' as const;
 
 export function TestExecutionsPage() {
   const { currentProduct } = useProductContext();
+  const reportHeader = useReportHeader('Test Execution');
   const [executions, setExecutions] = useState<ApiTestExecution[] | null>(null);
   const [testCases, setTestCases] = useState<ApiTestCase[]>([]);
   const [testScenarios, setTestScenarios] = useState<ApiTestScenario[]>([]);
@@ -241,6 +244,22 @@ export function TestExecutionsPage() {
     ]);
   };
 
+  const handleExportReport = () => {
+    exportColumnsReport(
+      reportHeader,
+      { title: 'Test Execution Report', sheetName: 'Test Executions', tableTitle: 'TEST EXECUTION DETAILS', filenamePrefix: 'Test_Execution_Report', entityType: 'TestExecution' },
+      visibleExecutions,
+      [
+      { header: 'Test Case', value: (e) => e.testCase.title },
+      { header: 'Environment', value: (e) => e.environment.name },
+      { header: 'Status', value: (e) => STATUS_LABELS[e.status] },
+      { header: 'Executed By', value: (e) => e.executedBy },
+      { header: 'Executed At', value: (e) => new Date(e.executedAt).toLocaleString() },
+      { header: 'Notes', value: (e) => e.notes ?? '' },
+    ],
+    );
+  };
+
   return (
     <>
       <PageHeader
@@ -250,6 +269,7 @@ export function TestExecutionsPage() {
           <Stack direction="row" spacing={1}>
             <ImportExportToolbar
               onExport={handleExport}
+              onExportReport={handleExportReport}
               exportDisabled={!executions || executions.length === 0}
               exportLabel="Export Test Executions"
             />

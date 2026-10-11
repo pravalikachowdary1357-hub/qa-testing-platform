@@ -36,6 +36,8 @@ import { PageHeader } from '../components/common/PageHeader';
 import { SummaryCard } from '../components/common/SummaryCard';
 import { StatusChip } from '../components/common/StatusChip';
 import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { useReportHeader } from '../utils/useReportHeader';
+import { exportColumnsReport } from '../utils/qmicsReport';
 import { ReleaseFormDialog, releaseToFormValues } from '../components/release/ReleaseFormDialog';
 import { ReleaseDetailDialog } from '../components/release/ReleaseDetailDialog';
 import { DeleteReleaseDialog } from '../components/release/DeleteReleaseDialog';
@@ -80,6 +82,7 @@ const ALL = 'ALL' as const;
 
 export function ReleaseQualityPage() {
   const { currentProduct } = useProductContext();
+  const reportHeader = useReportHeader('Release Quality');
   const [releases, setReleases] = useState<ApiRelease[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [environments, setEnvironments] = useState<ApiEnvironment[]>([]);
@@ -251,6 +254,24 @@ export function ReleaseQualityPage() {
     ]);
   };
 
+  const handleExportReport = () => {
+    exportColumnsReport(
+      reportHeader,
+      { title: 'Release Quality Report', sheetName: 'Releases', tableTitle: 'RELEASE DETAILS', filenamePrefix: 'Release_Quality_Report', entityType: 'Release' },
+      visibleReleases,
+      [
+      { header: 'Name', value: (r) => r.name },
+      { header: 'Version', value: (r) => r.version },
+      { header: 'Status', value: (r) => RELEASE_STATUS_LABELS[r.status] },
+      {
+        header: 'Release Date',
+        value: (r) => (r.releaseDate ? new Date(r.releaseDate).toLocaleDateString() : ''),
+      },
+      { header: 'Sign-off By', value: (r) => r.signOffBy },
+    ],
+    );
+  };
+
   return (
     <>
       <PageHeader
@@ -260,6 +281,7 @@ export function ReleaseQualityPage() {
           <Stack direction="row" spacing={1}>
             <ImportExportToolbar
               onExport={handleExport}
+              onExportReport={handleExportReport}
               exportDisabled={!releases || releases.length === 0}
               exportLabel="Export Releases"
             />

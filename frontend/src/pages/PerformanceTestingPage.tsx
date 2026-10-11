@@ -29,6 +29,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
 import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { useReportHeader } from '../utils/useReportHeader';
+import { exportColumnsReport } from '../utils/qmicsReport';
 import {
   PerformanceTestFormDialog,
   performanceTestToFormValues,
@@ -67,6 +69,7 @@ const STATUS_OPTIONS: PerformanceRunStatus[] = ['QUEUED', 'RUNNING', 'PASSED', '
 
 export function PerformanceTestingPage() {
   const { currentProduct } = useProductContext();
+  const reportHeader = useReportHeader('Performance Testing');
   const [tests, setTests] = useState<PerformanceTestListItem[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [environments, setEnvironments] = useState<ApiEnvironment[]>([]);
@@ -216,6 +219,25 @@ export function PerformanceTestingPage() {
     ]);
   };
 
+  const handleExportReport = () => {
+    exportColumnsReport(
+      reportHeader,
+      { title: 'Performance Test Report', sheetName: 'Performance Tests', tableTitle: 'PERFORMANCE TEST DETAILS', filenamePrefix: 'Performance_Test_Report', entityType: 'PerformanceTest' },
+      visibleTests,
+      [
+      { header: 'Name', value: (t) => t.name },
+      { header: 'Target URL', value: (t) => t.targetUrl },
+      { header: 'Virtual Users', value: (t) => t.virtualUsers },
+      { header: 'Duration (s)', value: (t) => t.durationSeconds },
+      { header: 'Last Run Status', value: (t) => (t.lastRunStatus ? RUN_STATUS_LABELS[t.lastRunStatus] : '') },
+      {
+        header: 'Last Run At',
+        value: (t) => (t.lastRunAt ? new Date(t.lastRunAt).toLocaleString() : ''),
+      },
+    ],
+    );
+  };
+
   const handleEditClick = async (item: PerformanceTestListItem) => {
     try {
       const full = await fetchPerformanceTest(item.id);
@@ -242,6 +264,7 @@ export function PerformanceTestingPage() {
           <Stack direction="row" spacing={1}>
             <ImportExportToolbar
               onExport={handleExport}
+              onExportReport={handleExportReport}
               exportDisabled={!tests || tests.length === 0}
               exportLabel="Export Performance Tests"
             />

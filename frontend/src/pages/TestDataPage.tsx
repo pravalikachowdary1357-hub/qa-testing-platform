@@ -28,6 +28,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { PageHeader } from '../components/common/PageHeader';
 import { StatusChip } from '../components/common/StatusChip';
 import { ImportExportToolbar } from '../components/common/ImportExportToolbar';
+import { useReportHeader } from '../utils/useReportHeader';
+import { exportColumnsReport } from '../utils/qmicsReport';
 import { ImportResultDialog } from '../components/common/ImportResultDialog';
 import type { ImportResultSummary } from '../components/common/ImportResultDialog';
 import { TestDataFormDialog } from '../components/testdata/TestDataFormDialog';
@@ -76,6 +78,7 @@ interface EditingTestData {
 
 export function TestDataPage() {
   const { currentProduct } = useProductContext();
+  const reportHeader = useReportHeader('Test Data');
   const [testDataList, setTestDataList] = useState<ApiTestDataListItem[] | null>(null);
   const [testCases, setTestCases] = useState<ApiTestCase[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -234,6 +237,21 @@ export function TestDataPage() {
     ]);
   };
 
+  const handleExportReport = () => {
+    exportColumnsReport(
+      reportHeader,
+      { title: 'Test Data Report', sheetName: 'Test Data', tableTitle: 'TEST DATA DETAILS', filenamePrefix: 'Test_Data_Report', entityType: 'TestData' },
+      visibleTestDataList,
+      [
+      { header: 'Name', value: (r) => r.name },
+      { header: 'Description', value: (r) => r.description ?? '' },
+      { header: 'Type', value: (r) => TYPE_LABELS[r.type] },
+      { header: 'Test Case', value: (r) => r.testCase?.title ?? '' },
+      { header: 'Created', value: (r) => new Date(r.createdAt).toLocaleDateString() },
+    ],
+    );
+  };
+
   return (
     <>
       <PageHeader
@@ -244,6 +262,7 @@ export function TestDataPage() {
             <ImportExportToolbar
               onImport={handleImport}
               onExport={handleExport}
+              onExportReport={handleExportReport}
               importDisabled={false}
               exportDisabled={!testDataList || testDataList.length === 0}
               importLabel="Import Test Data"
