@@ -34,6 +34,7 @@ import FactCheckIcon from '@mui/icons-material/FactCheck';
 import ScienceIcon from '@mui/icons-material/Science';
 import CodeIcon from '@mui/icons-material/Code';
 import FlagCircleIcon from '@mui/icons-material/FlagCircle';
+import InsightsIcon from '@mui/icons-material/Insights';
 import DescriptionIcon from '@mui/icons-material/Description';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import PlayCircleIcon from '@mui/icons-material/PlayCircle';
@@ -128,6 +129,13 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     description: 'Business acceptance and release decision authority: owns requirements, approves UAT results, and approves release readiness.',
     icon: FlagCircleIcon,
     color: '#C9A227',
+  },
+  {
+    role: 'Top Management',
+    email: 'top.management@testsphere.local',
+    description: 'Executive view-only role: sees the Dashboard only, with no access to any other module.',
+    icon: InsightsIcon,
+    color: '#37474F',
   },
 ];
 
