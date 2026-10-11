@@ -338,9 +338,15 @@ const ROLE_GRANTS = {
     ...keys('traceability', 'read'),
     ...keys('reports', 'read'),
   ],
+  // View-only executive role (requested by user): sees the Dashboard only.
+  // reports:read is what the dashboard's quality overview needs.
+  'Top Management': [
+    ...keys('reports', 'read'),
+  ],
 };
 
 const ROLE_DESCRIPTIONS = {
+  'Top Management': 'Executive view-only role: sees the Dashboard only, with no access to any other module.',
   'System Administrator': 'Platform administration: organizations, business units, teams, projects, products, users, roles/permissions, and system/audit settings. Does not include any QA testing execution, planning, or governance -- that is Test Manager\'s domain.',
   'Test Manager': 'Overall testing ownership: test strategy, master test plan, scope, effort, resources, milestones and risks; approves test plans, completion criteria, test cases and requirements; monitors progress, coverage and defects; supports release decisions. Accountable for execution but does not execute tests.',
   'Test Lead': 'Day-to-day testing management: test plans, scenarios, cases, data, environments, execution, and defects.',
