@@ -167,7 +167,7 @@ const ROLE_GRANTS = {
   // been: leaving out just one lifecycle module for the broadest testing
   // role would be an inconsistent, almost certainly unintended gap.
   'Test Manager': [
-    ...keys('requirements', 'read', 'approve'),
+    ...keys('requirements', 'read', 'write', 'approve'), // write: Test Manager may create/edit requirements (requested by user)
     ...allKeys('product_documents'),
     ...allKeys('products'), // same project/product access as System Administrator (requested by user)
     ...allKeys('projects'),
