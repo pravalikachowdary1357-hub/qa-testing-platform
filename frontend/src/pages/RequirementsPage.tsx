@@ -47,6 +47,7 @@ import { fetchUsers } from '../api/users';
 import { ApiError } from '../api/client';
 import { exportToCsvWithAudit } from '../utils/csvExport';
 import { useProductContext } from '../context/ProductContext';
+import { useAuth } from '../context/AuthContext';
 import type {
   ApiRequirement,
   ApiRequirementPriority,
@@ -105,6 +106,12 @@ type SortOption = 'newest' | 'oldest' | 'priority' | 'title';
 const ALL = 'ALL' as const;
 
 export function RequirementsPage() {
+  // Per the Roles & Responsibilities document, only some roles author requirements
+  // (e.g. Product Owner); Test Manager reviews/approves them. Hide the actions the
+  // role can't use instead of letting them fail with a permission error on save.
+  const { hasPermission } = useAuth();
+  const canWrite = hasPermission('requirements:write');
+  const canDelete = hasPermission('requirements:manage');
   const { currentProduct } = useProductContext();
   const [requirements, setRequirements] = useState<ApiRequirement[] | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
@@ -335,16 +342,18 @@ export function RequirementsPage() {
         actions={
           <Stack direction="row" spacing={1}>
             <ImportExportToolbar
-              onImport={handleImport}
+              onImport={canWrite ? handleImport : undefined}
               onExport={handleExport}
               importDisabled={!currentProduct}
               exportDisabled={!requirements || requirements.length === 0}
               importLabel="Import Requirements"
               exportLabel="Export Requirements"
             />
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
-              Create Requirement
-            </Button>
+            {canWrite && (
+              <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
+                Create Requirement
+              </Button>
+            )}
           </Stack>
         }
       />
@@ -491,9 +500,11 @@ export function RequirementsPage() {
           <Typography color="text.secondary" sx={{ mb: 2 }}>
             No requirements found.
           </Typography>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
-            Create Requirement
-          </Button>
+          {canWrite && (
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
+              Create Requirement
+            </Button>
+          )}
         </Paper>
       )}
 
@@ -567,25 +578,29 @@ export function RequirementsPage() {
                         <VisibilityIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="Edit">
-                      <span>
+                    {canWrite && (
+                      <Tooltip title="Edit">
+                        <span>
+                          <IconButton
+                            size="small"
+                            disabled={loadingEditId === requirement.id}
+                            onClick={() => handleEditClick(requirement)}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    )}
+                    {canDelete && (
+                      <Tooltip title="Delete">
                         <IconButton
                           size="small"
-                          disabled={loadingEditId === requirement.id}
-                          onClick={() => handleEditClick(requirement)}
+                          onClick={() => setDeletingRequirement(requirement)}
                         >
-                          <EditIcon fontSize="small" />
+                          <DeleteIcon fontSize="small" />
                         </IconButton>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title="Delete">
-                      <IconButton
-                        size="small"
-                        onClick={() => setDeletingRequirement(requirement)}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                      </Tooltip>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

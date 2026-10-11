@@ -169,8 +169,8 @@ const ROLE_GRANTS = {
   'Test Manager': [
     ...keys('requirements', 'read', 'approve'),
     ...allKeys('product_documents'),
-    ...keys('products', 'read'),
-    ...keys('projects', 'read', 'write'), // may create/edit projects (requested)
+    ...allKeys('products'), // same project/product access as System Administrator (requested by user)
+    ...allKeys('projects'),
     ...keys('organizations', 'read'), // needed by the Create Project form's Organization dropdown
     ...allKeys('test_plans'),
     ...allKeys('test_scenarios'),
