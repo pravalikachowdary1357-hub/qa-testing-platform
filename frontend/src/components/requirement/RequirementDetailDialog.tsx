@@ -184,6 +184,9 @@ export function RequirementDetailDialog({
         {requirement && activeTab === 0 && (
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Box>
+              <Typography variant="caption" color="text.secondary">
+                Requirement ID: {requirement.code}
+              </Typography>
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                 <Typography variant="h6">{requirement.title}</Typography>
                 <Chip label={`v${requirement.version}`} size="small" variant="outlined" />

@@ -83,6 +83,9 @@ export function ProjectDetailDialog({ projectId, onClose }: ProjectDetailDialogP
         {project && (
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Box>
+              <Typography variant="caption" color="text.secondary">
+                Project ID: {project.code}
+              </Typography>
               <Typography variant="h6">{project.name}</Typography>
               <StatusChip status={PROJECT_STATUS_LABELS[project.status]} />
             </Box>

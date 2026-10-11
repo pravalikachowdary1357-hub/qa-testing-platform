@@ -413,6 +413,9 @@ model BusinessUnit {
 // unassigned -- this is additive, not a forced migration of existing data.
 model Project {
   id             String        @id @default(uuid())
+  // Human-readable ID (PRJ-001, PRJ-002, ...) assigned by the database from
+  // project_code_seq -- never accepted as client input.
+  code           String        @unique @default(dbgenerated("(('PRJ-'::text || lpad((nextval('project_code_seq'::regclass))::text, 3, '0'::text)))"))
   organizationId String        @map("organization_id")
   businessUnitId String?       @map("business_unit_id")
   name           String
@@ -592,6 +595,9 @@ model ProductDocumentVersion {
 
 model Requirement {
   id            String              @id @default(uuid())
+  // Human-readable ID (REQ-001, REQ-002, ...) assigned by the database from
+  // requirement_code_seq -- never accepted as client input.
+  code          String              @unique @default(dbgenerated("(('REQ-'::text || lpad((nextval('requirement_code_seq'::regclass))::text, 3, '0'::text)))"))
   productId     String              @map("product_id")
   releaseId     String?             @map("release_id")
   title         String

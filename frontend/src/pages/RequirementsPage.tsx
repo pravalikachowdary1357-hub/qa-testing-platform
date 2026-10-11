@@ -316,6 +316,7 @@ export function RequirementsPage() {
 
   const handleExport = () => {
     exportToCsvWithAudit('Requirement', 'requirements.csv', visibleRequirements, [
+      { header: 'Requirement ID', value: (r) => r.code },
       { header: 'Title', value: (r) => r.title },
       { header: 'Description', value: (r) => r.description },
       { header: 'Project', value: (r) => r.product.name },
@@ -523,6 +524,7 @@ export function RequirementsPage() {
           <Table size="small">
             <TableHead>
               <TableRow>
+                <TableCell>Requirement ID</TableCell>
                 <TableCell>Title</TableCell>
                 <TableCell>Project</TableCell>
                 <TableCell>Type</TableCell>
@@ -538,6 +540,7 @@ export function RequirementsPage() {
             <TableBody>
               {visibleRequirements.map((requirement) => (
                 <TableRow key={requirement.id} hover>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{requirement.code}</TableCell>
                   <TableCell sx={{ maxWidth: 220 }}>
                     <Typography variant="body2" noWrap>
                       {requirement.title}

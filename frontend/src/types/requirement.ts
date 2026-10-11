@@ -46,6 +46,7 @@ export interface ApiRequirementAcceptanceCriterion {
 
 export interface ApiRequirement {
   id: string;
+  code: string;
   productId: string;
   releaseId: string | null;
   title: string;

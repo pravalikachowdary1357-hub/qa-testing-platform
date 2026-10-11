@@ -250,6 +250,7 @@ export function ProjectsPage() {
 
   const handleExport = () => {
     exportToCsvWithAudit('Project', 'projects.csv', filteredProjects, [
+      { header: 'Project ID', value: (p) => p.code },
       { header: 'Project Name', value: (p) => p.name },
       { header: 'Organization', value: (p) => p.organization.name },
       { header: 'Description', value: (p) => p.description },
@@ -375,6 +376,7 @@ export function ProjectsPage() {
             <TableHead>
               <TableRow>
                 <TableCell sx={{ width: 40 }} />
+                <TableCell>Project ID</TableCell>
                 <TableCell>Project</TableCell>
                 <TableCell>Organization</TableCell>
                 <TableCell>Description</TableCell>
@@ -402,6 +404,7 @@ export function ProjectsPage() {
                       </IconButton>
                     </Tooltip>
                   </TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{project.code}</TableCell>
                   <TableCell>{project.name}</TableCell>
                   <TableCell>
                     <Typography variant="body2" color="text.secondary">
@@ -451,7 +454,7 @@ export function ProjectsPage() {
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell colSpan={8} sx={{ py: 0, borderBottom: isExpanded ? undefined : 'none' }}>
+                  <TableCell colSpan={9} sx={{ py: 0, borderBottom: isExpanded ? undefined : 'none' }}>
                     <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                       <Box sx={{ py: 1.5, pl: 4 }}>
                         <Stack

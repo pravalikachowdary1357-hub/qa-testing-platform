@@ -23,6 +23,7 @@ export interface ApiProjectBusinessUnitRef {
 // `_count.products`.
 export interface ApiProject {
   id: string;
+  code: string;
   organizationId: string;
   businessUnitId: string | null;
   name: string;
