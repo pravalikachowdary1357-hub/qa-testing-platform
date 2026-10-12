@@ -14,9 +14,7 @@ import {
   Typography,
 } from '@mui/material';
 import BusinessIcon from '@mui/icons-material/Business';
-import ApartmentIcon from '@mui/icons-material/Apartment';
 import GroupsIcon from '@mui/icons-material/Groups';
-import FolderSpecialIcon from '@mui/icons-material/FolderSpecial';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import PeopleIcon from '@mui/icons-material/People';
 import { SummaryCard } from '../common/SummaryCard';
@@ -92,19 +90,15 @@ export function PlatformAdminDashboard() {
 
   const totals = orgs.reduce(
     (acc, org) => ({
-      businessUnits: acc.businessUnits + org.businessUnitCount,
       teams: acc.teams + org.teamCount,
-      projects: acc.projects + org.projectCount,
       products: acc.products + org.productCount,
     }),
-    { businessUnits: 0, teams: 0, projects: 0, products: 0 },
+    { teams: 0, products: 0 },
   );
 
   const kpis = [
     { title: 'Organizations', value: orgs.length, icon: BusinessIcon },
-    { title: 'Business Units', value: totals.businessUnits, icon: ApartmentIcon },
     { title: 'Teams', value: totals.teams, icon: GroupsIcon },
-    { title: 'Projects', value: totals.projects, icon: FolderSpecialIcon },
     { title: 'Projects', value: totals.products, icon: Inventory2Icon },
     { title: 'Users', value: `${activeUsers} / ${userList.length}`, icon: PeopleIcon },
   ];
@@ -130,7 +124,6 @@ export function PlatformAdminDashboard() {
                 <TableRow>
                   <TableCell>Organization</TableCell>
                   <TableCell>Status</TableCell>
-                  <TableCell align="right">Business Units</TableCell>
                   <TableCell align="right">Teams</TableCell>
                   <TableCell align="right">Projects</TableCell>
                   <TableCell align="right">Users</TableCell>
@@ -139,7 +132,7 @@ export function PlatformAdminDashboard() {
               <TableBody>
                 {orgs.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ color: 'text.secondary' }}>
+                    <TableCell colSpan={5} align="center" sx={{ color: 'text.secondary' }}>
                       No organizations yet.
                     </TableCell>
                   </TableRow>
@@ -150,7 +143,6 @@ export function PlatformAdminDashboard() {
                     <TableCell>
                       <StatusChip status={STATUS_LABELS[org.status]} />
                     </TableCell>
-                    <TableCell align="right">{org.businessUnitCount}</TableCell>
                     <TableCell align="right">{org.teamCount}</TableCell>
                     <TableCell align="right">{org.productCount}</TableCell>
                     <TableCell align="right">{org.userCount}</TableCell>

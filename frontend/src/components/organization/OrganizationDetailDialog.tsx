@@ -16,14 +16,12 @@ import {
   Tabs,
   Typography,
 } from '@mui/material';
-import ApartmentIcon from '@mui/icons-material/Apartment';
 import GroupsIcon from '@mui/icons-material/Groups';
 import FolderSpecialIcon from '@mui/icons-material/FolderSpecial';
 import PeopleIcon from '@mui/icons-material/People';
 import { StatusChip } from '../common/StatusChip';
 import { SummaryCard } from '../common/SummaryCard';
 import { OrganizationProfileTab } from './OrganizationProfileTab';
-import { BusinessUnitsTab } from './BusinessUnitsTab';
 import { TeamsTab } from './TeamsTab';
 import { OrganizationUsersTab } from './OrganizationUsersTab';
 import { fetchOrganization } from '../../api/organizations';
@@ -42,7 +40,7 @@ const PRODUCT_STATUS_LABELS: Record<string, ProductStatus> = {
   DEPRECATED: 'Deprecated',
 };
 
-const TABS = ['Organization Details', 'Business Units', 'Teams', 'Projects', 'Users'] as const;
+const TABS = ['Organization Details', 'Teams', 'Projects', 'Users'] as const;
 
 interface OrganizationDetailDialogProps {
   organizationId: string | null;
@@ -144,13 +142,6 @@ export function OrganizationDetailDialog({
                   </Typography>
                   <Grid container spacing={2}>
                     <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                      <SummaryCard
-                        title="Business Units"
-                        value={organization.businessUnitCount}
-                        icon={ApartmentIcon}
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                       <SummaryCard title="Teams" value={organization.teamCount} icon={GroupsIcon} />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6, md: 4 }}>
@@ -168,9 +159,8 @@ export function OrganizationDetailDialog({
               </Stack>
             )}
 
-            {activeTab === 1 && <BusinessUnitsTab organizationId={organization.id} />}
-            {activeTab === 2 && <TeamsTab organizationId={organization.id} />}
-            {activeTab === 3 &&
+            {activeTab === 1 && <TeamsTab organizationId={organization.id} />}
+            {activeTab === 2 &&
               (organization.products.length === 0 ? (
                 <Typography variant="body2" color="text.secondary">
                   No projects belong to this organization yet.
@@ -185,7 +175,7 @@ export function OrganizationDetailDialog({
                   ))}
                 </List>
               ))}
-            {activeTab === 4 && <OrganizationUsersTab organizationId={organization.id} />}
+            {activeTab === 3 && <OrganizationUsersTab organizationId={organization.id} />}
           </>
         )}
       </DialogContent>

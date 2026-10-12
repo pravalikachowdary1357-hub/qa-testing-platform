@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Box, CircularProgress, Paper, Stack, Typography } from '@mui/material';
 import { OrganizationProfileTab } from './OrganizationProfileTab';
-import { BusinessUnitsTab } from './BusinessUnitsTab';
 import { TeamsTab } from './TeamsTab';
 import { useAuth } from '../../context/AuthContext';
 import { fetchOrganization, fetchOrganizations } from '../../api/organizations';
@@ -80,9 +79,8 @@ export function CurrentOrganizationProfile() {
     );
   }
 
-  // Profile + documents stay exactly as designed; Business Units and Teams
-  // reuse their existing components underneath, shown to users who can read
-  // them.
+  // Profile + documents stay exactly as designed; Teams reuses its existing
+  // component underneath, shown to users who can read it.
   const sectionSx = { p: 3, borderRadius: 3, border: 1, borderColor: 'divider' } as const;
   return (
     <Stack spacing={3}>
@@ -90,14 +88,6 @@ export function CurrentOrganizationProfile() {
         organization={organization}
         onSaved={() => void loadOrganization(organization.id)}
       />
-      {hasPermission('business_units:read') && (
-        <Paper sx={sectionSx}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
-            Business Units
-          </Typography>
-          <BusinessUnitsTab organizationId={organization.id} />
-        </Paper>
-      )}
       {hasPermission('teams:read') && (
         <Paper sx={sectionSx}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
