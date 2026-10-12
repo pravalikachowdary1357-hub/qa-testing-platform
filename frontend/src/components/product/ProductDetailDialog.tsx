@@ -113,8 +113,8 @@ export function ProductDetailDialog({ productId, onClose }: ProductDetailDialogP
         if (cancelled) return;
         setError(
           err instanceof ApiError
-            ? `Failed to load product (HTTP ${err.status}).`
-            : 'Failed to load product. Is the backend running?',
+            ? `Failed to load project (HTTP ${err.status}).`
+            : 'Failed to load project. Is the backend running?',
         );
       });
 
@@ -132,7 +132,7 @@ export function ProductDetailDialog({ productId, onClose }: ProductDetailDialogP
 
   return (
     <Dialog open={Boolean(productId)} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle sx={{ pb: 0 }}>Product Workspace</DialogTitle>
+      <DialogTitle sx={{ pb: 0 }}>Project Workspace</DialogTitle>
 
       {product && (
         <Tabs
@@ -181,7 +181,6 @@ export function ProductDetailDialog({ productId, onClose }: ProductDetailDialogP
               </Stack>
               <Typography variant="body2" color="text.secondary">
                 {product.organization.name}
-                {product.project ? ` · ${product.project.name}` : ' · No project assigned'}
               </Typography>
             </Box>
 
@@ -266,7 +265,7 @@ export function ProductDetailDialog({ productId, onClose }: ProductDetailDialogP
             <Stack direction="row" spacing={4}>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Product Owner
+                  Project Owner
                 </Typography>
                 <Typography variant="body2">
                   {product.productOwner ? `${product.productOwner.name} (${product.productOwner.email})` : '—'}

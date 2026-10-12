@@ -270,7 +270,7 @@ export function ProductTeamTab({ productId, organizationId }: ProductTeamTabProp
           {deleteError && <Alert severity="error" sx={{ mb: 2 }}>{deleteError}</Alert>}
           <DialogContentText>
             Are you sure you want to remove <strong>{deletingMember?.user.name}</strong> from this
-            product's team?
+            project's team?
           </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>

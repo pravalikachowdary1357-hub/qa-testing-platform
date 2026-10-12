@@ -193,7 +193,7 @@ export function ProductBuildsTab({ productId }: ProductBuildsTabProps) {
         <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
           <ConstructionOutlinedIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
           <Typography color="text.secondary">
-            No releases yet. Create a release for this product before adding builds.
+            No releases yet. Create a release for this project before adding builds.
           </Typography>
         </Paper>
       )}

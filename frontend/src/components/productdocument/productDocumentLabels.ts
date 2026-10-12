@@ -1,7 +1,7 @@
 import type { ApiProductDocumentStatus, ApiProductDocumentType } from '../../types/productDocument';
 
 export const DOCUMENT_TYPE_LABELS: Record<ApiProductDocumentType, string> = {
-  PRODUCT_REQUIREMENTS_BRD: 'Product Requirements / BRD',
+  PRODUCT_REQUIREMENTS_BRD: 'Project Requirements / BRD',
   FUNCTIONAL_SPEC_FRD: 'Functional Specification / FRD',
   TECHNICAL_SPEC: 'Technical Specification',
   USER_MANUAL: 'User Manual',

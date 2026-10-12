@@ -55,7 +55,7 @@ export function DuplicateDefectsTab() {
   return (
     <Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Scans a product's defects for likely duplicates using a deterministic text-similarity heuristic --
+        Scans a project's defects for likely duplicates using a deterministic text-similarity heuristic --
         this does <strong>not</strong> call an external AI provider, so it works even without one
         configured. Results are candidates for a human to confirm; nothing is merged or closed automatically.
       </Typography>

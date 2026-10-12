@@ -77,7 +77,7 @@ export function IntegrationsTab() {
                   )}
                   {typeof i.details?.productsWithRepositoryUrl === 'number' && (
                     <Typography variant="body2" sx={{ mt: 0.5 }}>
-                      Products with a repository link: {i.details.productsWithRepositoryUrl}
+                      Projects with a repository link: {i.details.productsWithRepositoryUrl}
                     </Typography>
                   )}
                   {typeof i.details?.webhooks === 'number' && (

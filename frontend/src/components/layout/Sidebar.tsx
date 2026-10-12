@@ -35,16 +35,11 @@ function SectionLabel({ children }: { children: string }) {
 
 export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const { user, hasPermission } = useAuth();
-  // Products are managed inside the Projects page (each project row expands to
-  // show its products), so the separate Products entry is hidden from the menu.
-  // The /products route itself still exists in case anything links to it.
   // "Top Management" is a dashboard-only role: it sees the Dashboard and
   // nothing else in the menu (not even the Settings/Profile entry).
   const dashboardOnly = user?.roleName === 'Top Management';
   const visibleNavItems = navItems.filter((item) =>
-    dashboardOnly
-      ? item.path === '/'
-      : item.path !== '/products' && (!item.permission || hasPermission(item.permission)),
+    dashboardOnly ? item.path === '/' : !item.permission || hasPermission(item.permission),
   );
   const groupOf = (path: string) => MODULE_THEMES[moduleKeyFromPath(path)]?.group ?? 'main';
 

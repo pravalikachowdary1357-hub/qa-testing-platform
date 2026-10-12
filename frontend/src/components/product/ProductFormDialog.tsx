@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   Button,
@@ -16,11 +16,9 @@ import type {
   CreateProductPayload,
 } from '../../types/product';
 import type { ApiOrganization } from '../../types/organization';
-import type { ApiProject } from '../../types/project';
 import type { ApiUser } from '../../types/settings';
 
 const NO_OWNER = '' as const;
-const NO_PROJECT = '' as const;
 
 function isValidOptionalUrl(value: string): boolean {
   if (value.trim() === '') return true;
@@ -46,7 +44,6 @@ const READINESS_OPTIONS: { value: ApiReleaseReadiness; label: string }[] = [
 
 interface ProductFormValues {
   organizationId: string;
-  projectId: string;
   name: string;
   productKey: string;
   description: string;
@@ -66,7 +63,6 @@ interface ProductFormValues {
 function emptyValues(defaultOrganizationId: string): ProductFormValues {
   return {
     organizationId: defaultOrganizationId,
-    projectId: NO_PROJECT,
     name: '',
     productKey: '',
     description: '',
@@ -97,7 +93,6 @@ interface ProductFormDialogProps {
   // True when the organization list came back empty because this role lacks
   // organizations:read (a 403), not because no organizations exist.
   organizationsForbidden?: boolean;
-  projects: ApiProject[];
   users: ApiUser[];
   initialValues?: ProductFormValues;
   onClose: () => void;
@@ -109,7 +104,6 @@ export function ProductFormDialog({
   mode,
   organizations,
   organizationsForbidden = false,
-  projects,
   users,
   initialValues,
   onClose,
@@ -145,21 +139,8 @@ export function ProductFormDialog({
 
   const noOrganizationsAvailable = mode === 'create' && organizations.length === 0;
 
-  const projectsForOrganization = useMemo(
-    () => projects.filter((project) => project.organizationId === values.organizationId),
-    [projects, values.organizationId],
-  );
-
   const handleOrganizationChange = (organizationId: string) => {
-    setValues((prev) => ({
-      ...prev,
-      organizationId,
-      projectId: projects.some(
-        (project) => project.id === prev.projectId && project.organizationId === organizationId,
-      )
-        ? prev.projectId
-        : NO_PROJECT,
-    }));
+    setValues((prev) => ({ ...prev, organizationId }));
   };
 
   const handleSubmit = async () => {
@@ -172,7 +153,7 @@ export function ProductFormDialog({
     const trimmedProductKey = values.productKey.trim().toUpperCase();
 
     if (!trimmedName) {
-      setNameError('Product name is required.');
+      setNameError('Project name is required.');
       hasError = true;
     }
     if (trimmedProductKey && !/^[A-Z0-9]{2,10}$/.test(trimmedProductKey)) {
@@ -211,7 +192,6 @@ export function ProductFormDialog({
     try {
       await onSubmit({
         organizationId: values.organizationId,
-        projectId: values.projectId || undefined,
         name: trimmedName,
         productKey: trimmedProductKey || undefined,
         description: trimmedDescription,
@@ -230,7 +210,7 @@ export function ProductFormDialog({
       });
       onClose();
     } catch (err: unknown) {
-      setSubmitError(err instanceof Error ? err.message : 'Failed to save product.');
+      setSubmitError(err instanceof Error ? err.message : 'Failed to save project.');
     } finally {
       setSubmitting(false);
     }
@@ -238,7 +218,7 @@ export function ProductFormDialog({
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>{mode === 'create' ? 'Create Product' : 'Edit Product'}</DialogTitle>
+      <DialogTitle>{mode === 'create' ? 'Create Project' : 'Edit Project'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {submitError && <Alert severity="error">{submitError}</Alert>}
@@ -246,8 +226,8 @@ export function ProductFormDialog({
           {noOrganizationsAvailable ? (
             <Alert severity="warning">
               {organizationsForbidden
-                ? "You don't have permission to view the organization list, so a product can't be assigned to one from here. Ask a System Administrator to create the product, or to grant your role organizations:read."
-                : 'No organizations exist yet. Create an organization before adding a product.'}
+                ? "You don't have permission to view the organization list, so a project can't be assigned to one from here. Ask a System Administrator to create the project, or to grant your role organizations:read."
+                : 'No organizations exist yet. Create an organization before adding a project.'}
             </Alert>
           ) : (
             <>
@@ -266,26 +246,10 @@ export function ProductFormDialog({
                     </MenuItem>
                   ))}
                 </TextField>
-                <TextField
-                  select
-                  label="Project (optional)"
-                  fullWidth
-                  value={values.projectId}
-                  onChange={(e) => setValues((prev) => ({ ...prev, projectId: e.target.value }))}
-                >
-                  <MenuItem value={NO_PROJECT}>
-                    <em>No project assigned</em>
-                  </MenuItem>
-                  {projectsForOrganization.map((project) => (
-                    <MenuItem key={project.id} value={project.id}>
-                      {project.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
               </Stack>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                 <TextField
-                  label="Product Name"
+                  label="Project Name"
                   required
                   fullWidth
                   autoFocus
@@ -298,7 +262,7 @@ export function ProductFormDialog({
                   }}
                 />
                 <TextField
-                  label="Product Key (optional)"
+                  label="Project Key (optional)"
                   fullWidth
                   placeholder="e.g. CP"
                   value={values.productKey}
@@ -368,7 +332,7 @@ export function ProductFormDialog({
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                 <TextField
                   select
-                  label="Product Owner"
+                  label="Project Owner"
                   fullWidth
                   value={values.productOwnerId}
                   onChange={(e) =>

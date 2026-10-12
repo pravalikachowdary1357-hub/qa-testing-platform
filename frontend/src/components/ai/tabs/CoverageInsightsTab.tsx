@@ -41,7 +41,7 @@ export function CoverageInsightsTab({ aiConfigured }: { aiConfigured: boolean })
   return (
     <Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        The coverage numbers below are always real, computed directly from this product's requirements and
+        The coverage numbers below are always real, computed directly from this project's requirements and
         test executions -- the AI only adds a plain-language explanation of what they mean, grounded in
         those exact numbers.
       </Typography>

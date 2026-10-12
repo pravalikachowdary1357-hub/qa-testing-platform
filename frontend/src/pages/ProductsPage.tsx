@@ -41,7 +41,6 @@ import {
   updateProduct,
 } from '../api/products';
 import { fetchOrganizations } from '../api/organizations';
-import { fetchProjects } from '../api/projects';
 import { fetchUsers } from '../api/users';
 import { ApiError } from '../api/client';
 import { exportToCsvWithAudit } from '../utils/csvExport';
@@ -54,7 +53,6 @@ import type {
   ReleaseReadiness,
 } from '../types/product';
 import type { ApiOrganization } from '../types/organization';
-import type { ApiProject } from '../types/project';
 import type { ApiUser } from '../types/settings';
 
 const STATUS_LABELS: Record<ApiProductStatus, ProductStatus> = {
@@ -76,10 +74,9 @@ const ALL = 'ALL' as const;
 export function ProductsPage() {
   const [products, setProducts] = useState<ApiProduct[] | null>(null);
   const [organizations, setOrganizations] = useState<ApiOrganization[]>([]);
-  const [projects, setProjects] = useState<ApiProject[]>([]);
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [error, setError] = useState<string | null>(null);
-  // True when the organizations fetch that feeds the create-product dialog
+  // True when the organizations fetch that feeds the create-project dialog
   // came back 403'd rather than genuinely empty.
   const [organizationsForbidden, setOrganizationsForbidden] = useState(false);
 
@@ -87,7 +84,6 @@ export function ProductsPage() {
   const [statusFilter, setStatusFilter] = useState<ApiProductStatus | typeof ALL>(ALL);
   const [readinessFilter, setReadinessFilter] = useState<ApiReleaseReadiness | typeof ALL>(ALL);
   const [organizationFilter, setOrganizationFilter] = useState<string | typeof ALL>(ALL);
-  const [projectFilter, setProjectFilter] = useState<string | typeof ALL>(ALL);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
 
   const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
@@ -136,18 +132,9 @@ export function ProductsPage() {
       .catch((err: unknown) => {
         // The organization list only feeds the create/edit dropdown and the
         // filter bar; a failure here surfaces naturally as "no organizations
-        // available" rather than blocking the products list itself.
+        // available" rather than blocking the projects list itself.
         if (cancelled) return;
         setOrganizationsForbidden(err instanceof ApiError && err.status === 403);
-      });
-
-    fetchProjects()
-      .then((data) => {
-        if (!cancelled) setProjects(data);
-      })
-      .catch(() => {
-        // Only feeds the "project" picker/column/filter; a failure here
-        // surfaces as "no project assigned" rather than blocking the list.
       });
 
     fetchUsers()
@@ -155,7 +142,7 @@ export function ProductsPage() {
         if (!cancelled) setUsers(data);
       })
       .catch(() => {
-        // Only feeds the "product owner" picker in the create/edit form.
+        // Only feeds the "project owner" picker in the create/edit form.
       });
 
     return () => {
@@ -172,7 +159,6 @@ export function ProductsPage() {
       if (statusFilter !== ALL && product.status !== statusFilter) return false;
       if (readinessFilter !== ALL && product.releaseReadiness !== readinessFilter) return false;
       if (organizationFilter !== ALL && product.organizationId !== organizationFilter) return false;
-      if (projectFilter !== ALL && product.projectId !== projectFilter) return false;
       return true;
     });
 
@@ -195,23 +181,14 @@ export function ProductsPage() {
         break;
     }
     return sorted;
-  }, [
-    products,
-    searchQuery,
-    statusFilter,
-    readinessFilter,
-    organizationFilter,
-    projectFilter,
-    sortBy,
-  ]);
+  }, [products, searchQuery, statusFilter, readinessFilter, organizationFilter, sortBy]);
 
   const isLoading = products === null && !error;
   const hasActiveFilters =
     searchQuery.trim() !== '' ||
     statusFilter !== ALL ||
     readinessFilter !== ALL ||
-    organizationFilter !== ALL ||
-    projectFilter !== ALL;
+    organizationFilter !== ALL;
 
   // Applied to local state immediately from the mutation's own response
   // (already the complete, authoritative record) rather than relying solely
@@ -222,7 +199,7 @@ export function ProductsPage() {
   const handleCreateSubmit = async (data: CreateProductPayload) => {
     const created = await createProduct(data);
     setProducts((prev) => (prev ? [created, ...prev] : [created]));
-    setSnackbar({ message: 'Product created.', severity: 'success' });
+    setSnackbar({ message: 'Project created.', severity: 'success' });
     void loadProducts();
   };
 
@@ -230,7 +207,7 @@ export function ProductsPage() {
     if (!editingProduct) return;
     const updated = await updateProduct(editingProduct.id, data);
     setProducts((prev) => (prev ? prev.map((p) => (p.id === updated.id ? updated : p)) : prev));
-    setSnackbar({ message: 'Product updated.', severity: 'success' });
+    setSnackbar({ message: 'Project updated.', severity: 'success' });
     void loadProducts();
   };
 
@@ -238,7 +215,7 @@ export function ProductsPage() {
     if (!deletingProduct) return;
     await deleteProduct(deletingProduct.id);
     setProducts((prev) => (prev ? prev.filter((p) => p.id !== deletingProduct.id) : prev));
-    setSnackbar({ message: 'Product deleted.', severity: 'success' });
+    setSnackbar({ message: 'Project deleted.', severity: 'success' });
     void loadProducts();
   };
 
@@ -256,11 +233,10 @@ export function ProductsPage() {
   };
 
   const handleExport = () => {
-    exportToCsvWithAudit('Product', 'products.csv', visibleProducts, [
+    exportToCsvWithAudit('Project', 'projects.csv', visibleProducts, [
       { header: 'Name', value: (p) => p.name },
-      { header: 'Product Key', value: (p) => p.productKey ?? '' },
+      { header: 'Project Key', value: (p) => p.productKey ?? '' },
       { header: 'Organization', value: (p) => p.organization.name },
-      { header: 'Project', value: (p) => p.project?.name ?? '' },
       { header: 'Status', value: (p) => STATUS_LABELS[p.status] },
       { header: 'Environment', value: (p) => p.environment },
       { header: 'Release', value: (p) => p.release },
@@ -279,8 +255,8 @@ export function ProductsPage() {
   return (
     <>
       <PageHeader
-        title="Products"
-        subtitle="Manage the products tracked in this workspace"
+        title="Projects"
+        subtitle="Manage the projects tracked in this workspace"
         actions={
           <Stack direction="row" spacing={1}>
             <ImportExportToolbar
@@ -288,11 +264,11 @@ export function ProductsPage() {
               onExport={handleExport}
               importDisabled={false}
               exportDisabled={!products || products.length === 0}
-              importLabel="Import Products"
-              exportLabel="Export Products"
+              importLabel="Import Projects"
+              exportLabel="Export Projects"
             />
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
-              Create Product
+              Create Project
             </Button>
           </Stack>
         }
@@ -307,7 +283,7 @@ export function ProductsPage() {
         >
           <TextField
             size="small"
-            placeholder="Search products by name…"
+            placeholder="Search projects by name…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             sx={{ width: { xs: '100%', sm: 240 } }}
@@ -333,21 +309,6 @@ export function ProductsPage() {
             {organizations.map((organization) => (
               <MenuItem key={organization.id} value={organization.id}>
                 {organization.name}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select
-            size="small"
-            label="Project"
-            value={projectFilter}
-            onChange={(e) => setProjectFilter(e.target.value)}
-            sx={{ width: { xs: '100%', sm: 170 } }}
-          >
-            <MenuItem value={ALL}>All Projects</MenuItem>
-            {projects.map((project) => (
-              <MenuItem key={project.id} value={project.id}>
-                {project.name}
               </MenuItem>
             ))}
           </TextField>
@@ -409,10 +370,10 @@ export function ProductsPage() {
       {products && products.length === 0 && (
         <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
           <Typography color="text.secondary" sx={{ mb: 2 }}>
-            No products found.
+            No projects found.
           </Typography>
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormMode('create')}>
-            Create Product
+            Create Project
           </Button>
         </Paper>
       )}
@@ -421,8 +382,8 @@ export function ProductsPage() {
         <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
           <Typography color="text.secondary">
             {hasActiveFilters
-              ? 'No products match the current search/filters.'
-              : 'No products found.'}
+              ? 'No projects match the current search/filters.'
+              : 'No projects found.'}
           </Typography>
         </Paper>
       )}
@@ -434,7 +395,6 @@ export function ProductsPage() {
               <TableRow>
                 <TableCell>Name</TableCell>
                 <TableCell>Organization</TableCell>
-                <TableCell>Project</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Environment</TableCell>
                 <TableCell>Release</TableCell>
@@ -454,11 +414,6 @@ export function ProductsPage() {
                   <TableCell>
                     <Typography variant="body2" color="text.secondary">
                       {product.organization.name}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {product.project?.name ?? '—'}
                     </Typography>
                   </TableCell>
                   <TableCell>
@@ -503,13 +458,11 @@ export function ProductsPage() {
         mode={formMode ?? 'create'}
         organizations={organizations}
         organizationsForbidden={organizationsForbidden}
-        projects={projects}
         users={users}
         initialValues={
           formMode === 'edit' && editingProduct
             ? {
                 organizationId: editingProduct.organizationId,
-                projectId: editingProduct.projectId ?? '',
                 name: editingProduct.name,
                 productKey: editingProduct.productKey ?? '',
                 description: editingProduct.description,

@@ -35,7 +35,7 @@ export function DeleteProductDialog({ product, onClose, onConfirm }: DeleteProdu
       await onConfirm();
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to delete product.');
+      setError(err instanceof Error ? err.message : 'Failed to delete project.');
     } finally {
       setDeleting(false);
     }
@@ -43,7 +43,7 @@ export function DeleteProductDialog({ product, onClose, onConfirm }: DeleteProdu
 
   return (
     <Dialog open={Boolean(product)} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>Delete Product</DialogTitle>
+      <DialogTitle>Delete Project</DialogTitle>
       <DialogContent>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>

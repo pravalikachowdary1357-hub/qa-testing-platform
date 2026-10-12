@@ -196,7 +196,7 @@ export function ProductSprintsTab({ productId }: ProductSprintsTabProps) {
         <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
           <EventRepeatOutlinedIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
           <Typography color="text.secondary">
-            No releases yet. Create a release for this product before adding sprints.
+            No releases yet. Create a release for this project before adding sprints.
           </Typography>
         </Paper>
       )}
