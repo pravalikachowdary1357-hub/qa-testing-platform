@@ -58,7 +58,7 @@ interface DemoAccount {
   color: string;
 }
 
-// Mirrors the 9 real seeded roles/users in backend/prisma/seed.cjs -- same
+// Mirrors the 10 real seeded roles/users in backend/prisma/seed.cjs -- same
 // emails, same default password, same role descriptions. These are genuine
 // accounts in this database, not placeholders. Evolved from the earlier
 // 6-role model: Automation Engineer and UAT Coordinator are newly split

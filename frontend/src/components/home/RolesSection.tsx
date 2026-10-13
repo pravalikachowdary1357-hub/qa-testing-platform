@@ -8,8 +8,9 @@ import FlagCircleIcon from '@mui/icons-material/FlagCircle';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import StorageIcon from '@mui/icons-material/Storage';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
+import InsightsIcon from '@mui/icons-material/Insights';
 
-// Mirrors the 9 real seeded roles in backend/prisma/seed.cjs (see also
+// Mirrors the 10 real seeded roles in backend/prisma/seed.cjs (see also
 // DEMO_ACCOUNTS in LoginPage.tsx) -- names, descriptions, and colors stay in
 // sync with what a visitor will actually see after signing in.
 const ROLES = [
@@ -67,6 +68,12 @@ const ROLES = [
     icon: FlagCircleIcon,
     color: '#C9A227',
   },
+  {
+    role: 'Top Management',
+    description: 'Executive view-only role: sees the Dashboard only, with no access to any other module.',
+    icon: InsightsIcon,
+    color: '#37474F',
+  },
 ];
 
 export function RolesSection() {
@@ -81,7 +88,7 @@ export function RolesSection() {
             Real RBAC, not a single shared login
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Six built-in roles map access to responsibility, backed by a permission system under the hood — not just
+            Ten built-in roles map access to responsibility, backed by a permission system under the hood — not just
             a label on a user record. Each one grants exactly what that job needs to do, not just what it can see.
           </Typography>
         </Box>

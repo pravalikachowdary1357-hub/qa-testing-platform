@@ -21,7 +21,7 @@ export function CtaSection() {
           Ready to see it end to end?
         </Typography>
         <Typography variant="body1" sx={{ opacity: 0.9, mb: 4, maxWidth: 560, mx: 'auto' }}>
-          Sign in with a demo account and walk the workflow yourself — six roles, real permissions, real data.
+          Sign in with a demo account and walk the workflow yourself — ten roles, real permissions, real data.
         </Typography>
         <Stack direction="row" spacing={2} sx={{ justifyContent: 'center', flexWrap: 'wrap', rowGap: 2 }}>
           <Button

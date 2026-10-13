@@ -367,6 +367,7 @@ const ROLE_USERS = [
   { role: 'Automation Engineer', email: 'automation.engineer@testsphere.local', name: 'Automation Engineer' },
   { role: 'Database Test Engineer', email: 'database.engineer@testsphere.local', name: 'Database Test Engineer' },
   { role: 'UAT Coordinator', email: 'uat.coordinator@testsphere.local', name: 'UAT Coordinator' },
+  { role: 'Top Management', email: 'top.management@testsphere.local', name: 'Top Management' },
 ];
 
 // Roles superseded by this consolidation (10 roles -> 6). "Manager"/"Member"
