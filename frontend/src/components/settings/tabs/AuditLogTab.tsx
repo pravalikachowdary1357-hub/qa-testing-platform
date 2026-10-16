@@ -17,14 +17,19 @@ import {
   Typography,
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
+import DescriptionIcon from '@mui/icons-material/Description';
 import { fetchAuditLog, fetchAuditLogFacets } from '../../../api/auditLog';
 import type { AuditLogFilters } from '../../../api/auditLog';
 import { exportToCsvWithAudit } from '../../../utils/csvExport';
+import type { CsvColumn } from '../../../utils/csvExport';
+import { exportColumnsReport } from '../../../utils/qmicsReport';
+import { useReportHeader } from '../../../utils/useReportHeader';
 import type { ApiAuditLogEntry } from '../../../types/settings';
 
 // Audit-trail management: filter, search and export the trail. Entries are
 // read-only -- there is no way to edit or delete audit history from here.
 export function AuditLogTab() {
+  const reportHeader = useReportHeader('Audit Log');
   const [filters, setFilters] = useState<AuditLogFilters>({ limit: 200 });
   const [facets, setFacets] = useState<{ entityTypes: string[]; actions: string[]; total: number } | null>(null);
   const [entries, setEntries] = useState<ApiAuditLogEntry[] | null>(null);
@@ -56,17 +61,35 @@ export function AuditLogTab() {
   const set = (key: keyof AuditLogFilters) => (value: string) =>
     setFilters((f) => ({ ...f, [key]: value || undefined }));
 
+  const auditColumns: CsvColumn<ApiAuditLogEntry>[] = [
+    { header: 'When', value: (e) => new Date(e.createdAt).toISOString() },
+    { header: 'Actor', value: (e) => e.actor?.name ?? 'Unknown' },
+    { header: 'Actor email', value: (e) => e.actor?.email ?? '' },
+    { header: 'Action', value: (e) => e.action },
+    { header: 'Entity type', value: (e) => e.entityType },
+    { header: 'Entity id', value: (e) => e.entityId ?? '' },
+    { header: 'Summary', value: (e) => e.summary },
+  ];
+
   const handleExport = () => {
     if (!entries) return;
-    exportToCsvWithAudit('AuditLog', 'audit-log.csv', entries, [
-      { header: 'When', value: (e) => new Date(e.createdAt).toISOString() },
-      { header: 'Actor', value: (e) => e.actor?.name ?? 'Unknown' },
-      { header: 'Actor email', value: (e) => e.actor?.email ?? '' },
-      { header: 'Action', value: (e) => e.action },
-      { header: 'Entity type', value: (e) => e.entityType },
-      { header: 'Entity id', value: (e) => e.entityId ?? '' },
-      { header: 'Summary', value: (e) => e.summary },
-    ]);
+    exportToCsvWithAudit('AuditLog', 'audit-log.csv', entries, auditColumns);
+  };
+
+  const handleExportReport = () => {
+    if (!entries) return;
+    exportColumnsReport(
+      reportHeader,
+      {
+        title: 'Audit Log Report',
+        sheetName: 'Audit Log',
+        tableTitle: 'AUDIT LOG DETAILS',
+        filenamePrefix: 'AuditLog',
+        entityType: 'AuditLog',
+      },
+      entries,
+      auditColumns,
+    );
   };
 
   return (
@@ -137,6 +160,14 @@ export function AuditLogTab() {
           onClick={handleExport}
         >
           Export CSV
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<DescriptionIcon />}
+          disabled={!entries || entries.length === 0}
+          onClick={handleExportReport}
+        >
+          Export Report
         </Button>
       </Stack>
 

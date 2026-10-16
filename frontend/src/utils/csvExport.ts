@@ -15,7 +15,25 @@ function escapeCsvCell(value: string | number | null | undefined): string {
 
 // Client-side only, real browser download of exactly what's on screen --
 // no export endpoint exists (or is needed) on the backend for this.
-export function exportToCsv<T>(filename: string, rows: T[], columns: CsvColumn<T>[]): void {
+type ExportInterceptor = (filename: string, rows: unknown[], columns: CsvColumn<never>[]) => void;
+let interceptor: ExportInterceptor | null = null;
+
+// Lets a caller (the "Export Report" button) temporarily turn the next CSV
+// export into a different download built from the same rows and columns.
+export function withExportInterceptor(fn: ExportInterceptor, run: () => void): void {
+  interceptor = fn;
+  try {
+    run();
+  } finally {
+    interceptor = null;
+  }
+}
+
+export function exportToCsv<T>(filename: string, rows: T[], columns: CsvColumn<T>[]): boolean {
+  if (interceptor) {
+    interceptor(filename, rows, columns as unknown as CsvColumn<never>[]);
+    return true;
+  }
   const lines = [
     columns.map((column) => escapeCsvCell(column.header)).join(','),
     ...rows.map((row) => columns.map((column) => escapeCsvCell(column.value(row))).join(',')),
@@ -29,6 +47,7 @@ export function exportToCsv<T>(filename: string, rows: T[], columns: CsvColumn<T
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+  return false;
 }
 
 // Same as exportToCsv, plus a fire-and-forget audit trail entry. The export
@@ -40,7 +59,7 @@ export function exportToCsvWithAudit<T>(
   rows: T[],
   columns: CsvColumn<T>[],
 ): void {
-  exportToCsv(filename, rows, columns);
+  if (exportToCsv(filename, rows, columns)) return; // report export audits itself
   logExportEvent(entityType, `Exported ${rows.length} row(s) to ${filename}`).catch((error) => {
     console.error('Failed to record export audit event', error);
   });

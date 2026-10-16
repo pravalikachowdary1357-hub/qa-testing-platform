@@ -28,6 +28,8 @@ export interface Sheet {
   merges: string[];
   freezeRow: number | null;
   printTitleRow: number | null;
+  // Drop-down lists: sqref like "I13:I22" with the allowed values.
+  validations: { sqref: string; list: string[] }[];
 }
 
 export function createSheet(name: string): Sheet {
@@ -39,6 +41,7 @@ export function createSheet(name: string): Sheet {
     merges: [],
     freezeRow: null,
     printTitleRow: null,
+    validations: [],
   };
 }
 
@@ -245,6 +248,14 @@ function buildSheetXml(sheet: Sheet, styleIndex: (s: CellStyle | undefined) => n
     `<sheetData>${rowsXml.join('')}</sheetData>` +
     (sheet.merges.length
       ? `<mergeCells count="${sheet.merges.length}">${sheet.merges.map((m) => `<mergeCell ref="${m}"/>`).join('')}</mergeCells>`
+      : '') +
+    (sheet.validations.length
+      ? `<dataValidations count="${sheet.validations.length}">${sheet.validations
+          .map(
+            (v) =>
+              `<dataValidation type="list" allowBlank="1" showErrorMessage="1" sqref="${v.sqref}"><formula1>${escapeXml(`"${v.list.join(',')}"`)}</formula1></dataValidation>`,
+          )
+          .join('')}</dataValidations>`
       : '') +
     '<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/>' +
     '<pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0"/>' +

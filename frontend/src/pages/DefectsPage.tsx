@@ -102,6 +102,17 @@ const STATUS_RANK = Object.fromEntries(DEFECT_STATUS_ORDER.map((status, index) =
 
 const ALL = 'ALL' as const;
 
+// Statuses set by the tester after the developer's fix (retest, close, reject).
+const TESTER_STATUSES: ApiDefectStatus[] = [
+  'READY_FOR_RETEST',
+  'RETESTED',
+  'REOPENED',
+  'CLOSED',
+  'REJECTED',
+  'DUPLICATE',
+  'CANNOT_REPRODUCE',
+];
+
 export function DefectsPage() {
   const { currentProduct } = useProductContext();
   const reportHeader = useReportHeader('Defects');
@@ -297,9 +308,13 @@ export function DefectsPage() {
         description: d.description ? `${d.title}\n${d.description}` : d.title,
         defectType: '',
         severity: SEVERITY_LABELS[d.severity],
-        engineerStatus: STATUS_LABELS[d.status],
-        engineerRemarks: d.assignedTo ? `Assigned to: ${d.assignedTo}` : '',
-        testerStatus: '',
+        assignedTo: d.assignedTo ?? '',
+        priority: PRIORITY_LABELS[d.priority],
+        // The status sits under whoever owns that step: the developer fixes,
+        // the tester retests and closes.
+        engineerStatus: TESTER_STATUSES.includes(d.status) ? '' : STATUS_LABELS[d.status],
+        engineerRemarks: '',
+        testerStatus: TESTER_STATUSES.includes(d.status) ? STATUS_LABELS[d.status] : '',
         testerRemarks: '',
         closureDate: d.status === 'CLOSED' ? new Date(d.updatedAt).toLocaleDateString('en-GB') : '',
       })),

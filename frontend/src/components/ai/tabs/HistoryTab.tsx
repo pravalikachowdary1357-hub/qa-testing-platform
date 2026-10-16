@@ -27,6 +27,9 @@ import { ImportExportToolbar } from '../../common/ImportExportToolbar';
 import { deleteAiSuggestion, fetchAiSuggestions } from '../../../api/ai';
 import { aiErrorMessage } from '../../../utils/aiErrorMessage';
 import { exportToCsvWithAudit } from '../../../utils/csvExport';
+import type { CsvColumn } from '../../../utils/csvExport';
+import { exportColumnsReport } from '../../../utils/qmicsReport';
+import { useReportHeader } from '../../../utils/useReportHeader';
 import { useProductContext } from '../../../context/ProductContext';
 import type { ApiAiSuggestion } from '../../../types/ai';
 import type { ApiProduct } from '../../../types/product';
@@ -51,6 +54,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export function HistoryTab({ products }: { products: ApiProduct[] }) {
+  const reportHeader = useReportHeader('AI Assistant');
   const { currentProduct } = useProductContext();
   const [productId, setProductId] = useState(currentProduct?.id ?? '');
   const [capability, setCapability] = useState('');
@@ -76,15 +80,33 @@ export function HistoryTab({ products }: { products: ApiProduct[] }) {
     load();
   };
 
+  const historyColumns: CsvColumn<ApiAiSuggestion>[] = [
+    { header: 'Capability', value: (s) => CAPABILITY_LABELS[s.capability] ?? s.capability },
+    { header: 'Prompt', value: (s) => s.prompt },
+    { header: 'Response', value: (s) => s.response },
+    { header: 'Status', value: (s) => STATUS_LABELS[s.status] ?? s.status },
+    { header: 'Timestamp', value: (s) => new Date(s.createdAt).toLocaleString() },
+  ];
+
   const handleExport = () => {
     if (!suggestions) return;
-    exportToCsvWithAudit('AiSuggestion', 'ai-suggestion-history.csv', suggestions, [
-      { header: 'Capability', value: (s) => CAPABILITY_LABELS[s.capability] ?? s.capability },
-      { header: 'Prompt', value: (s) => s.prompt },
-      { header: 'Response', value: (s) => s.response },
-      { header: 'Status', value: (s) => STATUS_LABELS[s.status] ?? s.status },
-      { header: 'Timestamp', value: (s) => new Date(s.createdAt).toLocaleString() },
-    ]);
+    exportToCsvWithAudit('AiSuggestion', 'ai-suggestion-history.csv', suggestions, historyColumns);
+  };
+
+  const handleExportReport = () => {
+    if (!suggestions) return;
+    exportColumnsReport(
+      reportHeader,
+      {
+        title: 'AI Suggestion History Report',
+        sheetName: 'AI History',
+        tableTitle: 'AI SUGGESTION HISTORY',
+        filenamePrefix: 'AiHistory',
+        entityType: 'AiSuggestion',
+      },
+      suggestions,
+      historyColumns,
+    );
   };
 
   const isLoading = suggestions === null && !error;
@@ -106,6 +128,7 @@ export function HistoryTab({ products }: { products: ApiProduct[] }) {
         </Typography>
         <ImportExportToolbar
           onExport={handleExport}
+          onExportReport={handleExportReport}
           exportDisabled={!suggestions || suggestions.length === 0}
           exportLabel="Export History"
         />
