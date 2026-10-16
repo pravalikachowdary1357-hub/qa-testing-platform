@@ -103,13 +103,6 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     color: '#00838F',
   },
   {
-    role: 'Database Test Engineer',
-    email: 'database.engineer@testsphere.local',
-    description: 'Reserved for a future database-testing capability -- no TestSphere module exists for this yet, so this account currently has no granted permissions.',
-    icon: StorageIcon,
-    color: '#6D4C41',
-  },
-  {
     role: 'Developer',
     email: 'developer@testsphere.local',
     description: 'Investigates and fixes defects (root cause, corrective action, ready-for-retest); views requirements, test results, UAT, and release status.',
@@ -136,6 +129,13 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     description: 'Executive view-only role: sees the Dashboard only, with no access to any other module.',
     icon: InsightsIcon,
     color: '#37474F',
+  },
+  {
+    role: 'Database Test Engineer',
+    email: 'database.engineer@testsphere.local',
+    description: 'Reserved for a future database-testing capability -- no TestSphere module exists for this yet, so this account currently has no granted permissions.',
+    icon: StorageIcon,
+    color: '#6D4C41',
   },
 ];
 

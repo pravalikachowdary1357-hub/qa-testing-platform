@@ -45,12 +45,6 @@ const ROLES = [
     color: '#00838F',
   },
   {
-    role: 'Database Test Engineer',
-    description: 'Reserved for the upcoming database-testing capability: schema, data integrity, ETL, and stored procedures.',
-    icon: StorageIcon,
-    color: '#6D4C41',
-  },
-  {
     role: 'Developer',
     description: 'Investigates and fixes defects (root cause, corrective action, ready-for-retest); views requirements, test results, UAT, and release status.',
     icon: CodeIcon,
@@ -73,6 +67,12 @@ const ROLES = [
     description: 'Executive view-only role: sees the Dashboard only, with no access to any other module.',
     icon: InsightsIcon,
     color: '#37474F',
+  },
+  {
+    role: 'Database Test Engineer',
+    description: 'Reserved for the upcoming database-testing capability: schema, data integrity, ETL, and stored procedures.',
+    icon: StorageIcon,
+    color: '#6D4C41',
   },
 ];
 
