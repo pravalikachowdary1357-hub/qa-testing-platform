@@ -6,6 +6,7 @@ import { CreatePerformanceTestDto } from './dto/create-performance-test.dto';
 import { UpdatePerformanceTestDto } from './dto/update-performance-test.dto';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { assertSameOrganization, productOrganizationScopeWhere } from '../common/organization-scope.util';
+import { BlockedTargetError, assertPublicHttpUrl } from '../common/safe-fetch.util';
 
 const PRODUCT_REF = { select: { id: true, name: true, organizationId: true } };
 const ENVIRONMENT_REF = { select: { id: true, name: true, baseUrl: true } };
@@ -240,6 +241,14 @@ export class PerformanceTestingService {
     }
 
     const effectiveUrl = this.buildEffectiveUrl(test.targetUrl, test.environment?.baseUrl ?? null);
+
+    // Load tests may only target public URLs (checked once before the run).
+    try {
+      await assertPublicHttpUrl(effectiveUrl);
+    } catch (error) {
+      if (error instanceof BlockedTargetError) throw new BadRequestException(error.message);
+      throw error;
+    }
 
     const controller = new AbortController();
     this.activeRuns.set(id, controller);

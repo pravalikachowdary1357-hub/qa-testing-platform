@@ -6,6 +6,7 @@ import { CreateApiTestRequestDto } from './dto/create-api-test-request.dto';
 import { UpdateApiTestRequestDto } from './dto/update-api-test-request.dto';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { assertSameOrganization, productOrganizationScopeWhere } from '../common/organization-scope.util';
+import { safeFetch } from '../common/safe-fetch.util';
 
 const PRODUCT_REF = { select: { id: true, name: true, organizationId: true } };
 const ENVIRONMENT_REF = { select: { id: true, name: true, baseUrl: true } };
@@ -238,7 +239,7 @@ export class ApiTestingService {
 
     const startedAt = Date.now();
     try {
-      const response = await fetch(effectiveUrl, {
+      const response = await safeFetch(effectiveUrl, {
         method: request.method,
         headers,
         body: includeBody ? (request.body ?? undefined) : undefined,
